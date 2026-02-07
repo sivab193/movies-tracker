@@ -256,11 +256,11 @@ export default function WatchHistoryPage() {
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            <TableHead className="w-[180px] cursor-pointer" onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}>
+                                            {/* <TableHead className="w-[180px] cursor-pointer" onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}>
                                                 <div className="flex items-center gap-2">
                                                     Date <ArrowUpDown className="h-3 w-3" />
                                                 </div>
-                                            </TableHead>
+                                            </TableHead> */}
                                             <TableHead>Movie</TableHead>
                                             <TableHead>Theater</TableHead>
                                             <TableHead className="text-right">Cost</TableHead>
@@ -270,9 +270,9 @@ export default function WatchHistoryPage() {
                                     <TableBody>
                                         {history.map((entry, i) => (
                                             <TableRow key={entry._id || i}>
-                                                <TableCell className="font-medium text-muted-foreground">
+                                                {/* <TableCell className="font-medium text-muted-foreground">
                                                     {formatDate(entry.timestamp || entry.createdAt)}
-                                                </TableCell>
+                                                </TableCell> */}
                                                 <TableCell>
                                                     <div className="font-semibold">{entry.movieTitle}</div>
                                                 </TableCell>

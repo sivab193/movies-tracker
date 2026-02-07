@@ -1,9 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { Plus, Loader2, Film, MapPin, Calendar as CalendarIcon, Ticket } from "lucide-react"
-import { format } from "date-fns"
-import { cn } from "@/lib/utils"
+import { Plus, Loader2, Film, MapPin, Ticket } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -13,12 +11,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Calendar } from "@/components/ui/calendar"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -31,6 +23,11 @@ import {
 } from "@/components/ui/select"
 import { type WatchHistoryEntry } from "@/lib/types"
 import { addWatchHistory, updateWatchHistory, getMovies } from "@/services/api"
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import dayjs, { Dayjs } from 'dayjs';
+import TextField from '@mui/material/TextField';
 
 interface AddWatchDialogProps {
   uid: string
@@ -68,7 +65,7 @@ export function AddWatchDialog({
   const [selectedMovieId, setSelectedMovieId] = useState<string>("")
   const [theaterName, setTheaterName] = useState("")
   const [theaterLocation, setTheaterLocation] = useState("")
-  const [date, setDate] = useState<Date>()
+  const [date, setDate] = useState<Dayjs | null>(null)
   const [ticketCost, setTicketCost] = useState("")
   const [currency, setCurrency] = useState<"INR" | "USD">("INR")
   const [hasScreenshot, setHasScreenshot] = useState(false)
@@ -88,7 +85,7 @@ export function AddWatchDialog({
       setTheaterLocation(initialData.theaterLocation || "")
       setTicketCost(initialData.ticketCost?.toString() || "")
       setCurrency(initialData.currency || "INR")
-      if (initialData.timestamp) setDate(new Date(initialData.timestamp))
+      if (initialData.timestamp) setDate(dayjs(initialData.timestamp))
     } else if (!open) {
       resetForm()
     }
@@ -98,7 +95,7 @@ export function AddWatchDialog({
     setSelectedMovieId("")
     setTheaterName("")
     setTheaterLocation("")
-    setDate(undefined)
+    setDate(null)
     setTicketCost("")
     setCurrency("INR")
     setHasScreenshot(false)
@@ -219,38 +216,92 @@ export function AddWatchDialog({
             />
           </div>
 
-          <div className="space-y-2 flex flex-col">
-            <Label htmlFor="date" className="flex items-center gap-2">
-              <CalendarIcon className="h-4 w-4" />
-              Date of Watch <span className="text-xs text-muted-foreground">(Optional)</span>
-            </Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant={"outline"}
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !date && "text-muted-foreground"
-                  )}
-                  disabled={loading}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "PPP") : <span>Pick a date</span>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={date}
-                  onSelect={setDate}
-                  disabled={(date) =>
-                    date > new Date() || date < new Date("1900-01-01")
-                  }
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
-          </div>
+          {/* <div className="space-y-2 flex flex-col">
+            <LocalizationProvider dateAdapter={AdapterDayjs}>
+              <DatePicker
+                label="Date of Watch (Optional)"
+                value={date}
+                onChange={(newValue) => setDate(newValue)}
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    size: 'small',
+                    sx: {
+                      '& .MuiOutlinedInput-root': {
+                        color: 'var(--foreground)',
+                        '& fieldset': {
+                          borderColor: 'var(--input)',
+                        },
+                        '&:hover fieldset': {
+                          borderColor: 'var(--border)',
+                        },
+                        '&.Mui-focused fieldset': {
+                          borderColor: 'var(--ring)',
+                        },
+                      },
+                      '& .MuiInputLabel-root': {
+                        color: 'var(--muted-foreground)',
+                        '&.Mui-focused': {
+                          color: 'var(--ring)',
+                        },
+                      },
+                      '& .MuiSvgIcon-root': {
+                        color: 'var(--muted-foreground)',
+                      },
+                    },
+                  },
+                  popper: {
+                    sx: {
+                      '& .MuiPaper-root': {
+                        backgroundColor: 'var(--popover)',
+                        color: 'var(--popover-foreground)',
+                        border: '1px solid var(--border)',
+                        '& .MuiPickersCalendarHeader-label': {
+                          color: 'var(--popover-foreground)',
+                        },
+                        '& .MuiIconButton-root': {
+                          color: 'var(--popover-foreground)',
+                        },
+                        '& .MuiDayCalendar-weekDayLabel': {
+                          color: 'var(--muted-foreground)',
+                        },
+                        '& .MuiPickersDay-root': {
+                          color: 'var(--popover-foreground)',
+                          backgroundColor: 'transparent',
+                          '&:hover': {
+                            backgroundColor: 'var(--accent)',
+                            color: 'var(--accent-foreground)',
+                          },
+                          '&.Mui-selected': {
+                            backgroundColor: 'var(--primary)',
+                            color: 'var(--primary-foreground)',
+                            '&:hover': {
+                              backgroundColor: 'var(--primary)',
+                              opacity: 0.9,
+                            },
+                          },
+                          '&.Mui-disabled': {
+                            color: 'var(--muted-foreground)',
+                            opacity: 0.5,
+                          },
+                        },
+                        '& .MuiPickersYear-yearButton': {
+                          color: 'var(--popover-foreground)',
+                          '&.Mui-selected': {
+                            backgroundColor: 'var(--primary)',
+                            color: 'var(--primary-foreground)',
+                          },
+                        },
+                      },
+                    },
+                  },
+                }}
+                maxDate={dayjs()}
+                minDate={dayjs('1900-01-01')}
+                disabled={loading}
+              />
+            </LocalizationProvider>
+          </div> */}
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
