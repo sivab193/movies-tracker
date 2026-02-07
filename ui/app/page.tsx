@@ -1,0 +1,141 @@
+"use client"
+
+import Link from "next/link"
+import { Film, Trophy, List, Share2, ShieldCheck, MessageSquare } from "lucide-react"
+import { Header } from "@/components/header"
+import { Button } from "@/components/ui/button"
+
+export default function HomePage() {
+  return (
+    <div className="min-h-screen bg-background text-foreground">
+      <Header />
+
+      <main>
+        {/* Hero Section */}
+        <section className="relative overflow-hidden py-20 sm:py-28 animate-fade-in">
+          <div className="mx-auto max-w-7xl px-6 lg:px-8">
+            <div className="mx-auto max-w-2xl text-center">
+              <h1 className="text-4xl font-bold tracking-tight sm:text-6xl text-balance">
+                Your Ultimate Movie Watch Tracker
+              </h1>
+              <p className="mt-6 text-lg leading-8 text-muted-foreground text-pretty">
+                Keep track of every movie you watch, analyze your statistics, and compete for the top spot on the global leaderboard.
+              </p>
+              <div className="mt-10 flex items-center justify-center gap-x-6">
+                <Link href="/auth">
+                  <Button size="lg" className="rounded-full px-8">
+                    Get Started
+                  </Button>
+                </Link>
+                <Link href="/timer" className="text-sm font-semibold leading-6 text-foreground hover:underline">
+                  Try TitleCard Timer <span aria-hidden="true">→</span>
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Features Grid */}
+        <section className="mx-auto max-w-7xl px-6 py-16 sm:py-20 lg:px-8 bg-muted/30 rounded-3xl mb-12 animate-slide-up">
+          <div className="mx-auto max-w-2xl lg:text-center">
+            <h2 className="text-base font-semibold leading-7 text-primary">Features</h2>
+            <p className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl text-balance">
+              Everything you need to track your cinematic journey
+            </p>
+          </div>
+          <div className="mx-auto mt-12 max-w-2xl sm:mt-16 lg:mt-20 lg:max-w-none">
+            <dl className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-12 lg:max-w-none lg:grid-cols-3">
+              {/* Telegram Bot - Coming Soon (FIRST) */}
+              <div className="flex flex-col feature-card">
+                <dt className="flex items-center gap-x-3 text-base font-semibold leading-7">
+                  <MessageSquare className="h-5 w-5 text-primary" />
+                  Telegram Bot
+                </dt>
+                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground">
+                  <p className="flex-auto text-pretty">Track your movies directly from Telegram. Quick logging, stats, and notifications.</p>
+                  <div className="mt-3">
+                    <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                      Coming Soon
+                    </span>
+                  </div>
+                </dd>
+              </div>
+
+              {/* Detailed Watch History */}
+              <div className="flex flex-col feature-card">
+                <dt className="flex items-center gap-x-3 text-base font-semibold leading-7">
+                  <List className="h-5 w-5 text-primary" />
+                  Detailed Watch History
+                </dt>
+                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground">
+                  <p className="flex-auto text-pretty">Log every movie you watch with dates, ratings, and detailed technicinformation.</p>
+                </dd>
+              </div>
+
+              {/* Global Leaderboard */}
+              <div className="flex flex-col feature-card">
+                <dt className="flex items-center gap-x-3 text-base font-semibold leading-7">
+                  <Trophy className="h-5 w-5 text-primary" />
+                  Global Leaderboard
+                </dt>
+                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground">
+                  <p className="flex-auto text-pretty">Compete with friends and the world. See who has the most total watch time.</p>
+                </dd>
+              </div>
+
+              {/* TitleCard Timer */}
+              <div className="flex flex-col feature-card">
+                <dt className="flex items-center gap-x-3 text-base font-semibold leading-7">
+                  <Film className="h-5 w-5 text-primary" />
+                  TitleCard Timer
+                </dt>
+                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground">
+                  <p className="flex-auto text-pretty">Know exactly when the title card appears in every movie you watch.</p>
+                </dd>
+              </div>
+
+              {/* Public Profiles */}
+              <div className="flex flex-col feature-card">
+                <dt className="flex items-center gap-x-3 text-base font-semibold leading-7">
+                  <Share2 className="h-5 w-5 text-primary" />
+                  Public Profiles
+                </dt>
+                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground">
+                  <p className="flex-auto text-pretty">Share your movie taste with the world or keep it private with granular controls.</p>
+                </dd>
+              </div>
+
+              {/* Privacy First */}
+              <div className="flex flex-col feature-card">
+                <dt className="flex items-center gap-x-3 text-base font-semibold leading-7">
+                  <ShieldCheck className="h-5 w-5 text-primary" />
+                  Privacy First
+                </dt>
+                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground">
+                  <p className="flex-auto text-pretty">Choose exactly which fields and movies are public. Your data, your rules.</p>
+                </dd>
+              </div>
+            </dl>
+          </div>
+        </section>
+
+        {/* CTA Section */}
+        <section className="mx-auto max-w-7xl px-6 py-16 sm:py-20 lg:px-8 mb-12 text-center animate-fade-in">
+          <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+            Ready to start tracking?
+          </h2>
+          <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-muted-foreground">
+            Join cinephiles around the world in documenting their movie journey.
+          </p>
+          <div className="mt-10 flex items-center justify-center gap-x-6">
+            <Link href="/auth">
+              <Button size="lg" className="rounded-full px-8">
+                Get Started for Free
+              </Button>
+            </Link>
+          </div>
+        </section>
+      </main>
+    </div>
+  )
+}
