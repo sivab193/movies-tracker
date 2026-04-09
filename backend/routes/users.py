@@ -134,7 +134,7 @@ def add_watch_history():
         "movieId": ObjectId(movie_id),
         "imdbId": movie.get('imdbId'),
         "movieTitle": movie.get('title'),
-        "moviePosterUrl": movie.get('poster'),
+        "moviePosterUrl": movie.get('posterUrl'),
         "theaterName": data.get('theaterName'),
         "theaterLocation": data.get('location'),
         "ticketCost": data.get('ticketCost'),
@@ -243,7 +243,7 @@ def update_watch_history(user_id, entry_id):
     if 'theaterLocation' in data: updates['watchHistory.$.theaterLocation'] = data['theaterLocation']
     if 'ticketCost' in data: updates['watchHistory.$.ticketCost'] = data['ticketCost']
     if 'timestamp' in data: updates['watchHistory.$.timestamp'] = data['timestamp']
-    if 'currrency' in data: updates['watchHistory.$.currency'] = data['currency']
+    if 'currency' in data: updates['watchHistory.$.currency'] = data['currency']
     
     if not updates:
         return jsonify({"message": "No changes"})
@@ -262,6 +262,7 @@ def update_watch_history(user_id, entry_id):
         return jsonify({"error": "Entry not found"}), 404
         
     return jsonify({"message": "Updated successfully"})
+
 @users_bp.route('/management-requests', methods=['GET'])
 def get_admin_requests():
     # Verify Admin

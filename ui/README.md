@@ -1,30 +1,33 @@
-# TitleCard Timer App
+# Movies Tracker — Frontend
 
-*Automatically synced with your [v0.app](https://v0.app) deployments*
+Next.js frontend for the Movies Tracker application.
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/sivaganeshs-projects/v0-title-card-timer-app)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.app-black?style=for-the-badge)](https://v0.app/chat/myvJhbVP7wW)
+## Development
 
-## Overview
+```bash
+npm install
+npm run dev
+```
 
-This repository will stay in sync with your deployed chats on [v0.app](https://v0.app).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.app](https://v0.app).
+Visit `http://localhost:3000`
 
-## Deployment
+## Tech Stack
 
-Your project is live at:
+- **Next.js 16** (App Router, TypeScript)
+- **Tailwind CSS v4** + **Shadcn UI**
+- **Firebase Auth** (Google OAuth)
+- **MUI Date Pickers** (Watch history date selection)
 
-**[https://vercel.com/sivaganeshs-projects/v0-title-card-timer-app](https://vercel.com/sivaganeshs-projects/v0-title-card-timer-app)**
+## Configuration
 
-## Build your app
+Create `.env.local` with:
 
-Continue building your app on:
-
-**[https://v0.app/chat/myvJhbVP7wW](https://v0.app/chat/myvJhbVP7wW)**
-
-## How It Works
-
-1. Create and modify your project using [v0.app](https://v0.app)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+```env
+NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_auth_domain
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
+NEXT_PUBLIC_API_URL=http://localhost:8000/api
+```

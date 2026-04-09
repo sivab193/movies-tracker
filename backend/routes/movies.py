@@ -4,6 +4,7 @@ import requests
 import datetime
 from firebase_config import auth as firebase_auth
 from mongo_config import db
+from gcs_config import upload_image_from_url
 from bson import ObjectId
 
 movies_bp = Blueprint('movies', __name__)
@@ -91,11 +92,18 @@ def add_movie():
             except:
                 pass
 
+        # Upload poster to GCS
+        omdb_poster_url = omdb_data.get('Poster')
+        poster_url = None
+        if omdb_poster_url and omdb_poster_url != "N/A":
+            gcs_url = upload_image_from_url(omdb_poster_url, f"coverpics/{imdb_id}.jpg")
+            poster_url = gcs_url if gcs_url else omdb_poster_url
+
         movie_data = {
             "imdbId": imdb_id,
             "title": omdb_data.get('Title'),
             "year": int(omdb_data.get('Year')) if omdb_data.get('Year', '').isdigit() else 2024,
-            "posterUrl": omdb_data.get('Poster') if omdb_data.get('Poster') != "N/A" else None,
+            "posterUrl": poster_url,
             "imdbRating": float(omdb_data.get('imdbRating')) if omdb_data.get('imdbRating') != "N/A" else None,
             "runtime": runtime_str,
             "submissionCount": 0,
@@ -144,6 +152,7 @@ def list_movies():
         movies.append(m)
         
     return jsonify({"movies": movies})
+
 @movies_bp.route('/search-discover', methods=['GET'])
 def search_omdb():
     query = request.args.get('s', '*')
@@ -294,11 +303,18 @@ def bulk_add_movies():
                 except:
                     pass
 
+            # Upload poster to GCS
+            omdb_poster_url = omdb_data.get('Poster')
+            poster_url = None
+            if omdb_poster_url and omdb_poster_url != "N/A":
+                gcs_url = upload_image_from_url(omdb_poster_url, f"coverpics/{imdb_id}.jpg")
+                poster_url = gcs_url if gcs_url else omdb_poster_url
+
             movie_data = {
                 "imdbId": imdb_id,
                 "title": omdb_data.get('Title'),
                 "year": int(omdb_data.get('Year')) if str(omdb_data.get('Year', '')).isdigit() else 2024,
-                "posterUrl": omdb_data.get('Poster') if omdb_data.get('Poster') != "N/A" else None,
+                "posterUrl": poster_url,
                 "imdbRating": float(omdb_data.get('imdbRating')) if omdb_data.get('imdbRating') != "N/A" else None,
                 "runtime": runtime_str,
                 "submissionCount": 0,
@@ -312,6 +328,7 @@ def bulk_add_movies():
             results["errors"].append({"id": imdb_id, "error": str(e)})
 
     return jsonify(results)
+
 @movies_bp.route('/<movie_id>', methods=['GET'])
 def get_movie(movie_id):
     if db is None:
