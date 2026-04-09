@@ -2,7 +2,7 @@ import os
 import json
 import base64
 import firebase_admin
-from firebase_admin import credentials, firestore, auth
+from firebase_admin import credentials, auth
 
 def initialize_firebase():
     if not firebase_admin._apps:
@@ -31,6 +31,4 @@ def initialize_firebase():
                 print("Warning: Could not initialize Firebase. Ensure FIREBASE_SERVICE_ACCOUNT_KEY env var is set or serviceAccountKey.json is present.")
 
 initialize_firebase()
-auth = auth
-# dB is removed as we use Mongo
-
+auth = auth  # Re-export for use by route modules

@@ -14,7 +14,7 @@ A comprehensive movie watch history tracker with leaderboard, admin tools, and p
 ## 🏗️ Tech Stack
 
 ### Frontend
-- **Next.js 14** (App Router, TypeScript)
+- **Next.js 16** (App Router, TypeScript)
 - **Tailwind CSS** + **Shadcn UI**
 - **Firebase Auth** (Google OAuth)
 
@@ -22,6 +22,7 @@ A comprehensive movie watch history tracker with leaderboard, admin tools, and p
 - **Flask** (Python 3.10+)
 - **MongoDB Atlas** (Database)
 - **Firebase Admin SDK** (Token verification)
+- **Google Cloud Storage** (Image hosting)
 - **OMDb API** (Movie data)
 
 ---
@@ -90,6 +91,8 @@ In Vercel Project Settings → Environment Variables, add:
 | `MONGO_URI` | Your MongoDB connection string | `mongodb+srv://user:pass@cluster.mongodb.net/movies_tracker` |
 | `OMDB_API_KEY` | Your OMDb API key | `abc12345` |
 | `FIREBASE_SERVICE_ACCOUNT_KEY` | **Entire JSON content** of service account key | `{"type": "service_account", ...}` |
+| `GCS_SERVICE_ACCOUNT_KEY` | **Entire JSON content** of GCS service account key (optional if same as Firebase) | `{"type": "service_account", ...}` |
+| `GCS_BUCKET_NAME` | Your GCS bucket name (default: `movies-tracker`) | `movies-tracker` |
 
 > ⚠️ **Important**: For `FIREBASE_SERVICE_ACCOUNT_KEY`, paste the **entire JSON file content** as a single-line string or multiline text. Vercel will handle it correctly.
 
@@ -172,6 +175,9 @@ movies-tracker/
 │   │   ├── movies.py     # Movie CRUD, bulk-add
 │   │   └── leaderboard.py
 │   ├── app.py            # Flask entry point
+│   ├── gcs_config.py     # Google Cloud Storage client
+│   ├── bulk_import.py    # CLI bulk movie importer
+│   ├── migrate_images_to_gcs.py  # One-time image migration
 │   └── requirements.txt
 ├── ui/                   # Next.js frontend
 │   ├── app/              # App router pages

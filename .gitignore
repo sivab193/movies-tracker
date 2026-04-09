@@ -12,6 +12,7 @@ __pycache__/
 .env.local
 .env.*.local
 serviceAccountKey.json
+gcs-service-account.json
 
 # IDE
 .vscode/
