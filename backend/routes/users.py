@@ -99,7 +99,7 @@ def request_admin():
         {"firebaseUid": firebase_uid},
         {"$set": {
             "adminRequestStatus": "PENDING",
-            "adminRequestedAt": datetime.datetime.utcnow().isoformat()
+            "adminRequestedAt": datetime.datetime.now(datetime.timezone.utc).isoformat()
         }}
     )
     
@@ -165,7 +165,7 @@ def add_watch_history():
         "currency": data.get('currency'),
         "ticketStubUrl": ticket_stub_url,
         "timestamp": data.get('timestamp'), # Expecting ISO string
-        "createdAt": datetime.datetime.utcnow().isoformat()
+        "createdAt": datetime.datetime.now(datetime.timezone.utc).isoformat()
     }
     
     # Calculate runtime in seconds

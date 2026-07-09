@@ -5,8 +5,6 @@ import { getLeaderboard } from "@/services/api"
 import { Loader2, Trophy, Clock, Film } from "lucide-react"
 import { Header } from "@/components/header"
 import Link from "next/link"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-
 interface LeaderboardUser {
     userId: string
     displayName: string
@@ -20,31 +18,6 @@ export default function LeaderboardPage() {
     const [users, setUsers] = useState<LeaderboardUser[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
-    const [period, setPeriod] = useState("current") // current, q4-2025, q3-2025
-
-    // Calculate next result date (1st of next quarter at 9 PM IST)
-    const getNextResultDate = () => {
-        const now = new Date()
-        const currentYear = now.getFullYear()
-        const currentMonth = now.getMonth() // 0-11
-        const quarter = Math.floor(currentMonth / 3) + 1
-
-        // Next quarter start month (0, 3, 6, 9) -> next is (quarter * 3)
-        let nextQuarterMonth = quarter * 3
-        let nextQuarterYear = currentYear
-
-        if (nextQuarterMonth >= 12) {
-            nextQuarterMonth = 0
-            nextQuarterYear++
-        }
-
-        // Date is 1st of that month
-        const date = new Date(nextQuarterYear, nextQuarterMonth, 1) // 12 AM
-        // Add 21 hours for 9 PM IST (approximate, hardcoded for now or use precise Timezone logic)
-        // IST is UTC+5:30. 9 PM IST is 15:30 UTC. 
-        // 9 PM local IST logic:
-        return date.toLocaleDateString("en-US", { year: 'numeric', month: 'long', day: 'numeric' })
-    }
 
     useEffect(() => {
         const fetchLeaderboard = async () => {
@@ -85,23 +58,14 @@ export default function LeaderboardPage() {
                         <div className="text-left">
                             <h1 className="text-3xl font-bold flex items-center gap-3">
                                 <Trophy className="h-8 w-8 text-yellow-500" />
-                                Leaderboard
+                                {new Date().getFullYear()} Annual Leaderboard
                             </h1>
-                            <p className="text-muted-foreground text-sm">Next result: {getNextResultDate()} at 9:00 PM IST</p>
+                            <p className="text-muted-foreground text-sm">Next result: December 31, {new Date().getFullYear()} at 9:00 PM IST</p>
                         </div>
 
-                        <div className="flex items-center gap-2" title="Quarter Duration: Jan 1 - Mar 31">
-                            <Clock className="h-4 w-4 text-muted-foreground cursor-help" />
-                            <Select value={period} onValueChange={setPeriod}>
-                                <SelectTrigger className="w-[180px]">
-                                    <SelectValue placeholder="Period" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="current">Current (Q1 2026)</SelectItem>
-                                    <SelectItem value="q2-2026" disabled>Q2 2026 (Coming Soon)</SelectItem>
-                                    <SelectItem value="q3-2026" disabled>Q3 2026 (Coming Soon)</SelectItem>
-                                </SelectContent>
-                            </Select>
+                        <div className="flex items-center gap-2 rounded-lg border px-3 py-1.5 bg-muted/30">
+                            <Clock className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm font-medium">Full Year {new Date().getFullYear()}</span>
                         </div>
                     </div>
                 </div>

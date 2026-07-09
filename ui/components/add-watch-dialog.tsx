@@ -23,11 +23,7 @@ import {
 } from "@/components/ui/select"
 import { type WatchHistoryEntry } from "@/lib/types"
 import { addWatchHistory, updateWatchHistory, getMovies, getTheaters } from "@/services/api"
-import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
-import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
-import { DatePicker } from '@mui/x-date-pickers/DatePicker';
-import dayjs, { Dayjs } from 'dayjs';
-import TextField from '@mui/material/TextField';
+// Standard date input used instead of MUI DatePicker
 
 interface AddWatchDialogProps {
   uid: string
@@ -67,7 +63,7 @@ export function AddWatchDialog({
   const [selectedTheaterId, setSelectedTheaterId] = useState<string>("")
   const [theaterName, setTheaterName] = useState("")
   const [theaterLocation, setTheaterLocation] = useState("")
-  const [date, setDate] = useState<Dayjs | null>(null)
+  const [watchDate, setWatchDate] = useState(new Date().toISOString().split('T')[0])
   const [ticketCost, setTicketCost] = useState("")
   const [currency, setCurrency] = useState<"INR" | "USD">("INR")
   const [hasScreenshot, setHasScreenshot] = useState(false)
@@ -76,7 +72,7 @@ export function AddWatchDialog({
   // Load movies and theaters when dialog opens
   useEffect(() => {
     if (open) {
-      getMovies().then(setMovies).catch(() => setMovies([]))
+      getMovies().then(res => setMovies(res?.movies || res || [])).catch(() => setMovies([]))
       getTheaters().then(setTheaters).catch(() => setTheaters([]))
     }
   }, [open])
@@ -89,7 +85,13 @@ export function AddWatchDialog({
       setTheaterLocation(initialData.theaterLocation || "")
       setTicketCost(initialData.ticketCost?.toString() || "")
       setCurrency(initialData.currency || "INR")
-      if (initialData.timestamp) setDate(dayjs(initialData.timestamp))
+      if (initialData.timestamp) {
+        try {
+          setWatchDate(new Date(initialData.timestamp).toISOString().split('T')[0])
+        } catch (e) {
+          setWatchDate(new Date().toISOString().split('T')[0])
+        }
+      }
     } else if (!open) {
       resetForm()
     }
@@ -119,7 +121,7 @@ export function AddWatchDialog({
     setSelectedTheaterId("")
     setTheaterName("")
     setTheaterLocation("")
-    setDate(null)
+    setWatchDate(new Date().toISOString().split('T')[0])
     setTicketCost("")
     setCurrency("INR")
     setHasScreenshot(false)
@@ -148,7 +150,7 @@ export function AddWatchDialog({
         movieId: selectedMovieId || initialData?.movieId,
         theaterName: theaterName.trim() || undefined,
         theaterLocation: theaterLocation.trim() || undefined,
-        timestamp: date ? date.toISOString() : undefined,
+        timestamp: new Date(watchDate).toISOString(),
         ticketCost: ticketCost ? parseFloat(ticketCost) : 0,
         currency,
       }
@@ -256,92 +258,17 @@ export function AddWatchDialog({
             )}
           </div>
 
-          {/* <div className="space-y-2 flex flex-col">
-            <LocalizationProvider dateAdapter={AdapterDayjs}>
-              <DatePicker
-                label="Date of Watch (Optional)"
-                value={date}
-                onChange={(newValue) => setDate(newValue)}
-                slotProps={{
-                  textField: {
-                    fullWidth: true,
-                    size: 'small',
-                    sx: {
-                      '& .MuiOutlinedInput-root': {
-                        color: 'var(--foreground)',
-                        '& fieldset': {
-                          borderColor: 'var(--input)',
-                        },
-                        '&:hover fieldset': {
-                          borderColor: 'var(--border)',
-                        },
-                        '&.Mui-focused fieldset': {
-                          borderColor: 'var(--ring)',
-                        },
-                      },
-                      '& .MuiInputLabel-root': {
-                        color: 'var(--muted-foreground)',
-                        '&.Mui-focused': {
-                          color: 'var(--ring)',
-                        },
-                      },
-                      '& .MuiSvgIcon-root': {
-                        color: 'var(--muted-foreground)',
-                      },
-                    },
-                  },
-                  popper: {
-                    sx: {
-                      '& .MuiPaper-root': {
-                        backgroundColor: 'var(--popover)',
-                        color: 'var(--popover-foreground)',
-                        border: '1px solid var(--border)',
-                        '& .MuiPickersCalendarHeader-label': {
-                          color: 'var(--popover-foreground)',
-                        },
-                        '& .MuiIconButton-root': {
-                          color: 'var(--popover-foreground)',
-                        },
-                        '& .MuiDayCalendar-weekDayLabel': {
-                          color: 'var(--muted-foreground)',
-                        },
-                        '& .MuiPickersDay-root': {
-                          color: 'var(--popover-foreground)',
-                          backgroundColor: 'transparent',
-                          '&:hover': {
-                            backgroundColor: 'var(--accent)',
-                            color: 'var(--accent-foreground)',
-                          },
-                          '&.Mui-selected': {
-                            backgroundColor: 'var(--primary)',
-                            color: 'var(--primary-foreground)',
-                            '&:hover': {
-                              backgroundColor: 'var(--primary)',
-                              opacity: 0.9,
-                            },
-                          },
-                          '&.Mui-disabled': {
-                            color: 'var(--muted-foreground)',
-                            opacity: 0.5,
-                          },
-                        },
-                        '& .MuiPickersYear-yearButton': {
-                          color: 'var(--popover-foreground)',
-                          '&.Mui-selected': {
-                            backgroundColor: 'var(--primary)',
-                            color: 'var(--primary-foreground)',
-                          },
-                        },
-                      },
-                    },
-                  },
-                }}
-                maxDate={dayjs()}
-                minDate={dayjs('1900-01-01')}
-                disabled={loading}
-              />
-            </LocalizationProvider>
-          </div> */}
+          <div className="space-y-2">
+            <Label>Date of Watch</Label>
+            <input
+              type="date"
+              value={watchDate}
+              onChange={(e) => setWatchDate(e.target.value)}
+              disabled={loading}
+              max={new Date().toISOString().split('T')[0]}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            />
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">

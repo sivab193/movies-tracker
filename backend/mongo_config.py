@@ -10,8 +10,13 @@ def get_db():
     try:
         # certifi.where() is often needed on Mac for SSL
         client = MongoClient(mongo_uri, tlsCAFile=certifi.where())
-        # Assuming database name is in URI, otherwise pick default 'movies_db'
-        db = client.get_database('movies_db') 
+        # Try to get the default database from the URI path, otherwise fallback
+        try:
+            db = client.get_default_database()
+            if db is None or db.name == 'admin':
+                db = client.get_database('movies_db')
+        except Exception:
+            db = client.get_database('movies_db')
         return db
     except Exception as e:
         print(f"Error connecting to MongoDB: {e}")

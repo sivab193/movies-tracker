@@ -43,7 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (firebaseUser) {
         try {
           // Fetch user profile from Backend API
-          const profile = await getMySettings()
+          const profile = await getMySettings(firebaseUser)
           setUserProfile(profile)
         } catch (err) {
           console.error("Auth context error: Failed to fetch user profile", err)

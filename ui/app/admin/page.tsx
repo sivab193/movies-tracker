@@ -13,7 +13,7 @@ import { Footer } from "@/components/footer"
 import { getAdminRequests, resolveAdminRequest } from "@/services/user-service"
 import { getMovies, deleteMovie, getTheaters, addTheater, deleteTheater } from "@/services/api"
 import { formatTimeDisplay } from "@/lib/types"
-import { AddMovieDialog } from "@/components/add-movie-dialog"
+// import { AddMovieDialog } from "@/components/add-movie-dialog"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -40,6 +40,8 @@ export default function AdminPage() {
     const [yearFilter, setYearFilter] = useState("")
     const [deleteTarget, setDeleteTarget] = useState<any | null>(null)
     const [deleting, setDeleting] = useState(false)
+    const [movieSkip, setMovieSkip] = useState(0)
+    const [movieTotal, setMovieTotal] = useState(0)
 
     useEffect(() => {
         if (!authLoading) {
@@ -55,17 +57,35 @@ export default function AdminPage() {
 
     const loadData = async () => {
         try {
-            const [reqs, moviesData, theatersData] = await Promise.all([
+            const [reqs, moviesRes, theatersData] = await Promise.all([
                 getAdminRequests(),
-                getMovies(),
+                getMovies(0, 20),
                 getTheaters()
             ])
+            const moviesList = moviesRes?.movies || moviesRes || []
             setRequests(reqs || [])
-            setMovies(moviesData || [])
-            setFilteredMovies(moviesData || [])
+            setMovies(moviesList)
+            setFilteredMovies(moviesList)
+            setMovieTotal(moviesRes?.total || moviesList.length)
             setTheaters(theatersData || [])
         } catch (err) {
             console.error("Failed to load admin data", err)
+        } finally {
+            setLocalLoading(false)
+        }
+    }
+
+    const handleMoviePageChange = async (newSkip: number) => {
+        setLocalLoading(true)
+        try {
+            const res = await getMovies(newSkip, 20)
+            const list = res?.movies || res || []
+            setMovies(list)
+            setFilteredMovies(list)
+            setMovieSkip(newSkip)
+            setMovieTotal(res?.total || list.length)
+        } catch (err) {
+            console.error("Failed to load page", err)
         } finally {
             setLocalLoading(false)
         }
@@ -161,7 +181,8 @@ export default function AdminPage() {
                                 Users
                             </Button>
                         </Link>
-                        <AddMovieDialog onMovieAdded={loadData} />
+                        {/* <AddMovieDialog onMovieAdded={loadData} /> */}
+                        {/* Movie addition disabled - use bulk_import.py instead */}
                     </div>
                 </div>
 
@@ -271,6 +292,29 @@ export default function AdminPage() {
                                         )}
                                     </tbody>
                                 </table>
+                            </div>
+                            <div className="flex items-center justify-between mt-4 border-t pt-4">
+                                <div className="text-sm text-muted-foreground">
+                                    Showing {movies.length > 0 ? movieSkip + 1 : 0} - {Math.min(movieSkip + 20, movieTotal)} of {movieTotal} movies
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={movieSkip === 0 || localLoading}
+                                        onClick={() => handleMoviePageChange(Math.max(0, movieSkip - 20))}
+                                    >
+                                        Previous
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={movieSkip + 20 >= movieTotal || localLoading}
+                                        onClick={() => handleMoviePageChange(movieSkip + 20)}
+                                    >
+                                        Next
+                                    </Button>
+                                </div>
                             </div>
                         </CardContent>
                     </Card>

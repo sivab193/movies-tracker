@@ -118,15 +118,15 @@ export async function getPublicProfile(userId: string) {
     return result;
 }
 
-export async function getMovies() {
-    const response = await fetch(`${API_BASE_URL}/movies/`);
+export async function getMovies(skip: number = 0, limit: number = 50) {
+    const response = await fetch(`${API_BASE_URL}/movies/?skip=${skip}&limit=${limit}`);
     const data = await response.json();
 
     if (!response.ok) {
         throw new Error(data.error || "Failed to fetch movies");
     }
 
-    return data.movies;
+    return data;
 }
 
 export async function searchMovies(query: string, year?: string, language?: string, upcoming?: string) {

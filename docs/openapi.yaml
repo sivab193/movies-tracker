@@ -1,0 +1,290 @@
+openapi: 3.0.3
+info:
+  title: Movies Tracker API
+  description: Comprehensive REST API for tracking movie watch history, managing catalogs, and annual leaderboards.
+  version: 1.0.0
+  contact:
+    name: Siva B
+    url: https://github.com/sivab193/movies-tracker
+servers:
+  - url: https://mt.siv19.dev/api
+    description: Production Vercel Deployment
+  - url: http://localhost:8000/api
+    description: Local Development Server
+components:
+  securitySchemes:
+    firebaseAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Firebase ID Token obtained after user authentication via Google OAuth.
+  schemas:
+    User:
+      type: object
+      properties:
+        _id:
+          type: string
+        firebaseUid:
+          type: string
+        email:
+          type: string
+        displayName:
+          type: string
+        photoURL:
+          type: string
+        isAdmin:
+          type: boolean
+        isPublic:
+          type: boolean
+        totalMoviesWatched:
+          type: integer
+        totalRuntimeSeconds:
+          type: integer
+        watchHistory:
+          type: array
+          items:
+            $ref: '#/components/schemas/WatchEntry'
+    WatchEntry:
+      type: object
+      properties:
+        _id:
+          type: string
+        movieId:
+          type: string
+        imdbId:
+          type: string
+        movieTitle:
+          type: string
+        moviePosterUrl:
+          type: string
+        theaterName:
+          type: string
+        theaterLocation:
+          type: string
+        ticketCost:
+          type: number
+        currency:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+    Movie:
+      type: object
+      properties:
+        _id:
+          type: string
+        imdbId:
+          type: string
+        title:
+          type: string
+        year:
+          type: string
+        runtime:
+          type: string
+        runtimeSeconds:
+          type: integer
+        posterUrl:
+          type: string
+        genre:
+          type: string
+        director:
+          type: string
+        imdbRating:
+          type: string
+    Theater:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        location:
+          type: string
+paths:
+  /users/me:
+    get:
+      summary: Get current user profile & watch history
+      security:
+        - firebaseAuth: []
+      responses:
+        '200':
+          description: User profile and stats
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+    put:
+      summary: Update user settings
+      security:
+        - firebaseAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                displayName:
+                  type: string
+                isPublic:
+                  type: boolean
+                requestAdmin:
+                  type: boolean
+                adminRequestReason:
+                  type: string
+      responses:
+        '200':
+          description: Updated profile
+  /users/watch-history:
+    post:
+      summary: Log a movie watch entry
+      security:
+        - firebaseAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - movieId
+                - theaterName
+              properties:
+                movieId:
+                  type: string
+                theaterName:
+                  type: string
+                theaterLocation:
+                  type: string
+                ticketCost:
+                  type: number
+                currency:
+                  type: string
+                timestamp:
+                  type: string
+                  format: date-time
+                ticketStubImage:
+                  type: string
+      responses:
+        '201':
+          description: Watch entry recorded
+  /movies:
+    get:
+      summary: Get paginated list of movies
+      parameters:
+        - in: query
+          name: skip
+          schema:
+            type: integer
+            default: 0
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: List of movies and total count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total:
+                    type: integer
+                  movies:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Movie'
+    post:
+      summary: Add movie from OMDb (Admin only)
+      security:
+        - firebaseAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - imdbId
+              properties:
+                imdbId:
+                  type: string
+                  example: tt15398776
+      responses:
+        '201':
+          description: Movie added successfully
+  /movies/{movieId}/poster:
+    get:
+      summary: Get binary poster image stored in MongoDB
+      parameters:
+        - in: path
+          name: movieId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Binary image stream
+          content:
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+  /theaters:
+    get:
+      summary: Get list of approved theaters
+      responses:
+        '200':
+          description: Array of theaters
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Theater'
+    post:
+      summary: Add new approved theater (Admin only)
+      security:
+        - firebaseAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+              properties:
+                name:
+                  type: string
+                location:
+                  type: string
+      responses:
+        '201':
+          description: Theater added
+  /leaderboard:
+    get:
+      summary: Get annual leaderboard rankings
+      responses:
+        '200':
+          description: Ranked list of public users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    userId:
+                      type: string
+                    displayName:
+                      type: string
+                    photoURL:
+                      type: string
+                    totalRuntimeSeconds:
+                      type: integer
+                    totalMoviesWatched:
+                      type: integer
+                    isPublic:
+                      type: boolean

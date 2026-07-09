@@ -2,14 +2,18 @@
 
 import { MovieCard } from "@/components/movie-card"
 import { MovieCardSkeleton } from "@/components/movie-card-skeleton"
+import { Loader2 } from "lucide-react"
 import type { Movie } from "@/lib/types"
+import React from "react"
 
 interface MovieGridProps {
   movies: Movie[]
   loading?: boolean
+  loadingMore?: boolean
+  sentinelRef?: React.RefObject<HTMLDivElement | null>
 }
 
-export function MovieGrid({ movies, loading }: MovieGridProps) {
+export function MovieGrid({ movies, loading, loadingMore, sentinelRef }: MovieGridProps) {
   if (loading) {
     return (
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
@@ -33,10 +37,19 @@ export function MovieGrid({ movies, loading }: MovieGridProps) {
   }
 
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-      {movies.map((movie) => (
-        <MovieCard key={movie.id} movie={movie} />
-      ))}
-    </div>
+    <>
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+        {movies.map((movie) => (
+          <MovieCard key={movie.id} movie={movie} />
+        ))}
+      </div>
+      {/* Sentinel for infinite scroll */}
+      {sentinelRef && <div ref={sentinelRef} className="h-4" />}
+      {loadingMore && (
+        <div className="flex justify-center py-8">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      )}
+    </>
   )
 }

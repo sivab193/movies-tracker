@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback, useRef } from "react"
-import { Film, Clock, TrendingUp } from "lucide-react"
+import { Film, Clock, TrendingUp, Loader2 } from "lucide-react"
 import { Header } from "@/components/header"
 import { MovieGrid } from "@/components/movie-grid"
 // import { AddMovieDialog } from "@/components/add-movie-dialog"
@@ -68,6 +68,8 @@ function checkFirebaseConfig() {
   return Boolean(apiKey && projectId && apiKey !== "undefined" && projectId !== "undefined")
 }
 
+const PAGE_SIZE = 20
+
 type SortOption = "latest" | "popular"
 
 export default function HomePage() {
@@ -75,36 +77,86 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
   const [sortBy, setSortBy] = useState<SortOption>("latest")
   const [addedMovies, setAddedMovies] = useState<Movie[]>([])
+  const [skip, setSkip] = useState(0)
+  const [hasMore, setHasMore] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [total, setTotal] = useState(0)
+  const sentinelRef = useRef<HTMLDivElement>(null)
   const unsubscribeRef = useRef<(() => void) | null>(null)
 
-  const fetchMovies = useCallback(async () => {
+  const fetchMovies = useCallback(async (isLoadMore = false) => {
     try {
-      setLoading(true)
-      const movieList = await getMovies()
+      if (isLoadMore) {
+        setLoadingMore(true)
+      } else {
+        setLoading(true)
+      }
+
+      const currentSkip = isLoadMore ? skip : 0
+      const data = await getMovies(currentSkip, PAGE_SIZE)
+      const movieList = data.movies || []
+      const totalCount = data.total || 0
 
       // Sort in memory for now
-      const sorted = [...(movieList || [])].sort((a, b) => {
+      const sorted = [...movieList].sort((a, b) => {
         if (sortBy === "latest") {
           return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         }
         return (b.submissionCount || 0) - (a.submissionCount || 0)
       })
 
-      setMovies(sorted)
+      if (isLoadMore) {
+        setMovies(prev => [...prev, ...sorted])
+      } else {
+        setMovies(sorted)
+      }
+
+      setTotal(totalCount)
+      const newSkip = currentSkip + movieList.length
+      setSkip(newSkip)
+      setHasMore(newSkip < totalCount)
     } catch (error) {
       console.error("Error loading movies:", error)
-      setMovies(DEMO_MOVIES)
+      if (!isLoadMore) {
+        setMovies(DEMO_MOVIES)
+        setHasMore(false)
+      }
     } finally {
       setLoading(false)
+      setLoadingMore(false)
     }
+  }, [sortBy, skip])
+
+  // Initial load and sort change
+  useEffect(() => {
+    setSkip(0)
+    setHasMore(true)
+    setMovies([])
+    fetchMovies(false)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortBy])
 
+  // Infinite scroll with IntersectionObserver
   useEffect(() => {
-    fetchMovies()
-  }, [fetchMovies])
+    if (!sentinelRef.current) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore && !loading) {
+          fetchMovies(true)
+        }
+      },
+      { threshold: 0.1 }
+    )
+
+    observer.observe(sentinelRef.current)
+    return () => observer.disconnect()
+  }, [hasMore, loadingMore, loading, fetchMovies])
 
   const handleMovieAdded = () => {
-    fetchMovies()
+    setSkip(0)
+    setHasMore(true)
+    fetchMovies(false)
   }
 
   return (
@@ -153,7 +205,7 @@ export default function HomePage() {
         </div>
 
         {/* Movie Grid */}
-        <MovieGrid movies={movies} loading={loading} />
+        <MovieGrid movies={movies} loading={loading} loadingMore={loadingMore} sentinelRef={sentinelRef} />
       </main>
 
       {/* Footer */}

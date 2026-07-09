@@ -121,7 +121,7 @@ def add_movie():
             "runtime": runtime_str,
             "submissionCount": 0,
             "averageTimeSeconds": average_time_seconds,
-            "createdAt": datetime.datetime.utcnow()
+            "createdAt": datetime.datetime.now(datetime.timezone.utc)
         }
 
         result = db.movies.insert_one(movie_data)
@@ -150,6 +150,9 @@ def list_movies():
     limit = request.args.get('limit', 50, type=int)
     limit = min(limit, 500)
     
+    # Get optional skip param for pagination
+    skip = request.args.get('skip', 0, type=int)
+    
     # Get optional search/filter params
     title_search = request.args.get('title', '')
     year_filter = request.args.get('year', '')
@@ -162,9 +165,12 @@ def list_movies():
             query['year'] = int(year_filter)
         except ValueError:
             pass
+    
+    # Get total count for pagination
+    total = db.movies.count_documents(query)
         
-    # Sort by createdAt desc
-    movies_cursor = db.movies.find(query).sort("createdAt", -1).limit(limit)
+    # Sort by createdAt desc with skip and limit
+    movies_cursor = db.movies.find(query).sort("createdAt", -1).skip(skip).limit(limit)
     
     movies = []
     for m in movies_cursor:
@@ -173,7 +179,7 @@ def list_movies():
            m['createdAt'] = m['createdAt'].isoformat()
         movies.append(m)
         
-    return jsonify({"movies": movies})
+    return jsonify({"movies": movies, "total": total})
 
 @movies_bp.route('/search-discover', methods=['GET'])
 def search_omdb():
@@ -345,7 +351,7 @@ def add_submission():
             "rawInput": raw_input,
             "comment": comment,
             "screenshotUrl": None,
-            "createdAt": datetime.datetime.utcnow()
+            "createdAt": datetime.datetime.now(datetime.timezone.utc)
         }
         
         result = db.titlecards.insert_one(submission)

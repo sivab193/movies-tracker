@@ -22,4 +22,5 @@ gcs-service-account.json
 # Misc
 .vercel
 *.log
+results_with_crew.csv
 

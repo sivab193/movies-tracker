@@ -2,15 +2,15 @@ import { auth } from "@/lib/firebase"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
 
-async function getAuthHeader(): Promise<Record<string, string>> {
-    const user = auth?.currentUser
-    if (!user) return {}
-    const token = await user.getIdToken()
+async function getAuthHeader(user?: any): Promise<Record<string, string>> {
+    const currentUser = user || auth?.currentUser
+    if (!currentUser) return {}
+    const token = await currentUser.getIdToken()
     return { "Authorization": `Bearer ${token}` }
 }
 
-export async function getMySettings() {
-    const headers = await getAuthHeader()
+export async function getMySettings(user?: any) {
+    const headers = await getAuthHeader(user)
     const response = await fetch(`${API_BASE_URL}/users/me`, { headers })
     if (!response.ok) throw new Error("Failed to fetch settings")
     return response.json()

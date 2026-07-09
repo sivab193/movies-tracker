@@ -1,155 +1,102 @@
-# Movies Tracker
+# 🎬 Movies Tracker
 
-A comprehensive movie watch history tracker with leaderboard, admin tools, and privacy controls.
+<div align="center">
 
-## 🎬 Features
+![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
+![Next.js 16](https://img.shields.io/badge/Next.js%2016-black?style=for-the-badge&logo=next.js&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind%20v4-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)
+![Python 3.10+](https://img.shields.io/badge/Python%203.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask%203.0-000000?style=for-the-badge&logo=flask&logoColor=white)
+![MongoDB Atlas](https://img.shields.io/badge/MongoDB%20Atlas-4EA94B?style=for-the-badge&logo=mongodb&logoColor=white)
+![Firebase Auth](https://img.shields.io/badge/Firebase%20Auth-FFCA28?style=for-the-badge&logo=firebase&logoColor=black)
+![Vercel](https://img.shields.io/badge/Deployed%20on%20Vercel-000000?style=for-the-badge&logo=vercel&logoColor=white)
 
-- **Watch History Tracking**: Log movies, theaters, costs, and watch dates
-- **TitleCard Timer**: Precisely track when title cards appear
-- **Global Leaderboard**: Compete based on total runtime watched
-- **Public Profiles**: Share your watch history with privacy controls
-- **Admin Dashboard**: Manage users, approve requests, bulk-add movies
-- **Google OAuth**: Secure authentication via Firebase
+**A high-performance, full-stack movie watch history tracker, TitleCard timer, and community leaderboard.**  
+Built with **Next.js 16 App Router**, **Python Flask**, **MongoDB Atlas**, and **Firebase Google OAuth**.
 
-## 🏗️ Tech Stack
+[Explore API Docs](./docs/API_DOCS.md) · [OpenAPI Spec](./docs/openapi.yaml) · [Architecture Reference](./docs/ARCHITECTURE.md) · [Frontend Guide](./ui/README.md) · [Backend Guide](./backend/README.md)
 
-### Frontend
-- **Next.js 16** (App Router, TypeScript)
-- **Tailwind CSS** + **Shadcn UI**
-- **Firebase Auth** (Google OAuth)
-
-### Backend
-- **Flask** (Python 3.10+)
-- **MongoDB Atlas** (Database)
-- **Firebase Admin SDK** (Token verification)
-- **Google Cloud Storage** (Image hosting)
-- **OMDb API** (Movie data)
+</div>
 
 ---
 
-## 🚀 Deployment to Vercel
+## ✨ Why Movies Tracker?
+
+Whether you're a cinephile tracking every minute spent in theaters or competing with friends for the annual runtime crown, **Movies Tracker** delivers a rich, responsive, and secure experience:
+
+- **🍿 Comprehensive Watch Logging**: Record movies, verified theaters, ticket costs, currencies (`INR` / `USD`), and optional ticket stub photos.
+- **⏱️ TitleCard Precision Timer**: Exactly know when movie title cards appear on screen so you never miss a beat.
+- **🏆 Annual Runtime Leaderboard**: Real-time rankings calculated directly from exact runtime seconds (`2026` season).
+- **♾️ Infinite Scroll Catalog**: Browse through hundreds of movies with zero UI lag thanks to intersection-observed paginated API endpoints (`20 movies/page`).
+- **🛡️ Embedded MongoDB Binary Posters**: Movie posters are downloaded and stored directly inside MongoDB (`movie_posters` collection), guaranteeing permanent availability even if external URLs expire.
+- **⚡ Hybrid Vercel Deployment**: Seamlessly bridges a Next.js frontend with a Python serverless API under one unified domain via `vercel.json`.
+
+---
+
+## 🏗️ System Architecture & Data Flow
+
+```mermaid
+graph LR
+    Client[Browser / PWA] -->|HTTPS + Bearer Token| VercelEdge[Vercel Gateway]
+    VercelEdge -->|/*| NextApp[Next.js 16 App Router]
+    VercelEdge -->|/api/*| FlaskAPI[Python Flask Serverless API]
+    
+    subgraph Cloud Infrastructure
+        FlaskAPI <-->|Firebase ID Token Verification| FirebaseAuth[Firebase Auth Admin SDK]
+        FlaskAPI <-->|PyMongo Document & Binary Storage| Mongo Atlas[(MongoDB Atlas Cluster)]
+        FlaskAPI <-->|Metadata & Poster Ingestion| OMDb[OMDb API]
+    end
+```
+
+For detailed sequence diagrams of request lifecycles and storage topologies, see **[Architecture Guide](./docs/ARCHITECTURE.md)**.
+
+---
+
+## 📚 Quick Navigation & Documentation
+
+| Document | Description |
+| :--- | :--- |
+| **[REST API Reference](./docs/API_DOCS.md)** | Complete documentation of all endpoints, authentication headers, schemas, and status codes. |
+| **[OpenAPI 3.0 Specification](./docs/openapi.yaml)** | Standard OpenAPI / Swagger definition ready for Postman or Redoc import. |
+| **[Backend Engineering Guide](./backend/README.md)** | Flask environment setup, CLI utility documentation (`bulk_import.py`, `bulk_watch.py`), and routes. |
+| **[Frontend Engineering Guide](./ui/README.md)** | Next.js 16 setup, Tailwind v4 styling, component hierarchy, and build verification. |
+
+---
+
+## 🚀 Quick Start Guide (Local Development)
 
 ### Prerequisites
+- **Node.js 20+** and **npm**
+- **Python 3.10+** and **pip**
+- **MongoDB Atlas** connection URI (`mongodb+srv://...`)
+- **Firebase** project with Google OAuth enabled and `serviceAccountKey.json` downloaded
+- **OMDb API Key** from [omdbapi.com](http://www.omdbapi.com/apikey.aspx)
 
-1. **MongoDB Atlas** account with a cluster
-2. **Firebase** project with Google OAuth enabled
-3. **OMDb API** key from [omdbapi.com](http://www.omdbapi.com/apikey.aspx)
-4. **Vercel** account
-
-### Step 1: Prepare Firebase
-
-1. Go to [Firebase Console](https://console.firebase.google.com/)
-2. Create a new project (or use existing)
-3. Enable **Google Sign-In** in Authentication → Sign-in method
-4. Add your production domain to authorized domains
-5. Download **Service Account Key**:
-   - Go to Project Settings → Service Accounts
-   - Click "Generate new private key"
-   - Save the JSON file securely
-
-### Step 2: Prepare MongoDB
-
-1. Go to [MongoDB Atlas](https://cloud.mongodb.com/)
-2. Create a cluster (free tier works fine)
-3. Create a database user with read/write permissions
-4. Whitelist all IPs: `0.0.0.0/0` (Network Access)
-5. Get your connection string (looks like: `mongodb+srv://user:pass@cluster.mongodb.net/`)
-6. **Set first admin manually** in MongoDB Compass or Shell:
-   ```javascript
-   db.users.updateOne(
-     {email: "your-email@example.com"},
-     {$set: {isAdmin: true}}
-   )
-   ```
-
-### Step 3: Deploy to Vercel
-
-#### Option A: Via Vercel Web UI
-
-1. Go to [vercel.com](https://vercel.com) and sign in
-2. Click "Add New Project"
-3. Import your Git repository
-4. Vercel will auto-detect the monorepo structure via `vercel.json`
-5. **Don't click deploy yet** - add environment variables first
-
-#### Option B: Via CLI
-
-```bash
-npm i -g vercel
-cd movies-tracker
-vercel
-```
-
-### Step 4: Configure Environment Variables
-
-In Vercel Project Settings → Environment Variables, add:
-
-#### Backend Variables
-
-| Variable | Value | Example |
-|----------|-------|---------|
-| `MONGO_URI` | Your MongoDB connection string | `mongodb+srv://user:pass@cluster.mongodb.net/movies_tracker` |
-| `OMDB_API_KEY` | Your OMDb API key | `abc12345` |
-| `FIREBASE_SERVICE_ACCOUNT_KEY` | **Entire JSON content** of service account key | `{"type": "service_account", ...}` |
-| `GCS_SERVICE_ACCOUNT_KEY` | **Entire JSON content** of GCS service account key (optional if same as Firebase) | `{"type": "service_account", ...}` |
-| `GCS_BUCKET_NAME` | Your GCS bucket name (default: `movies-tracker`) | `movies-tracker` |
-
-> ⚠️ **Important**: For `FIREBASE_SERVICE_ACCOUNT_KEY`, paste the **entire JSON file content** as a single-line string or multiline text. Vercel will handle it correctly.
-
-#### Frontend Variables
-
-| Variable | Value | Example |
-|----------|-------|---------|
-| `NEXT_PUBLIC_FIREBASE_API_KEY` | From Firebase config | `AIzaSy...` |
-| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | From Firebase config | `your-app.firebaseapp.com` |
-| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | From Firebase config | `your-project-id` |
-| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | From Firebase config | `your-app.appspot.com` |
-| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | From Firebase config | `123456789` |
-| `NEXT_PUBLIC_FIREBASE_APP_ID` | From Firebase config | `1:123:web:abc` |
-| `NEXT_PUBLIC_API_URL` | **Must be** `/api` | `/api` |
-
-> ⚠️ **Critical**: `NEXT_PUBLIC_API_URL` **must** be `/api` in production. The `vercel.json` routing config handles proxying requests to the backend.
-
-### Step 5: Deploy
-
-1. Click "Deploy" or run `vercel --prod`
-2. Wait for build to complete (~2-3 minutes)
-3. Visit your deployed URL
-4. Sign in with Google
-5. Manually set admin status for your user in MongoDB
-
----
-
-## 🛠️ Local Development
-
-### Backend Setup
-
+### 1. Start Python Backend API (`localhost:8000`)
 ```bash
 cd backend
-python -m venv venv
+python3 -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -r requirements.txt
-```
 
-Create `backend/.env`:
-```env
+# Create .env inside backend/
+cat <<EOT >> .env
 MONGO_URI=mongodb://localhost:27017/movies_tracker
 OMDB_API_KEY=your_key_here
 FIREBASE_SERVICE_ACCOUNT_KEY=backend/serviceAccountKey.json
 PORT=8000
+EOT
+
+python3 app.py
 ```
 
-Run: `python app.py`
-
-### Frontend Setup
-
+### 2. Start Next.js Frontend (`localhost:3000`)
 ```bash
-cd ui
+cd ../ui
 npm install
-```
 
-Create `ui/.env.local`:
-```env
+# Create .env.local inside ui/
+cat <<EOT >> .env.local
 NEXT_PUBLIC_FIREBASE_API_KEY=your_api_key
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_auth_domain
 NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
@@ -157,127 +104,55 @@ NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_storage_bucket
 NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
 NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 NEXT_PUBLIC_API_URL=http://localhost:8000/api
+EOT
+
+npm run dev
 ```
 
-Run: `npm run dev`
-
-Visit: `http://localhost:3000`
+Visit `http://localhost:3000` to log in via Google OAuth and start logging movies!
 
 ---
 
-## 📁 Project Structure
+## 🛠️ CLI Bulk Import & Database Tools
 
-```
-movies-tracker/
-├── backend/               # Flask API
-│   ├── routes/           # API endpoints
-│   │   ├── users.py      # User management
-│   │   ├── movies.py     # Movie CRUD, bulk-add
-│   │   └── leaderboard.py
-│   ├── app.py            # Flask entry point
-│   ├── gcs_config.py     # Google Cloud Storage client
-│   ├── bulk_import.py    # CLI bulk movie importer
-│   ├── migrate_images_to_gcs.py  # One-time image migration
-│   └── requirements.txt
-├── ui/                   # Next.js frontend
-│   ├── app/              # App router pages
-│   ├── components/       # React components
-│   ├── contexts/         # Auth context
-│   └── services/         # API client
-└── vercel.json           # Deployment config
-```
+Our backend includes dedicated high-performance CLI utilities for batch seeding and data management:
+
+| Utility Script | Purpose | Command Example |
+| :--- | :--- | :--- |
+| `backend/bulk_import.py` | Import movies & binary posters from OMDb or Kaggle CSV | `python3 backend/bulk_import.py --file movies.txt` |
+| `backend/bulk_delete_no_poster.py` | Audit & clean up movies missing binary posters | `python3 backend/bulk_delete_no_poster.py --execute` |
+| `backend/bulk_theaters.py` | Batch seed approved movie theaters without duplicates | `python3 backend/bulk_theaters.py --file theaters.txt` |
+| `backend/bulk_watch.py` | Batch ingest user watch history from CSV logs | `python3 backend/bulk_watch.py --uid <user_uid> --csv watch_history.csv` |
 
 ---
 
-## 🔧 Important Configuration Files
+## ☁️ Production Deployment (Vercel)
 
-### `vercel.json`
+Movies Tracker is designed out of the box for zero-config deployment on **Vercel** using `vercel.json` monorepo routing.
 
-Handles monorepo routing:
-- `/api/*` → Flask backend
-- `/*` → Next.js frontend
+### Environment Variables for Vercel
+In your Vercel Dashboard → Project Settings → Environment Variables, configure:
 
-**Do not modify** unless you know what you're doing.
-
-### `backend/serviceAccountKey.json`
-
-⚠️ **This file should be in `.gitignore`**. It's your Firebase service account private key. On Vercel, use the environment variable instead.
-
----
-
-## 🗄️ Database Schema
-
-### Users Collection
-```javascript
-{
-  firebaseUid: string,
-  email: string,
-  displayName: string,
-  photoURL: string,
-  isAdmin: boolean,           // Set manually for first admin
-  isPublic: boolean,
-  totalMoviesWatched: number,
-  totalRuntimeSeconds: number,
-  watchHistory: [{
-    _id: ObjectId,
-    movieId: string,
-    movieTitle: string,
-    theaterName: string,
-    theaterLocation: string,
-    timestamp: Date,
-    ticketCost: number,
-    currency: "INR" | "USD"
-  }]
-}
-```
-
-### Movies Collection
-```javascript
-{
-  imdbId: string,
-  title: string,
-  year: string,
-  runtime: string,
-  posterUrl: string,
-  // ... other OMDb fields
-}
-```
+| Variable Name | Value Description |
+| :--- | :--- |
+| `MONGO_URI` | MongoDB Atlas Production Cluster Connection String |
+| `OMDB_API_KEY` | Your OMDb API Key |
+| `FIREBASE_SERVICE_ACCOUNT_KEY` | **Paste the entire raw JSON string** of `serviceAccountKey.json` |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | Firebase Client API Key |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Firebase Auth Domain (`project.firebaseapp.com`) |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Firebase Project ID |
+| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | Firebase Storage Bucket (`project.appspot.com`) |
+| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Firebase Messaging Sender ID |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | Firebase App ID |
+| `NEXT_PUBLIC_API_URL` | **Must exactly be `/api`** (triggers `vercel.json` reverse proxy) |
 
 ---
 
-## 🔐 Security Notes
+## 📄 License
 
-1. **Firebase Rules**: Admin status is managed server-side in MongoDB, not in Firebase Auth
-2. **First Admin**: Must be set manually in MongoDB after first sign-in
-3. **API Auth**: All protected endpoints verify Firebase ID tokens
-4. **Environment Variables**: Never commit `.env` files to Git
+This project is licensed under the **MIT License**. Feel free to fork, customize, and deploy your own movie tracking portal!
 
----
+## 👨‍💻 Connect
 
-## 🆘 Troubleshooting
-
-### "403 Forbidden" on admin endpoints
-- Ensure your user has `isAdmin: true` in MongoDB users collection
-
-### "Cannot connect to MongoDB"
-- Check `MONGO_URI` is correct
-- Verify IP whitelist includes `0.0.0.0/0` in MongoDB Atlas
-
-### Firebase auth not working
-- Verify all `NEXT_PUBLIC_FIREBASE_*` env vars are set
-- Check Firebase console has Google sign-in enabled
-- Ensure production domain is in authorized domains
-
-### Backend API calls failing
-- In production, `NEXT_PUBLIC_API_URL` **must** be `/api`
-- Check Vercel function logs for errors
-
----
-
-## 📝 License
-
-MIT
-
-## 👨‍💻 Author
-
-Built for tracking movie watch history and competing with friends!
+Built by **Siva B**.  
+Check out more on [LinkedIn](https://linkedin.com) or explore the code right here!
