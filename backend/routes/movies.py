@@ -1,11 +1,10 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, Response
 import os
 import requests
 import datetime
 from firebase_config import auth as firebase_auth
 from mongo_config import db
-from gcs_config import upload_image_from_url
-from bson import ObjectId
+from bson import ObjectId, Binary
 
 movies_bp = Blueprint('movies', __name__)
 
@@ -54,6 +53,27 @@ def fetch_movie_from_omdb(imdb_id):
         raise Exception(data['Error'])
     return data
 
+def save_poster_to_db(movie_id, poster_url):
+    if not poster_url or poster_url == "N/A":
+        return None
+    try:
+        response = requests.get(poster_url)
+        if response.status_code == 200:
+            content_type = response.headers.get('Content-Type', 'image/jpeg')
+            image_data = Binary(response.content)
+            db.movie_posters.update_one(
+                {"movieId": str(movie_id)},
+                {"$set": {
+                    "imageData": image_data,
+                    "mimeType": content_type
+                }},
+                upsert=True
+            )
+            return f"/api/movies/{movie_id}/poster"
+    except Exception as e:
+        print(f"Error saving poster to MongoDB: {e}")
+    return None
+
 @movies_bp.route('/', methods=['POST'])
 def add_movie():
     # Verify Admin
@@ -92,18 +112,11 @@ def add_movie():
             except:
                 pass
 
-        # Upload poster to GCS
-        omdb_poster_url = omdb_data.get('Poster')
-        poster_url = None
-        if omdb_poster_url and omdb_poster_url != "N/A":
-            gcs_url = upload_image_from_url(omdb_poster_url, f"coverpics/{imdb_id}.jpg")
-            poster_url = gcs_url if gcs_url else omdb_poster_url
-
         movie_data = {
             "imdbId": imdb_id,
             "title": omdb_data.get('Title'),
-            "year": int(omdb_data.get('Year')) if omdb_data.get('Year', '').isdigit() else 2024,
-            "posterUrl": poster_url,
+            "year": int(omdb_data.get('Year')) if str(omdb_data.get('Year', '')).isdigit() else 2024,
+            "posterUrl": None,
             "imdbRating": float(omdb_data.get('imdbRating')) if omdb_data.get('imdbRating') != "N/A" else None,
             "runtime": runtime_str,
             "submissionCount": 0,
@@ -112,7 +125,16 @@ def add_movie():
         }
 
         result = db.movies.insert_one(movie_data)
-        movie_data['_id'] = str(result.inserted_id)
+        movie_id = str(result.inserted_id)
+        movie_data['_id'] = movie_id
+
+        # Download and save poster in MongoDB
+        omdb_poster_url = omdb_data.get('Poster')
+        if omdb_poster_url and omdb_poster_url != "N/A":
+            poster_url = save_poster_to_db(movie_id, omdb_poster_url)
+            if poster_url:
+                db.movies.update_one({"_id": ObjectId(movie_id)}, {"$set": {"posterUrl": poster_url}})
+                movie_data['posterUrl'] = poster_url
         
         return jsonify({"message": "Movie added successfully", "movie": movie_data})
 
@@ -224,110 +246,20 @@ def search_omdb():
                 
     return jsonify(data)
 
-@movies_bp.route('/search-by-imdb', methods=['POST'])
-def search_by_imdb_ids():
-    """Search for movies by IMDb IDs"""
-    auth_header = request.headers.get('Authorization')
-    if not auth_header or not auth_header.startswith('Bearer '):
-        return jsonify({"error": "Unauthorized"}), 401
-    
-    token = auth_header.split(' ')[1]
-    if not is_admin(token):
-        return jsonify({"error": "Forbidden: Admin access required"}), 403
-    
-    data = request.get_json()
-    imdb_ids = data.get('imdbIds', [])
-    
-    if not imdb_ids:
-        return jsonify({"error": "No IMDb IDs provided"}), 400
-    
-    if not OMDB_API_KEY:
-        return jsonify({"Search": [], "Response": "True"})
-    
-    results = []
-    for imdb_id in imdb_ids[:50]:  # Limit to 50 IDs
-        if not imdb_id.startswith('tt'):
-            continue
-            
-        url = f"https://www.omdbapi.com/?i={imdb_id}&apikey={OMDB_API_KEY}"
-        response = requests.get(url)
-        movie_data = response.json()
+@movies_bp.route('/<movie_id>/poster', methods=['GET'])
+def get_movie_poster(movie_id):
+    if db is None:
+        return jsonify({"error": "Database not connected"}), 500
+    try:
+        poster_doc = db.movie_posters.find_one({"movieId": movie_id})
+        if not poster_doc:
+            return jsonify({"error": "Poster not found"}), 404
         
-        if movie_data.get('Response') == 'True':
-            # Check if exists in DB
-            existing = db.movies.find_one({"imdbId": imdb_id})
-            movie_data['exists'] = existing is not None
-            movie_data['imdbID'] = imdb_id  # Ensure uppercase ID for consistency
-            results.append(movie_data)
-    
-    return jsonify({"Search": results, "Response": "True"})
-
-
-@movies_bp.route('/bulk-add', methods=['POST'])
-def bulk_add_movies():
-    auth_header = request.headers.get('Authorization')
-    if not auth_header or not auth_header.startswith('Bearer '):
-        return jsonify({"error": "Unauthorized"}), 401
-    
-    token = auth_header.split(' ')[1]
-    if not is_admin(token):
-        return jsonify({"error": "Forbidden: Admin access required"}), 403
-
-    data = request.get_json()
-    imdb_ids = data.get('imdbIds', [])
-
-    if not imdb_ids:
-        return jsonify({"error": "No IMDb IDs provided"}), 400
-
-    results = {"added": [], "skipped": [], "errors": []}
-    
-    for imdb_id in imdb_ids:
-        if not imdb_id or not imdb_id.startswith('tt'):
-            results["errors"].append({"id": imdb_id, "error": "Invalid format"})
-            continue
-            
-        # Check if movie exists
-        existing = db.movies.find_one({"imdbId": imdb_id})
-        if existing:
-            results["skipped"].append(imdb_id)
-            continue
-
-        try:
-            omdb_data = fetch_movie_from_omdb(imdb_id)
-            runtime_str = omdb_data.get('Runtime', 'N/A')
-            average_time_seconds = 0
-            if runtime_str != 'N/A':
-                try:
-                    minutes = int(runtime_str.split(' ')[0])
-                    average_time_seconds = minutes * 60
-                except:
-                    pass
-
-            # Upload poster to GCS
-            omdb_poster_url = omdb_data.get('Poster')
-            poster_url = None
-            if omdb_poster_url and omdb_poster_url != "N/A":
-                gcs_url = upload_image_from_url(omdb_poster_url, f"coverpics/{imdb_id}.jpg")
-                poster_url = gcs_url if gcs_url else omdb_poster_url
-
-            movie_data = {
-                "imdbId": imdb_id,
-                "title": omdb_data.get('Title'),
-                "year": int(omdb_data.get('Year')) if str(omdb_data.get('Year', '')).isdigit() else 2024,
-                "posterUrl": poster_url,
-                "imdbRating": float(omdb_data.get('imdbRating')) if omdb_data.get('imdbRating') != "N/A" else None,
-                "runtime": runtime_str,
-                "submissionCount": 0,
-                "averageTimeSeconds": average_time_seconds,
-                "createdAt": datetime.datetime.utcnow()
-            }
-
-            db.movies.insert_one(movie_data)
-            results["added"].append(imdb_id)
-        except Exception as e:
-            results["errors"].append({"id": imdb_id, "error": str(e)})
-
-    return jsonify(results)
+        image_bytes = bytes(poster_doc['imageData'])
+        return Response(image_bytes, mimetype=poster_doc.get('mimeType', 'image/jpeg'))
+    except Exception as e:
+        print(f"Error fetching poster: {e}")
+        return jsonify({"error": "Failed to fetch poster"}), 500
 
 @movies_bp.route('/<movie_id>', methods=['GET'])
 def get_movie(movie_id):
@@ -375,8 +307,10 @@ def delete_movie(movie_id):
         if result.deleted_count == 0:
             return jsonify({"error": "Movie not found"}), 404
         
-        # Also delete related submissions
-        db.submissions.delete_many({"movieId": movie_id})
+        # Also delete related titlecards and posters
+        db.titlecards.delete_many({"movieId": movie_id})
+        db.titlecard_images.delete_many({"movieId": movie_id})
+        db.movie_posters.delete_one({"movieId": movie_id})
             
         return jsonify({"message": "Movie deleted successfully"})
     except Exception as e:
@@ -385,25 +319,22 @@ def delete_movie(movie_id):
 
 @movies_bp.route('/submissions', methods=['POST'])
 def add_submission():
+    # Verify Admin
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    token = auth_header.split(' ')[1]
+    if not is_admin(token):
+        return jsonify({"error": "Forbidden: Admin access required"}), 403
+
     data = request.get_json()
     movie_id = data.get('movieId')
     time_in_seconds = data.get('timeInSeconds')
     raw_input = data.get('rawInput')
     comment = data.get('comment')
+    screenshot_image = data.get('screenshotImage')  # Optional Base64 data URL
     
-    # Rate limiting check (using IP for anonymous)
-    ip_address = request.remote_addr
-    # Simple check: has this IP submitted for this movie in the last hour?
-    one_hour_ago = datetime.datetime.utcnow() - datetime.timedelta(hours=1)
-    recent_sub = db.submissions.find_one({
-        "movieId": movie_id,
-        "ipAddress": ip_address,
-        "createdAt": {"$gt": one_hour_ago}
-    })
-    
-    if recent_sub:
-        return jsonify({"error": "You've already submitted for this movie recently."}), 429
-
     if not movie_id or time_in_seconds is None:
         return jsonify({"error": "Missing required fields"}), 400
         
@@ -413,14 +344,37 @@ def add_submission():
             "timeInSeconds": time_in_seconds,
             "rawInput": raw_input,
             "comment": comment,
-            "ipAddress": ip_address,
+            "screenshotUrl": None,
             "createdAt": datetime.datetime.utcnow()
         }
         
-        result = db.submissions.insert_one(submission)
+        result = db.titlecards.insert_one(submission)
+        submission_id = str(result.inserted_id)
         
+        # Save screenshot if provided
+        if screenshot_image and screenshot_image.startswith('data:'):
+            try:
+                import base64
+                header, encoded = screenshot_image.split(",", 1)
+                mime_type = header.split(";")[0].split(":")[1]
+                image_bytes = Binary(base64.b64decode(encoded))
+                db.titlecard_images.update_one(
+                    {"submissionId": submission_id},
+                    {"$set": {
+                        "movieId": movie_id,
+                        "imageData": image_bytes,
+                        "mimeType": mime_type
+                    }},
+                    upsert=True
+                )
+                screenshot_url = f"/api/movies/submissions/{submission_id}/image"
+                db.titlecards.update_one({"_id": ObjectId(submission_id)}, {"$set": {"screenshotUrl": screenshot_url}})
+                submission["screenshotUrl"] = screenshot_url
+            except Exception as se:
+                print(f"Error saving titlecard screenshot: {se}")
+
         # Update movie average
-        all_subs = list(db.submissions.find({"movieId": movie_id}))
+        all_subs = list(db.titlecards.find({"movieId": movie_id}))
         if all_subs:
             times = [s['timeInSeconds'] for s in all_subs]
             avg_time = sum(times) / len(times)
@@ -435,10 +389,27 @@ def add_submission():
                 }
             )
             
-        return jsonify({"message": "Submission added", "id": str(result.inserted_id)})
+        submission["id"] = submission_id
+        submission.pop("_id", None)
+        return jsonify({"message": "Submission added", "submission": submission})
     except Exception as e:
         print(f"Error adding submission: {e}")
         return jsonify({"error": "Failed to add submission"}), 500
+
+@movies_bp.route('/submissions/<submission_id>/image', methods=['GET'])
+def get_submission_image(submission_id):
+    if db is None:
+        return jsonify({"error": "Database not connected"}), 500
+    try:
+        image_doc = db.titlecard_images.find_one({"submissionId": submission_id})
+        if not image_doc:
+            return jsonify({"error": "Image not found"}), 404
+        
+        image_bytes = bytes(image_doc['imageData'])
+        return Response(image_bytes, mimetype=image_doc.get('mimeType', 'image/jpeg'))
+    except Exception as e:
+        print(f"Error fetching submission image: {e}")
+        return jsonify({"error": "Failed to fetch image"}), 500
 
 @movies_bp.route('/submissions', methods=['GET'])
 def get_submissions():
@@ -447,7 +418,7 @@ def get_submissions():
         return jsonify({"error": "Movie ID required"}), 400
         
     try:
-        submissions_cursor = db.submissions.find({"movieId": movie_id}).sort("createdAt", -1)
+        submissions_cursor = db.titlecards.find({"movieId": movie_id}).sort("createdAt", -1)
         submissions = []
         for s in submissions_cursor:
             s['id'] = str(s.pop('_id'))

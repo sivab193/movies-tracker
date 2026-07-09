@@ -1,14 +1,14 @@
 "use client"
 
 import { useEffect, useState, useMemo } from "react"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { getPublicProfile, toggleLeaderboardBan, deleteWatchHistory } from "@/services/api"
 import { AddWatchDialog } from "@/components/add-watch-dialog"
 import { Loader2, Film, Shield, Ban, CheckCircle, Pencil, Trash, ArrowLeft, ArrowUpDown, CreditCard } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { type WatchHistoryEntry, formatCurrency, formatTimeDisplay } from "@/lib/types"
+import { type WatchHistoryEntry, formatCurrency, formatTimeDisplay, resolveApiUrl } from "@/lib/types"
 import {
     Table,
     TableBody,
@@ -41,8 +41,16 @@ async function getAdminUserProfile(uid: string, token: string) {
 
 export default function AdminUserDetailsPage() {
     const params = useParams()
-    const { user, userProfile } = useAuth()
+    const router = useRouter()
+    const { user, userProfile, loading: authLoading } = useAuth()
     const userId = params.userId as string
+
+    // Redirect non-admins
+    useEffect(() => {
+        if (!authLoading && (!user || !userProfile?.isAdmin)) {
+            router.push("/")
+        }
+    }, [user, userProfile, authLoading, router])
 
     const [targetUser, setTargetUser] = useState<any>(null)
     const [loading, setLoading] = useState(true)
@@ -88,7 +96,8 @@ export default function AdminUserDetailsPage() {
         })
     }, [targetUser, sortOrder])
 
-    if (loading) return <div className="p-8 flex justify-center"><Loader2 className="animate-spin" /></div>
+    if (authLoading || loading) return <div className="p-8 flex justify-center"><Loader2 className="animate-spin" /></div>
+    if (!user || !userProfile?.isAdmin) return null
     if (!targetUser) return <div className="p-8 text-center text-red-500">User not found</div>
 
     return (
@@ -173,8 +182,20 @@ export default function AdminUserDetailsPage() {
                                             {entry.theaterName || <span className="text-muted-foreground italic">N/A</span>}
                                             {entry.theaterLocation && <div className="text-xs text-muted-foreground">{entry.theaterLocation}</div>}
                                         </TableCell>
-                                        <TableCell className="text-right font-mono">
-                                            {formatCurrency(entry.ticketCost, entry.currency)}
+                                        <TableCell className="text-right">
+                                            <div className="flex flex-col items-end">
+                                                <span className="font-mono">{formatCurrency(entry.ticketCost, entry.currency)}</span>
+                                                {entry.ticketStubUrl && (
+                                                    <a 
+                                                        href={resolveApiUrl(entry.ticketStubUrl)} 
+                                                        target="_blank" 
+                                                        rel="noopener noreferrer" 
+                                                        className="text-xs text-primary hover:underline flex items-center gap-1 mt-0.5"
+                                                    >
+                                                        🎟️ View Ticket
+                                                    </a>
+                                                )}
+                                            </div>
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center justify-end gap-2">

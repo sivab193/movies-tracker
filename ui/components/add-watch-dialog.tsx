@@ -22,7 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { type WatchHistoryEntry } from "@/lib/types"
-import { addWatchHistory, updateWatchHistory, getMovies } from "@/services/api"
+import { addWatchHistory, updateWatchHistory, getMovies, getTheaters } from "@/services/api"
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
@@ -60,22 +60,26 @@ export function AddWatchDialog({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [movies, setMovies] = useState<any[]>([])
+  const [theaters, setTheaters] = useState<any[]>([])
 
   // Form State
   const [selectedMovieId, setSelectedMovieId] = useState<string>("")
+  const [selectedTheaterId, setSelectedTheaterId] = useState<string>("")
   const [theaterName, setTheaterName] = useState("")
   const [theaterLocation, setTheaterLocation] = useState("")
   const [date, setDate] = useState<Dayjs | null>(null)
   const [ticketCost, setTicketCost] = useState("")
   const [currency, setCurrency] = useState<"INR" | "USD">("INR")
   const [hasScreenshot, setHasScreenshot] = useState(false)
+  const [ticketStubFile, setTicketStubFile] = useState<File | null>(null)
 
-  // Load movies when dialog opens
+  // Load movies and theaters when dialog opens
   useEffect(() => {
-    if (open && !initialData) {
+    if (open) {
       getMovies().then(setMovies).catch(() => setMovies([]))
+      getTheaters().then(setTheaters).catch(() => setTheaters([]))
     }
-  }, [open, initialData])
+  }, [open])
 
   // Initialize form if initialData provided
   useEffect(() => {
@@ -91,14 +95,35 @@ export function AddWatchDialog({
     }
   }, [initialData, open])
 
+  // Match loaded theaters with initialData.theaterName
+  useEffect(() => {
+    if (theaters.length > 0 && theaterName) {
+      const match = theaters.find(t => t.name === theaterName)
+      if (match) {
+        setSelectedTheaterId(match.id)
+      }
+    }
+  }, [theaters, theaterName])
+
+  const handleTheaterChange = (theaterId: string) => {
+    setSelectedTheaterId(theaterId)
+    const selected = theaters.find(t => t.id === theaterId)
+    if (selected) {
+      setTheaterName(selected.name)
+      setTheaterLocation(selected.location || "")
+    }
+  }
+
   const resetForm = () => {
     setSelectedMovieId("")
+    setSelectedTheaterId("")
     setTheaterName("")
     setTheaterLocation("")
     setDate(null)
     setTicketCost("")
     setCurrency("INR")
     setHasScreenshot(false)
+    setTicketStubFile(null)
     setError("")
   }
 
@@ -111,16 +136,32 @@ export function AddWatchDialog({
       return
     }
 
+    if (theaters.length > 0 && !selectedTheaterId) {
+      setError("Please select a theater from the approved list")
+      return
+    }
+
     setLoading(true)
 
     try {
-      const payload = {
+      const payload: any = {
         movieId: selectedMovieId || initialData?.movieId,
         theaterName: theaterName.trim() || undefined,
         theaterLocation: theaterLocation.trim() || undefined,
         timestamp: date ? date.toISOString() : undefined,
         ticketCost: ticketCost ? parseFloat(ticketCost) : 0,
         currency,
+      }
+
+      // Convert ticket stub file to Base64 if uploaded
+      if (hasScreenshot && ticketStubFile) {
+        const base64Image = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result as string)
+          reader.onerror = (err) => reject(err)
+          reader.readAsDataURL(ticketStubFile)
+        })
+        payload.ticketStubImage = base64Image
       }
 
       if (initialData && initialData._id) {
@@ -191,29 +232,28 @@ export function AddWatchDialog({
             )}
           </div>
 
+          {/* Theater Dropdown Selection */}
           <div className="space-y-2">
-            <Label htmlFor="theater-name" className="flex items-center gap-2">
+            <Label htmlFor="theater-select" className="flex items-center gap-2">
               <MapPin className="h-4 w-4" />
-              Theater Name <span className="text-xs text-muted-foreground">(Optional)</span>
+              Select Theater
             </Label>
-            <Input
-              id="theater-name"
-              placeholder="e.g., PVR Cinemas"
-              value={theaterName}
-              onChange={(e) => setTheaterName(e.target.value)}
-              disabled={loading}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="theater-location">Location (optional)</Label>
-            <Input
-              id="theater-location"
-              placeholder="Google Maps link or address"
-              value={theaterLocation}
-              onChange={(e) => setTheaterLocation(e.target.value)}
-              disabled={loading}
-            />
+            {theaters.length === 0 ? (
+              <p className="text-sm text-muted-foreground italic">No theaters available. Ask your admin to add one.</p>
+            ) : (
+              <Select value={selectedTheaterId} onValueChange={handleTheaterChange}>
+                <SelectTrigger id="theater-select">
+                  <SelectValue placeholder="Select a theater" />
+                </SelectTrigger>
+                <SelectContent>
+                  {theaters.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name} {t.location ? `(${t.location})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           {/* <div className="space-y-2 flex flex-col">
@@ -354,6 +394,11 @@ export function AddWatchDialog({
                 type="file"
                 accept="image/*,application/pdf"
                 disabled={loading}
+                onChange={(e) => {
+                  if (e.target.files && e.target.files.length > 0) {
+                    setTicketStubFile(e.target.files[0])
+                  }
+                }}
               />
             </div>
           )}

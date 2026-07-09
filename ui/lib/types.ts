@@ -49,6 +49,7 @@ export interface WatchHistoryEntry {
   timestamp: string | null // ISO Date string
   ticketCost: number
   currency: "INR" | "USD"
+  ticketStubUrl?: string | null
   createdAt: string // ISO Date string
 }
 
@@ -97,4 +98,14 @@ export function formatCurrency(amount: number, currency: "INR" | "USD") {
     currency: currency,
     maximumFractionDigits: 2
   }).format(amount)
+}
+
+export function resolveApiUrl(url: string) {
+  if (!url) return ""
+  if (url.startsWith("http://") || url.startsWith("https://")) return url
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
+  if (apiBase === "/api") return url
+  // Replace the leading "/api" with the full API base domain
+  const root = apiBase.replace(/\/api$/, "")
+  return url.startsWith("/api") ? `${root}${url}` : `${apiBase}${url}`
 }

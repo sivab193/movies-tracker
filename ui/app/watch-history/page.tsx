@@ -27,7 +27,7 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { AddWatchDialog } from "@/components/add-watch-dialog"
-import { formatTimeDisplay, type WatchHistoryEntry } from "@/lib/types"
+import { formatTimeDisplay, type WatchHistoryEntry, resolveApiUrl } from "@/lib/types"
 import { getMySettings } from "@/services/user-service"
 import { deleteWatchHistory } from "@/services/api"
 import {
@@ -286,8 +286,20 @@ export default function WatchHistoryPage() {
                                                         )}
                                                     </div>
                                                 </TableCell>
-                                                <TableCell className="text-right font-mono">
-                                                    {formatCurrency(entry.ticketCost, entry.currency)}
+                                                <TableCell className="text-right">
+                                                    <div className="flex flex-col items-end">
+                                                        <span className="font-mono">{formatCurrency(entry.ticketCost, entry.currency)}</span>
+                                                        {entry.ticketStubUrl && (
+                                                            <a 
+                                                                href={resolveApiUrl(entry.ticketStubUrl)} 
+                                                                target="_blank" 
+                                                                rel="noopener noreferrer" 
+                                                                className="text-xs text-primary hover:underline flex items-center gap-1 mt-0.5"
+                                                            >
+                                                                🎟️ View Ticket
+                                                            </a>
+                                                        )}
+                                                    </div>
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="flex items-center justify-end gap-2">

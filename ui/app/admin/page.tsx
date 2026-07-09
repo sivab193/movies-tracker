@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
-import { Loader2, Plus, ShieldAlert, Trash2, Search, Users } from "lucide-react"
+import { Loader2, Plus, ShieldAlert, Trash2, Search, Users, MapPin } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,8 +11,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Header } from "@/components/header"
 import { Footer } from "@/components/footer"
 import { getAdminRequests, resolveAdminRequest } from "@/services/user-service"
-import { getMovies, deleteMovie } from "@/services/api"
+import { getMovies, deleteMovie, getTheaters, addTheater, deleteTheater } from "@/services/api"
 import { formatTimeDisplay } from "@/lib/types"
+import { AddMovieDialog } from "@/components/add-movie-dialog"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -30,6 +31,10 @@ export default function AdminPage() {
     const [requests, setRequests] = useState<any[]>([])
     const [movies, setMovies] = useState<any[]>([])
     const [filteredMovies, setFilteredMovies] = useState<any[]>([])
+    const [theaters, setTheaters] = useState<any[]>([])
+    const [newTheaterName, setNewTheaterName] = useState("")
+    const [newTheaterLoc, setNewTheaterLoc] = useState("")
+    const [addingTheater, setAddingTheater] = useState(false)
     const [localLoading, setLocalLoading] = useState(true)
     const [titleFilter, setTitleFilter] = useState("")
     const [yearFilter, setYearFilter] = useState("")
@@ -50,17 +55,47 @@ export default function AdminPage() {
 
     const loadData = async () => {
         try {
-            const [reqs, moviesData] = await Promise.all([
+            const [reqs, moviesData, theatersData] = await Promise.all([
                 getAdminRequests(),
-                getMovies()
+                getMovies(),
+                getTheaters()
             ])
             setRequests(reqs.requests || [])
             setMovies(moviesData || [])
             setFilteredMovies(moviesData || [])
+            setTheaters(theatersData || [])
         } catch (err) {
             console.error("Failed to load admin data", err)
         } finally {
             setLocalLoading(false)
+        }
+    }
+
+    const handleAddTheater = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!newTheaterName.trim()) return
+        setAddingTheater(true)
+        try {
+            const newT = await addTheater(newTheaterName.trim(), newTheaterLoc.trim() || undefined)
+            setTheaters([...theaters, newT])
+            setNewTheaterName("")
+            setNewTheaterLoc("")
+        } catch (err) {
+            console.error("Failed to add theater", err)
+            alert(err instanceof Error ? err.message : "Failed to add theater")
+        } finally {
+            setAddingTheater(false)
+        }
+    }
+
+    const handleDeleteTheater = async (id: string) => {
+        if (!confirm("Are you sure you want to delete this theater?")) return
+        try {
+            await deleteTheater(id)
+            setTheaters(theaters.filter(t => t.id !== id))
+        } catch (err) {
+            console.error("Failed to delete theater", err)
+            alert(err instanceof Error ? err.message : "Failed to delete theater")
         }
     }
 
@@ -126,12 +161,7 @@ export default function AdminPage() {
                                 Users
                             </Button>
                         </Link>
-                        <Link href="/admin/bulk-add">
-                            <Button className="gap-2">
-                                <Plus className="h-4 w-4" />
-                                Add Movies (Bulk)
-                            </Button>
-                        </Link>
+                        <AddMovieDialog onMovieAdded={loadData} />
                     </div>
                 </div>
 
@@ -235,7 +265,81 @@ export default function AdminPage() {
                                         {filteredMovies.length === 0 && (
                                             <tr>
                                                 <td colSpan={6} className="text-center py-8 text-muted-foreground">
-                                                    No movies found. Use the Bulk Add button to add movies.
+                                                    No movies found. Use the Add Movie button to add a movie.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Theaters Card */}
+                    <Card>
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <MapPin className="h-5 w-5 text-primary" />
+                                Theaters ({theaters.length})
+                            </CardTitle>
+                            <CardDescription>Manage the approved list of theaters for users to log watches</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            {/* Add Theater Form */}
+                            <form onSubmit={handleAddTheater} className="flex flex-col sm:flex-row gap-4 p-4 border rounded-lg bg-muted/20">
+                                <div className="flex-1 space-y-2">
+                                    <Input
+                                        placeholder="Theater Name (e.g. IMAX Cinemas)"
+                                        value={newTheaterName}
+                                        onChange={(e) => setNewTheaterName(e.target.value)}
+                                        required
+                                        disabled={addingTheater}
+                                    />
+                                </div>
+                                <div className="flex-1 space-y-2">
+                                    <Input
+                                        placeholder="Location (e.g. Forum Mall, Bangalore)"
+                                        value={newTheaterLoc}
+                                        onChange={(e) => setNewTheaterLoc(e.target.value)}
+                                        disabled={addingTheater}
+                                    />
+                                </div>
+                                <Button type="submit" disabled={addingTheater || !newTheaterName.trim()} className="shrink-0">
+                                    {addingTheater ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add Theater"}
+                                </Button>
+                            </form>
+
+                            {/* Theaters List */}
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b">
+                                            <th className="text-left py-3 px-2 font-medium">Name</th>
+                                            <th className="text-left py-3 px-2 font-medium">Location</th>
+                                            <th className="text-center py-3 px-2 font-medium w-16">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {theaters.map((t) => (
+                                            <tr key={t.id} className="border-b hover:bg-muted/50">
+                                                <td className="py-3 px-2 font-medium">{t.name}</td>
+                                                <td className="py-3 px-2 text-muted-foreground">{t.location || "N/A"}</td>
+                                                <td className="py-3 px-2 text-center">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                        onClick={() => handleDeleteTheater(t.id)}
+                                                    >
+                                                        <Trash2 className="h-4 w-4" />
+                                                    </Button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {theaters.length === 0 && (
+                                            <tr>
+                                                <td colSpan={3} className="text-center py-8 text-muted-foreground">
+                                                    No theaters added yet. Add a theater above to populate the list.
                                                 </td>
                                             </tr>
                                         )}

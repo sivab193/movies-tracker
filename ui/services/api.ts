@@ -141,38 +141,42 @@ export async function searchMovies(query: string, year?: string, language?: stri
     if (!response.ok) throw new Error(data.error || "Search failed");
     return data;
 }
+export async function getTheaters() {
+    const response = await fetch(`${API_BASE_URL}/theaters/`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Failed to fetch theaters");
+    return data.theaters;
+}
 
-export async function searchMoviesByImdb(imdbIds: string[]) {
+export async function addTheater(name: string, location?: string) {
     const token = await auth?.currentUser?.getIdToken();
     if (!token) throw new Error("User not authenticated");
 
-    const response = await fetch(`${API_BASE_URL}/movies/search-by-imdb`, {
+    const response = await fetch(`${API_BASE_URL}/theaters/`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify({ imdbIds })
+        body: JSON.stringify({ name, location })
     });
 
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "Failed to search by IMDb");
-    return data;
+    if (!response.ok) throw new Error(data.error || "Failed to add theater");
+    return data.theater;
 }
 
-export async function bulkAddMovies(imdbIds: string[]) {
+export async function deleteTheater(id: string) {
     const token = await auth?.currentUser?.getIdToken();
-    const response = await fetch(`${API_BASE_URL}/movies/bulk-add`, {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify({ imdbIds })
+    if (!token) throw new Error("User not authenticated");
+
+    const response = await fetch(`${API_BASE_URL}/theaters/${id}`, {
+        method: "DELETE",
+        headers: { "Authorization": `Bearer ${token}` }
     });
 
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error || "Bulk add failed");
+    if (!response.ok) throw new Error(data.error || "Failed to delete theater");
     return data;
 }
 
@@ -218,9 +222,15 @@ export async function addSubmission(submission: {
     rawInput: string;
     comment?: string;
 }) {
+    const token = await auth?.currentUser?.getIdToken();
+    if (!token) throw new Error("User not authenticated");
+
     const response = await fetch(`${API_BASE_URL}/movies/submissions`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify(submission)
     });
 

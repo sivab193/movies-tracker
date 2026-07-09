@@ -31,7 +31,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { useAuth } from "@/contexts/auth-context"
-import type { WatchHistoryEntry } from "@/lib/types"
+import { type WatchHistoryEntry, resolveApiUrl } from "@/lib/types"
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -263,12 +263,24 @@ export default function DashboardPage() {
                           </span>
                         </div>
 
-                        <div className="flex items-center gap-2">
-                          <Ticket className="h-3.5 w-3.5" />
-                          <span>
-                            {entry.currency === "INR" ? "₹" : "$"}
-                            {entry.ticketCost.toLocaleString()}
-                          </span>
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-2">
+                            <Ticket className="h-3.5 w-3.5" />
+                            <span>
+                              {entry.currency === "INR" ? "₹" : "$"}
+                              {entry.ticketCost.toLocaleString()}
+                            </span>
+                          </div>
+                          {entry.ticketStubUrl && (
+                            <a 
+                              href={resolveApiUrl(entry.ticketStubUrl)} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="text-xs text-primary hover:underline flex items-center gap-1"
+                            >
+                              🎟️ View Ticket
+                            </a>
+                          )}
                         </div>
                       </div>
                     </div>

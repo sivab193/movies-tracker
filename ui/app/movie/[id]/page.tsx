@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { formatTimeDisplay, type Movie, type TitleCardSubmission } from "@/lib/types"
+import { useAuth } from "@/contexts/auth-context"
 
 export default function MovieDetailPage({
   params,
@@ -17,6 +18,7 @@ export default function MovieDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = use(params)
+  const { userProfile } = useAuth()
   const [movie, setMovie] = useState<Movie | null>(null)
   const [submissions, setSubmissions] = useState<TitleCardSubmission[]>([])
   const [loading, setLoading] = useState(true)
@@ -197,21 +199,23 @@ export default function MovieDetailPage({
             </Card>
 
             {/* Submission Form */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg">Submit Title Card Time</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <SubmissionForm
-                  movieId={id}
-                  runtimeMinutes={movie.runtime ? parseInt(movie.runtime) : undefined}
-                  onSubmitted={async () => {
-                    const data = await getSubmissions(id)
-                    if (data.submissions) setSubmissions(data.submissions)
-                  }}
-                />
-              </CardContent>
-            </Card>
+            {userProfile?.isAdmin && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">Submit Title Card Time</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <SubmissionForm
+                    movieId={id}
+                    runtimeMinutes={movie.runtime ? parseInt(movie.runtime) : undefined}
+                    onSubmitted={async () => {
+                      const data = await getSubmissions(id)
+                      if (data.submissions) setSubmissions(data.submissions)
+                    }}
+                  />
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
 

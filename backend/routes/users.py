@@ -1,10 +1,11 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, Response
 from firebase_config import auth as firebase_auth
 from mongo_config import db
 import datetime
 import os
 import re
-from bson import ObjectId
+import base64
+from bson import ObjectId, Binary
 
 users_bp = Blueprint('users', __name__)
 
@@ -129,6 +130,26 @@ def add_watch_history():
 
     # Create entry
     entry_id = ObjectId()
+    ticket_stub_url = None
+    ticket_stub_image = data.get('ticketStubImage')  # Expecting Base64 Data URL
+    if ticket_stub_image and ticket_stub_image.startswith('data:'):
+        try:
+            header, encoded = ticket_stub_image.split(",", 1)
+            mime_type = header.split(";")[0].split(":")[1]
+            image_data = Binary(base64.b64decode(encoded))
+            db.ticket_stubs.update_one(
+                {"watchHistoryEntryId": str(entry_id)},
+                {"$set": {
+                    "userId": firebase_uid,
+                    "imageData": image_data,
+                    "mimeType": mime_type
+                }},
+                upsert=True
+            )
+            ticket_stub_url = f"/api/users/watch-history/ticketstub/{entry_id}"
+        except Exception as e:
+            print(f"Error saving ticket stub to MongoDB: {e}")
+
     entry = {
         "_id": entry_id,
         "movieId": ObjectId(movie_id),
@@ -139,6 +160,7 @@ def add_watch_history():
         "theaterLocation": data.get('location'),
         "ticketCost": data.get('ticketCost'),
         "currency": data.get('currency'),
+        "ticketStubUrl": ticket_stub_url,
         "timestamp": data.get('timestamp'), # Expecting ISO string
         "createdAt": datetime.datetime.utcnow().isoformat()
     }
@@ -218,7 +240,28 @@ def delete_watch_history(user_id, entry_id):
         }
     )
     
+    # Also delete the associated ticket stub if it exists
+    try:
+        db.ticket_stubs.delete_one({"watchHistoryEntryId": str(entry_id)})
+    except Exception as e:
+        print(f"Error deleting associated ticket stub: {e}")
+    
     return jsonify({"message": "Entry deleted"})
+
+@users_bp.route('/watch-history/ticketstub/<entry_id>', methods=['GET'])
+def get_ticket_stub(entry_id):
+    if db is None:
+        return jsonify({"error": "Database not connected"}), 500
+    try:
+        stub_doc = db.ticket_stubs.find_one({"watchHistoryEntryId": entry_id})
+        if not stub_doc:
+            return jsonify({"error": "Ticket stub not found"}), 404
+        
+        image_bytes = bytes(stub_doc['imageData'])
+        return Response(image_bytes, mimetype=stub_doc.get('mimeType', 'image/jpeg'))
+    except Exception as e:
+        print(f"Error fetching ticket stub: {e}")
+        return jsonify({"error": "Failed to fetch ticket stub"}), 500
 
 
 @users_bp.route('/<user_id>/watch-history/<entry_id>', methods=['PUT'])
@@ -244,6 +287,25 @@ def update_watch_history(user_id, entry_id):
     if 'ticketCost' in data: updates['watchHistory.$.ticketCost'] = data['ticketCost']
     if 'timestamp' in data: updates['watchHistory.$.timestamp'] = data['timestamp']
     if 'currency' in data: updates['watchHistory.$.currency'] = data['currency']
+    
+    ticket_stub_image = data.get('ticketStubImage')
+    if ticket_stub_image and ticket_stub_image.startswith('data:'):
+        try:
+            header, encoded = ticket_stub_image.split(",", 1)
+            mime_type = header.split(";")[0].split(":")[1]
+            image_data = Binary(base64.b64decode(encoded))
+            db.ticket_stubs.update_one(
+                {"watchHistoryEntryId": str(entry_id)},
+                {"$set": {
+                    "userId": user_id,
+                    "imageData": image_data,
+                    "mimeType": mime_type
+                }},
+                upsert=True
+            )
+            updates['watchHistory.$.ticketStubUrl'] = f"/api/users/watch-history/ticketstub/{entry_id}"
+        except Exception as e:
+            print(f"Error updating ticket stub: {e}")
     
     if not updates:
         return jsonify({"message": "No changes"})
@@ -358,6 +420,8 @@ def update_settings():
         # Check if user has already joined
         user = db.users.find_one({"firebaseUid": firebase_uid})
         if user and not user.get('joinedLeaderboard'):
+            if user.get('isBannedFromLeaderboard', False):
+                return jsonify({"error": "Forbidden: Banned from leaderboard"}), 403
             update_data['joinedLeaderboard'] = data['joinedLeaderboard']
     if 'displayName' in data:
         update_data['displayName'] = data['displayName']
