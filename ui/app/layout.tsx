@@ -4,6 +4,7 @@ import { Inter } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { AuthProvider } from "@/contexts/auth-context"
 import { ThemeProvider } from "@/contexts/theme-context"
+import { Footer } from "@/components/footer"
 import "./globals.css"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
@@ -45,10 +46,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans antialiased`}>
+      <body className={`${inter.variable} font-sans antialiased pb-16`}>
         <ThemeProvider>
           <AuthProvider>
-            {children}
+            <div className="min-h-screen flex flex-col">
+              {children}
+            </div>
+            <Footer />
             <Analytics />
           </AuthProvider>
         </ThemeProvider>

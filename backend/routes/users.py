@@ -421,12 +421,13 @@ def update_settings():
     if 'hiddenMovies' in data:
         update_data['hiddenMovies'] = data['hiddenMovies']
     if 'joinedLeaderboard' in data:
-        # Check if user has already joined
         user = db.users.find_one({"firebaseUid": firebase_uid})
-        if user and not user.get('joinedLeaderboard'):
-            if user.get('isBannedFromLeaderboard', False):
+        if data['joinedLeaderboard']:
+            if user and user.get('isBannedFromLeaderboard', False):
                 return jsonify({"error": "Forbidden: Banned from leaderboard"}), 403
-            update_data['joinedLeaderboard'] = data['joinedLeaderboard']
+            update_data['joinedLeaderboard'] = True
+        else:
+            update_data['joinedLeaderboard'] = False
     if 'displayName' in data:
         update_data['displayName'] = data['displayName']
     
@@ -500,13 +501,14 @@ def get_public_profile(user_id):
     if not user.get('isPublic', False) and not is_admin:
         return jsonify({"error": "This profile is private"}), 403
 
-    public_fields = user.get('publicFields', [])
+    public_fields = user.get('publicFields', ['totalRuntime', 'movieCount'])
     profile = {
+        "userId": str(user['_id']),
         "firebaseUid": user.get('firebaseUid'), # Return UID for admin actions
         "displayName": user.get('displayName', 'Anonymous'),
         "photoURL": user.get('photoURL'),
-        "totalRuntimeSeconds": user.get('totalRuntimeSeconds', 0),
-        "totalMoviesWatched": user.get('totalMoviesWatched', 0),
+        "totalRuntimeSeconds": user.get('totalRuntimeSeconds', 0) if (is_admin or 'totalRuntime' in public_fields) else -1,
+        "totalMoviesWatched": user.get('totalMoviesWatched', 0) if (is_admin or 'movieCount' in public_fields) else -1,
         "joinedLeaderboard": user.get('joinedLeaderboard', False),
         "isBannedFromLeaderboard": user.get('isBannedFromLeaderboard', False)
     }

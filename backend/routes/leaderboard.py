@@ -14,12 +14,14 @@ def get_leaderboard():
         
         leaderboard = []
         for user in users_cursor:
+            public_fields = user.get('publicFields', ['totalRuntime', 'movieCount'])
+            movies_watched = user.get('totalMoviesWatched', 0) if 'movieCount' in public_fields else -1
             leaderboard.append({
                 "userId": str(user['_id']),
                 "displayName": user.get('displayName', 'Anonymous'),
                 "photoURL": user.get('photoURL'),
                 "totalRuntimeSeconds": user.get('totalRuntimeSeconds', 0),
-                "totalMoviesWatched": user.get('totalMoviesWatched', 0),
+                "totalMoviesWatched": movies_watched,
                 "isPublic": user.get('isPublic', False)
             })
             

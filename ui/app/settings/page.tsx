@@ -105,6 +105,18 @@ export default function SettingsPage() {
         }
     }
 
+    async function handleQuitLeaderboard() {
+        setJoinedLeaderboard(false)
+        try {
+            await updateUserSettings({ joinedLeaderboard: false })
+            setSuccess(true)
+            setTimeout(() => setSuccess(false), 3000)
+        } catch (error) {
+            console.error("Error quitting leaderboard:", error)
+            setJoinedLeaderboard(true)
+        }
+    }
+
     async function handleRequestAdmin() {
         try {
             await requestAdminAccess()
@@ -187,25 +199,31 @@ export default function SettingsPage() {
                         </div>
                     </section>
 
-                    {/* Leaderboard Onboarding */}
-                    {!joinedLeaderboard && (
-                        <section className="rounded-2xl border border-primary/20 bg-primary/5 p-6 shadow-sm ring-1 ring-primary/10">
-                            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                                <div>
-                                    <h2 className="flex items-center gap-2 text-xl font-bold text-primary">
-                                        <Trophy className="h-5 w-5" />
-                                        Join the Leaderboard
-                                    </h2>
-                                    <p className="mt-1 text-sm text-balance">
-                                        Compare your movie watch stats with other users. Once you join, your name and total runtime will be always visible on the leaderboard.
-                                    </p>
-                                </div>
+                    {/* Leaderboard Participation */}
+                    <section className={`rounded-2xl border p-6 shadow-sm ring-1 transition-colors ${joinedLeaderboard ? 'border-border bg-card ring-transparent' : 'border-primary/20 bg-primary/5 ring-primary/10'}`}>
+                        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                            <div>
+                                <h2 className={`flex items-center gap-2 text-xl font-bold ${joinedLeaderboard ? 'text-foreground' : 'text-primary'}`}>
+                                    <Trophy className={`h-5 w-5 ${joinedLeaderboard ? 'text-yellow-500' : 'text-primary'}`} />
+                                    {joinedLeaderboard ? "Leaderboard Participation" : "Join the Leaderboard"}
+                                </h2>
+                                <p className="mt-1 text-sm text-muted-foreground text-balance">
+                                    {joinedLeaderboard 
+                                        ? "You are currently participating in the global runtime leaderboard. Your display name and total runtime are ranked against other users." 
+                                        : "Compare your movie watch stats with other users. Once you join, your name and total runtime will be visible on the leaderboard."}
+                                </p>
+                            </div>
+                            {joinedLeaderboard ? (
+                                <Button variant="outline" onClick={handleQuitLeaderboard} className="rounded-full px-6 border-destructive/30 text-destructive hover:bg-destructive/10">
+                                    Quit Leaderboard
+                                </Button>
+                            ) : (
                                 <Button onClick={() => setShowLeaderboardConfirm(true)} className="rounded-full px-8">
                                     Join Now
                                 </Button>
-                            </div>
-                        </section>
-                    )}
+                            )}
+                        </div>
+                    </section>
 
                     {!isAdminState && (
                         <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
@@ -225,13 +243,6 @@ export default function SettingsPage() {
                         </section>
                     )}
 
-                    {joinedLeaderboard && (
-                        <div className="flex items-center gap-2 rounded-xl bg-muted/50 px-4 py-2 text-sm text-muted-foreground">
-                            <Trophy className="h-4 w-4 text-yellow-500" />
-                            You are a member of the global leaderboard.
-                        </div>
-                    )}
-
                     {/* Privacy Section */}
                     <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
                         <div className="mb-6 flex items-center justify-between">
@@ -246,15 +257,16 @@ export default function SettingsPage() {
                         </div>
 
                         <div className="space-y-6">
-                            <div className="flex items-center justify-between space-x-4">
-                                <Label htmlFor="public-toggle" className="flex flex-col gap-1 text-left">
-                                    <span>Enable Public Profile</span>
+                            <div className="flex items-start justify-between gap-4">
+                                <Label htmlFor="public-toggle" className="flex flex-col gap-1 text-left cursor-pointer">
+                                    <span className="text-base font-semibold">Enable Public Profile</span>
                                     <span className="font-normal text-muted-foreground">Allow others to view your profile via the leaderboard or direct link.</span>
                                 </Label>
                                 <Switch
                                     id="public-toggle"
                                     checked={isPublic}
                                     onCheckedChange={setIsPublic}
+                                    className="mt-1 shrink-0"
                                 />
                             </div>
 

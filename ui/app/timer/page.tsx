@@ -207,13 +207,6 @@ export default function HomePage() {
         {/* Movie Grid */}
         <MovieGrid movies={movies} loading={loading} loadingMore={loadingMore} sentinelRef={sentinelRef} />
       </main>
-
-      {/* Footer */}
-      <footer className="border-t border-border py-8">
-        <div className="mx-auto max-w-7xl px-4 text-center text-sm text-muted-foreground">
-          <p>Made for movie lovers who want to capture that perfect theater moment.</p>
-        </div>
-      </footer>
     </div>
   )
 }

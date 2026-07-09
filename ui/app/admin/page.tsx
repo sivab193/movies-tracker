@@ -9,7 +9,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Header } from "@/components/header"
-import { Footer } from "@/components/footer"
 import { getAdminRequests, resolveAdminRequest } from "@/services/user-service"
 import { getMovies, deleteMovie, getTheaters, addTheater, deleteTheater } from "@/services/api"
 import { formatTimeDisplay } from "@/lib/types"
@@ -394,8 +393,6 @@ export default function AdminPage() {
                     </Card>
                 </div>
             </main>
-
-            <Footer />
 
             {/* Delete Confirmation Dialog */}
             <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>

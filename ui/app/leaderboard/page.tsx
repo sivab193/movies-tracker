@@ -1,14 +1,15 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { getLeaderboard } from "@/services/api"
-import { Loader2, Trophy, Clock, Film } from "lucide-react"
 import { Header } from "@/components/header"
+import { getLeaderboard } from "@/services/api"
+import { Trophy, Clock, Loader2 } from "lucide-react"
 import Link from "next/link"
+
 interface LeaderboardUser {
     userId: string
     displayName: string
-    photoURL: string
+    photoURL?: string
     totalRuntimeSeconds: number
     totalMoviesWatched: number
     isPublic: boolean
@@ -20,13 +21,12 @@ export default function LeaderboardPage() {
     const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
-        const fetchLeaderboard = async () => {
+        async function fetchLeaderboard() {
             try {
                 const data = await getLeaderboard()
                 setUsers(data)
-            } catch (err) {
-                setError("Failed to load leaderboard")
-                console.error(err)
+            } catch (err: any) {
+                setError(err.message || "Failed to load leaderboard")
             } finally {
                 setLoading(false)
             }
@@ -36,6 +36,7 @@ export default function LeaderboardPage() {
     }, [])
 
     const formatRuntime = (seconds: number) => {
+        if (seconds === -1 || seconds === undefined || seconds === null || isNaN(seconds)) return "Hidden"
         const hours = Math.floor(seconds / 3600)
         const minutes = Math.floor((seconds % 3600) / 60)
         return `${hours}h ${minutes}m`
@@ -70,75 +71,73 @@ export default function LeaderboardPage() {
                     </div>
                 </div>
 
-                {
-                    loading ? (
-                        <div className="flex justify-center py-12">
-                            <Loader2 className="h-8 w-8 animate-spin" />
+                {loading ? (
+                    <div className="flex justify-center py-12">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                ) : error ? (
+                    <div className="text-center text-destructive py-8">{error}</div>
+                ) : (
+                    <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+                        <div className="grid grid-cols-12 gap-2 md:gap-4 border-b bg-muted/50 px-4 py-3 font-medium text-xs uppercase tracking-wider text-muted-foreground">
+                            <div className="col-span-2 md:col-span-1 text-center">Rank</div>
+                            <div className="col-span-6 md:col-span-8">User</div>
+                            <div className="col-span-4 md:col-span-3 text-right">Runtime</div>
                         </div>
-                    ) : error ? (
-                        <div className="text-center text-destructive">{error}</div>
-                    ) : (
-                        <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
-                            <div className="grid grid-cols-12 gap-2 md:gap-4 border-b bg-muted/50 px-4 py-3 font-medium text-xs uppercase tracking-wider text-muted-foreground">
-                                <div className="col-span-2 md:col-span-1 text-center">Rank</div>
-                                <div className="col-span-6 md:col-span-8">User</div>
-                                <div className="col-span-4 md:col-span-3 text-right">Runtime</div>
-                            </div>
-                            {users.map((user, index) => (
-                                <div key={user.userId} className="grid grid-cols-12 gap-2 md:gap-4 px-4 py-3 items-center hover:bg-muted/50 transition-colors border-b last:border-0">
-                                    <div className="col-span-2 md:col-span-1 text-center font-bold text-lg">
-                                        {index + 1 === 1 ? '🥇' : index + 1 === 2 ? '🥈' : index + 1 === 3 ? '🥉' : <span className="text-muted-foreground text-sm">#{index + 1}</span>}
-                                    </div>
-                                    <div className="col-span-6 md:col-span-8 overflow-hidden">
-                                        {user.isPublic ? (
-                                            <Link href={`/users/${user.userId}`} className="flex items-center gap-3 group truncate">
-                                                <div className="h-8 w-8 shrink-0 rounded-full bg-secondary flex items-center justify-center overflow-hidden ring-0 transition-all group-hover:ring-2 group-hover:ring-primary/50">
-                                                    {user.photoURL ? (
-                                                        <img src={user.photoURL} alt={user.displayName} className="h-full w-full object-cover" />
-                                                    ) : (
-                                                        <span className="text-xs font-bold">{user.displayName?.[0]?.toUpperCase() || 'U'}</span>
-                                                    )}
-                                                </div>
-                                                <div className="flex flex-col md:flex-row md:items-center md:gap-2 truncate">
-                                                    <span className="font-medium group-hover:text-primary transition-colors underline-offset-4 group-hover:underline truncate">{user.displayName || 'Anonymous'}</span>
-                                                    <span className="hidden md:inline-flex text-xs text-muted-foreground items-center gap-1 shrink-0">
-                                                        • {user.totalMoviesWatched} movies
-                                                    </span>
-                                                </div>
-                                            </Link>
-                                        ) : (
-                                            <div className="flex items-center gap-3 truncate">
-                                                <div className="h-8 w-8 shrink-0 rounded-full bg-secondary flex items-center justify-center overflow-hidden">
-                                                    {user.photoURL ? (
-                                                        <img src={user.photoURL} alt={user.displayName} className="h-full w-full object-cover" />
-                                                    ) : (
-                                                        <span className="text-xs font-bold">{user.displayName?.[0]?.toUpperCase() || 'U'}</span>
-                                                    )}
-                                                </div>
-                                                <div className="flex flex-col md:flex-row md:items-center md:gap-2 truncate">
-                                                    <span className="font-medium truncate">{user.displayName || 'Anonymous'}</span>
-                                                    <span className="hidden md:inline-flex text-xs text-muted-foreground items-center gap-1 shrink-0">
-                                                        • {user.totalMoviesWatched} movies
-                                                    </span>
-                                                </div>
+                        {users.map((user, index) => (
+                            <div key={user.userId} className="grid grid-cols-12 gap-2 md:gap-4 px-4 py-3 items-center hover:bg-muted/50 transition-colors border-b last:border-0">
+                                <div className="col-span-2 md:col-span-1 text-center font-bold text-lg">
+                                    {index + 1 === 1 ? '🥇' : index + 1 === 2 ? '🥈' : index + 1 === 3 ? '🥉' : <span className="text-muted-foreground text-sm">#{index + 1}</span>}
+                                </div>
+                                <div className="col-span-6 md:col-span-8 overflow-hidden">
+                                    {user.isPublic ? (
+                                        <Link href={`/users/${user.userId}`} className="flex items-center gap-3 group truncate">
+                                            <div className="h-8 w-8 shrink-0 rounded-full bg-secondary flex items-center justify-center overflow-hidden ring-0 transition-all group-hover:ring-2 group-hover:ring-primary/50">
+                                                {user.photoURL ? (
+                                                    <img src={user.photoURL} alt={user.displayName} className="h-full w-full object-cover" />
+                                                ) : (
+                                                    <span className="text-xs font-bold">{user.displayName?.[0]?.toUpperCase() || 'U'}</span>
+                                                )}
                                             </div>
-                                        )}
-                                    </div>
-                                    <div className="col-span-4 md:col-span-3 text-right font-mono font-medium text-primary text-sm md:text-base">
-                                        {formatRuntime(user.totalRuntimeSeconds)}
-                                        <div className="md:hidden text-[10px] text-muted-foreground">{user.totalMoviesWatched} movies</div>
-                                    </div>
+                                            <div className="flex flex-col md:flex-row md:items-center md:gap-2 truncate">
+                                                <span className="font-medium group-hover:text-primary transition-colors underline-offset-4 group-hover:underline truncate">{user.displayName || 'Anonymous'}</span>
+                                                <span className="hidden md:inline-flex text-xs text-muted-foreground items-center gap-1 shrink-0">
+                                                    • {user.totalMoviesWatched === -1 ? 'Hidden' : `${user.totalMoviesWatched} movies`}
+                                                </span>
+                                            </div>
+                                        </Link>
+                                    ) : (
+                                        <div className="flex items-center gap-3 truncate">
+                                            <div className="h-8 w-8 shrink-0 rounded-full bg-secondary flex items-center justify-center overflow-hidden">
+                                                {user.photoURL ? (
+                                                    <img src={user.photoURL} alt={user.displayName} className="h-full w-full object-cover" />
+                                                ) : (
+                                                    <span className="text-xs font-bold">{user.displayName?.[0]?.toUpperCase() || 'U'}</span>
+                                                )}
+                                            </div>
+                                            <div className="flex flex-col md:flex-row md:items-center md:gap-2 truncate">
+                                                <span className="font-medium truncate">{user.displayName || 'Anonymous'}</span>
+                                                <span className="hidden md:inline-flex text-xs text-muted-foreground items-center gap-1 shrink-0">
+                                                    • {user.totalMoviesWatched === -1 ? 'Hidden' : `${user.totalMoviesWatched} movies`}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
-                            ))}
+                                <div className="col-span-4 md:col-span-3 text-right font-mono font-medium text-primary text-sm md:text-base">
+                                    {formatRuntime(user.totalRuntimeSeconds)}
+                                    <div className="md:hidden text-[10px] text-muted-foreground">{user.totalMoviesWatched === -1 ? 'Hidden' : `${user.totalMoviesWatched} movies`}</div>
+                                </div>
+                            </div>
+                        ))}
 
-                            {users.length === 0 && (
-                                <div className="p-8 text-center text-muted-foreground">
-                                    No data available yet.
-                                </div>
-                            )}
-                        </div>
-                    )
-                }
+                        {users.length === 0 && (
+                            <div className="p-8 text-center text-muted-foreground">
+                                No data available yet.
+                            </div>
+                        )}
+                    </div>
+                )}
             </main>
         </div>
     )

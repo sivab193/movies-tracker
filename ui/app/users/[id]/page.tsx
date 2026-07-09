@@ -47,9 +47,21 @@ export default function UserProfilePage() {
     }
 
     const formatRuntime = (seconds: number) => {
+        if (seconds === -1 || seconds === undefined || seconds === null || isNaN(seconds)) return "Hidden"
         const hours = Math.floor(seconds / 3600)
         const minutes = Math.floor((seconds % 3600) / 60)
         return `${hours}h ${minutes}m`
+    }
+
+    const formatDate = (dateStr?: string) => {
+        if (!dateStr) return "Unknown Date"
+        const d = new Date(dateStr)
+        if (isNaN(d.getTime())) return "Unknown Date"
+        return d.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        })
     }
 
     if (loading) {
@@ -96,7 +108,7 @@ export default function UserProfilePage() {
                                 <span className="text-sm text-muted-foreground uppercase tracking-wider font-semibold">Movies Watched</span>
                                 <span className="text-2xl font-bold flex items-center gap-2">
                                     <Film className="h-5 w-5 text-primary" />
-                                    {profile.totalMoviesWatched}
+                                    {profile.totalMoviesWatched === -1 ? "Hidden" : profile.totalMoviesWatched}
                                 </span>
                             </div>
                             <div className="flex flex-col">
@@ -135,11 +147,7 @@ export default function UserProfilePage() {
                                             </td>
                                             <td className="px-6 py-4 text-muted-foreground">{item.theaterName || "N/A"}</td>
                                             <td className="px-6 py-4 text-primary font-mono">
-                                                {new Date(item.timestamp || item.createdAt).toLocaleDateString('en-US', {
-                                                    year: 'numeric',
-                                                    month: 'short',
-                                                    day: 'numeric'
-                                                })}
+                                                {formatDate(item.timestamp || item.createdAt)}
                                             </td>
                                         </tr>
                                     ))}
