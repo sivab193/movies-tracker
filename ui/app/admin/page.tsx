@@ -60,7 +60,7 @@ export default function AdminPage() {
                 getMovies(),
                 getTheaters()
             ])
-            setRequests(reqs.requests || [])
+            setRequests(reqs || [])
             setMovies(moviesData || [])
             setFilteredMovies(moviesData || [])
             setTheaters(theatersData || [])
@@ -183,7 +183,7 @@ export default function AdminPage() {
                                             <div>
                                                 <p className="font-medium">{request.email}</p>
                                                 <p className="text-sm text-muted-foreground">
-                                                    Requested: {new Date(request.requestedAt).toLocaleDateString()}
+                                                    Requested: {request.requestedAt ? new Date(request.requestedAt).toLocaleDateString() : "Unknown"}
                                                 </p>
                                             </div>
                                             <div className="flex gap-2">

@@ -11,6 +11,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv()
 
 app = Flask(__name__)
+app.url_map.strict_slashes = False
 CORS(app) # Enable CORS for all routes
 
 @app.route('/api/health')

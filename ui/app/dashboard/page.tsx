@@ -32,6 +32,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import { useAuth } from "@/contexts/auth-context"
 import { type WatchHistoryEntry, resolveApiUrl } from "@/lib/types"
+import { deleteWatchHistory } from "@/services/api"
+import { getMySettings } from "@/services/user-service"
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -49,10 +51,9 @@ export default function DashboardPage() {
     if (!user) return
 
     try {
-      const response = await fetch(`/api/watch-history?uid=${user.uid}`)
-      const data = await response.json()
-      if (data.history) {
-        setHistory(data.history)
+      const data = await getMySettings()
+      if (data.watchHistory) {
+        setHistory(data.watchHistory)
       }
     } catch (error) {
       console.error("Failed to fetch history:", error)
@@ -67,15 +68,11 @@ export default function DashboardPage() {
     }
   }, [user])
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (entryId: string) => {
+    if (!user) return
     try {
-      const response = await fetch(`/api/watch-history?id=${id}`, {
-        method: "DELETE",
-      })
-
-      if (response.ok) {
-        setHistory((prev) => prev.filter((entry) => entry.id !== id))
-      }
+      await deleteWatchHistory(user.uid, entryId)
+      setHistory((prev) => prev.filter((entry) => entry._id !== entryId))
     } catch (error) {
       console.error("Failed to delete entry:", error)
     }
@@ -197,8 +194,8 @@ export default function DashboardPage() {
           </Card>
         ) : (
           <div className="space-y-4">
-            {history.map((entry) => (
-              <Card key={entry.id}>
+            {history.map((entry, idx) => (
+              <Card key={entry._id || idx}>
                 <CardContent className="py-4">
                   <div className="flex gap-4">
                     {/* Poster thumbnail */}
@@ -252,7 +249,7 @@ export default function DashboardPage() {
                         <div className="flex items-center gap-2">
                           <Calendar className="h-3.5 w-3.5" />
                           <span>
-                            {new Date(entry.showTime).toLocaleDateString("en-US", {
+                            {new Date(entry.timestamp || entry.createdAt).toLocaleDateString("en-US", {
                               weekday: "short",
                               year: "numeric",
                               month: "short",
@@ -308,7 +305,7 @@ export default function DashboardPage() {
                           <AlertDialogFooter>
                             <AlertDialogCancel>Cancel</AlertDialogCancel>
                             <AlertDialogAction
-                              onClick={() => handleDelete(entry.id)}
+                              onClick={() => entry._id && handleDelete(entry._id)}
                               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                             >
                               Delete

@@ -84,12 +84,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await updateProfile(userCredential.user, { displayName })
     // Sync to backend with displayName
     const token = await userCredential.user.getIdToken()
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/me`, {
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
+    await fetch(`${apiBase}/users/me`, {
       method: "GET",
       headers: { "Authorization": `Bearer ${token}` }
     })
     // Update displayName in backend
-    await fetch(`${process.env.NEXT_PUBLIC_API_URL}/users/settings`, {
+    await fetch(`${apiBase}/users/settings`, {
       method: "POST",
       headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ displayName })

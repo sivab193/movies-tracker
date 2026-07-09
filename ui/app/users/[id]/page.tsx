@@ -7,10 +7,12 @@ import { getUserProfile } from "@/services/user-service"
 import { Loader2, User, Film, Clock, Calendar, Lock } from "lucide-react"
 
 interface WatchHistoryItem {
-    title: string
-    year: string
-    runtime: string
-    timestamp?: any
+    movieId: string
+    movieTitle: string
+    moviePosterUrl?: string
+    theaterName?: string
+    timestamp?: string
+    createdAt: string
 }
 
 interface UserProfile {
@@ -116,16 +118,29 @@ export default function UserProfilePage() {
                                 <thead className="bg-muted/50 text-sm font-semibold text-muted-foreground uppercase tracking-wider">
                                     <tr>
                                         <th className="px-6 py-4">Movie Title</th>
-                                        <th className="px-6 py-4">Year</th>
-                                        <th className="px-6 py-4">Runtime</th>
+                                        <th className="px-6 py-4">Theater</th>
+                                        <th className="px-6 py-4">Date Watched</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y">
                                     {profile.watchHistory.map((item, index) => (
                                         <tr key={index} className="hover:bg-muted/30 transition-colors">
-                                            <td className="px-6 py-4 font-medium">{item.title}</td>
-                                            <td className="px-6 py-4 text-muted-foreground">{item.year}</td>
-                                            <td className="px-6 py-4 text-primary font-mono">{item.runtime}</td>
+                                            <td className="px-6 py-4 font-medium">
+                                                <div className="flex items-center gap-3">
+                                                    {item.moviePosterUrl && (
+                                                        <img src={item.moviePosterUrl} alt="" className="h-8 w-6 object-cover rounded hidden sm:block" />
+                                                    )}
+                                                    <span>{item.movieTitle}</span>
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 text-muted-foreground">{item.theaterName || "N/A"}</td>
+                                            <td className="px-6 py-4 text-primary font-mono">
+                                                {new Date(item.timestamp || item.createdAt).toLocaleDateString('en-US', {
+                                                    year: 'numeric',
+                                                    month: 'short',
+                                                    day: 'numeric'
+                                                })}
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>

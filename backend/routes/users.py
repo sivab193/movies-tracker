@@ -97,7 +97,10 @@ def request_admin():
     
     db.users.update_one(
         {"firebaseUid": firebase_uid},
-        {"$set": {"adminRequestStatus": "PENDING"}}
+        {"$set": {
+            "adminRequestStatus": "PENDING",
+            "adminRequestedAt": datetime.datetime.utcnow().isoformat()
+        }}
     )
     
     return jsonify({"message": "Admin access requested"})
@@ -355,7 +358,8 @@ def get_admin_requests():
             "id": req['_id'],
             "displayName": req.get('displayName'),
             "email": req.get('email'),
-            "photoURL": req.get('photoURL')
+            "photoURL": req.get('photoURL'),
+            "requestedAt": req.get('adminRequestedAt')
         })
         
     return jsonify(requests)
