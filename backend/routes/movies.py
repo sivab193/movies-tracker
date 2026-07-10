@@ -242,23 +242,68 @@ def list_movies():
     skip = request.args.get('skip', 0, type=int)
     
     # Get optional search/filter params
-    title_search = request.args.get('title', '')
+    title_search = request.args.get('search', '') or request.args.get('title', '')
     year_filter = request.args.get('year', '')
     language_filter = request.args.get('language', '')
+    missing_poster = request.args.get('missingPoster', '')
+    avg_time_filter = request.args.get('avgTimeFilter', '')
     
     query = {}
     if title_search:
-        query['title'] = {'$regex': title_search, '$options': 'i'}
-    if year_filter:
+        query['$or'] = [
+            {'title': {'$regex': title_search, '$options': 'i'}},
+            {'imdbId': {'$regex': title_search, '$options': 'i'}}
+        ]
+    if year_filter and year_filter.strip() != '' and year_filter != 'All':
         try:
             query['year'] = int(year_filter)
         except ValueError:
             pass
-    if language_filter and language_filter.lower() != 'all':
-        query['$or'] = [
+    if language_filter and language_filter.lower() != 'all' and language_filter.strip() != '':
+        lang_cond = [
             {'language': {'$regex': language_filter, '$options': 'i'}},
             {'Language': {'$regex': language_filter, '$options': 'i'}}
         ]
+        if '$or' in query:
+            query = {'$and': [{'$or': query['$or']}, {'$or': lang_cond}]}
+        else:
+            query['$or'] = lang_cond
+
+    if missing_poster == 'true':
+        poster_cond = [
+            {"posterUrl": {"$exists": False}},
+            {"posterUrl": None},
+            {"posterUrl": ""},
+            {"posterUrl": "N/A"}
+        ]
+        if '$and' in query:
+            query['$and'].append({'$or': poster_cond})
+        elif '$or' in query:
+            query = {'$and': [{'$or': query['$or']}, {'$or': poster_cond}]}
+        else:
+            query['$or'] = poster_cond
+
+    if avg_time_filter == 'missing':
+        time_cond = [
+            {"averageTimeSeconds": {"$exists": False}},
+            {"averageTimeSeconds": None},
+            {"averageTimeSeconds": 0},
+            {"submissionCount": {"$exists": False}},
+            {"submissionCount": 0}
+        ]
+        if '$and' in query:
+            query['$and'].append({'$or': time_cond})
+        elif '$or' in query:
+            query = {'$and': [{'$or': query['$or']}, {'$or': time_cond}]}
+        else:
+            query['$or'] = time_cond
+    elif avg_time_filter == 'has':
+        if '$and' in query:
+            query['$and'].append({"averageTimeSeconds": {"$gt": 0}})
+            query['$and'].append({"submissionCount": {"$gt": 0}})
+        else:
+            query['averageTimeSeconds'] = {"$gt": 0}
+            query['submissionCount'] = {"$gt": 0}
     
     # Get total count for pagination
     total = db.movies.count_documents(query)
@@ -397,6 +442,69 @@ def get_movie(movie_id):
     except Exception as e:
         print(f"Error fetching movie: {e}")
         return jsonify({"error": "Failed to fetch movie"}), 500
+
+@movies_bp.route('/<movie_id>', methods=['PUT'])
+def update_movie(movie_id):
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    token = auth_header.split(' ')[1]
+    if not is_admin(token):
+        return jsonify({"error": "Forbidden: Admin access required"}), 403
+
+    if db is None:
+        return jsonify({"error": "Database not connected"}), 500
+
+    data = request.get_json()
+    
+    update_fields = {}
+    if 'title' in data and data['title'] is not None:
+        update_fields['title'] = str(data['title']).strip()
+    if 'year' in data and data['year'] is not None:
+        try:
+            update_fields['year'] = int(data['year'])
+        except ValueError:
+            pass
+    if 'released' in data or 'releaseDate' in data:
+        rel_val = data.get('released') or data.get('releaseDate')
+        update_fields['released'] = rel_val
+        update_fields['releaseDate'] = parse_release_date_to_iso(rel_val, update_fields.get('year') or data.get('year'))
+    if 'language' in data or 'Language' in data:
+        lang_val = data.get('language') or data.get('Language')
+        update_fields['language'] = lang_val
+        update_fields['Language'] = lang_val
+    if 'runtime' in data and data['runtime'] is not None:
+        update_fields['runtime'] = str(data['runtime']).strip()
+    if 'posterUrl' in data and data['posterUrl'] is not None:
+        update_fields['posterUrl'] = str(data['posterUrl']).strip()
+    if 'imdbRating' in data:
+        try:
+            update_fields['imdbRating'] = float(data['imdbRating']) if data['imdbRating'] != '' and data['imdbRating'] is not None else None
+        except ValueError:
+            pass
+
+    if not update_fields:
+        return jsonify({"error": "No valid fields provided for update"}), 400
+
+    try:
+        # Build filter by ObjectId or _id str or id or imdbId
+        filter_query = {"$or": [{"id": movie_id}, {"_id": movie_id}, {"imdbId": movie_id}]}
+        if ObjectId.is_valid(movie_id):
+            filter_query["$or"].append({"_id": ObjectId(movie_id)})
+
+        result = db.movies.update_one(filter_query, {"$set": update_fields})
+        if result.matched_count == 0:
+            return jsonify({"error": "Movie not found"}), 404
+
+        updated_doc = db.movies.find_one(filter_query)
+        if updated_doc:
+            updated_doc['id'] = str(updated_doc.pop('_id'))
+            if updated_doc.get('createdAt') and hasattr(updated_doc['createdAt'], 'isoformat'):
+                updated_doc['createdAt'] = updated_doc['createdAt'].isoformat()
+        return jsonify({"message": "Movie updated successfully", "movie": updated_doc or update_fields})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @movies_bp.route('/<movie_id>', methods=['DELETE'])
 def delete_movie(movie_id):

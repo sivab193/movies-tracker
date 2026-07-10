@@ -3,14 +3,14 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
-import { Loader2, Plus, ShieldAlert, Trash2, Search, Users, MapPin, ExternalLink, Pencil } from "lucide-react"
+import { Loader2, Plus, ShieldAlert, Trash2, Search, Users, MapPin, ExternalLink, Pencil, Check, X, ChevronLeft, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Header } from "@/components/header"
 import { getAdminRequests, resolveAdminRequest } from "@/services/user-service"
-import { getMovies, deleteMovie, getTheaters, addTheater, updateTheater, deleteTheater } from "@/services/api"
+import { getMovies, deleteMovie, getTheaters, addTheater, updateTheater, deleteTheater, updateMovie } from "@/services/api"
 import { formatTimeDisplay } from "@/lib/types"
 import {
     Dialog,
@@ -43,12 +43,34 @@ export default function AdminPage() {
     const [newTheaterGmapsLink, setNewTheaterGmapsLink] = useState("")
     const [addingTheater, setAddingTheater] = useState(false)
     const [localLoading, setLocalLoading] = useState(true)
+    
+    // Global movie filter states
     const [titleFilter, setTitleFilter] = useState("")
     const [yearFilter, setYearFilter] = useState("")
+    const [languageFilter, setLanguageFilter] = useState("All")
+    const [missingPosterFilter, setMissingPosterFilter] = useState(false)
+    const [avgTimeFilter, setAvgTimeFilter] = useState("All")
+    const [fetchingMovies, setFetchingMovies] = useState(false)
+
     const [deleteTarget, setDeleteTarget] = useState<any | null>(null)
     const [deleting, setDeleting] = useState(false)
     const [movieSkip, setMovieSkip] = useState(0)
     const [movieTotal, setMovieTotal] = useState(0)
+
+    // Inline Movie Editing states
+    const [editingMovieId, setEditingMovieId] = useState<string | null>(null)
+    const [inlineMovieTitle, setInlineMovieTitle] = useState("")
+    const [inlineMovieYear, setInlineMovieYear] = useState("")
+    const [inlineMovieLanguage, setInlineMovieLanguage] = useState("")
+    const [inlineMovieReleaseDate, setInlineMovieReleaseDate] = useState("")
+    const [inlineMovieRuntime, setInlineMovieRuntime] = useState("")
+    const [inlineMoviePosterUrl, setInlineMoviePosterUrl] = useState("")
+    const [savingMovieId, setSavingMovieId] = useState<string | null>(null)
+
+    // Theater search & pagination states
+    const [theaterSearch, setTheaterSearch] = useState("")
+    const [theaterCityFilter, setTheaterCityFilter] = useState("All")
+    const [theaterSkip, setTheaterSkip] = useState(0)
 
     // Theater edit & delete confirmation states
     const [editingTheater, setEditingTheater] = useState<any | null>(null)
@@ -92,21 +114,77 @@ export default function AdminPage() {
         }
     }
 
-    const handleMoviePageChange = async (newSkip: number) => {
-        setLocalLoading(true)
+    const fetchMoviesGlobal = async (skipNum = 0) => {
+        setFetchingMovies(true)
         try {
-            const res = await getMovies(newSkip, 20)
+            const res = await getMovies(
+                skipNum,
+                20,
+                languageFilter,
+                titleFilter,
+                yearFilter,
+                missingPosterFilter,
+                avgTimeFilter
+            )
             const list = res?.movies || res || []
             setMovies(list)
             setFilteredMovies(list)
-            setMovieSkip(newSkip)
+            setMovieSkip(skipNum)
             setMovieTotal(res?.total || list.length)
         } catch (err) {
-            console.error("Failed to load page", err)
+            console.error("Failed to fetch movies globally", err)
         } finally {
-            setLocalLoading(false)
+            setFetchingMovies(false)
         }
     }
+
+    const handleMoviePageChange = (newSkip: number) => {
+        fetchMoviesGlobal(newSkip)
+    }
+
+    const startEditingMovie = (m: any) => {
+        setEditingMovieId(m.id || m.imdbId)
+        setInlineMovieTitle(m.title || "")
+        setInlineMovieYear(String(m.year || ""))
+        setInlineMovieLanguage(m.language || m.Language || "")
+        setInlineMovieReleaseDate(m.releaseDate ? m.releaseDate.split("T")[0] : "")
+        setInlineMovieRuntime(m.runtime || "")
+        setInlineMoviePosterUrl(m.posterUrl || "")
+    }
+
+    const saveInlineMovie = async (m: any) => {
+        const id = m.id || m.imdbId
+        setSavingMovieId(id)
+        try {
+            const updated = await updateMovie(id, {
+                title: inlineMovieTitle,
+                year: inlineMovieYear ? Number(inlineMovieYear) : undefined,
+                language: inlineMovieLanguage,
+                releaseDate: inlineMovieReleaseDate || undefined,
+                runtime: inlineMovieRuntime,
+                posterUrl: inlineMoviePosterUrl
+            })
+            setMovies(movies.map(item => (item.id || item.imdbId) === id ? { ...item, ...updated } : item))
+            setFilteredMovies(filteredMovies.map(item => (item.id || item.imdbId) === id ? { ...item, ...updated } : item))
+            setEditingMovieId(null)
+        } catch (err) {
+            console.error("Failed to update movie inline", err)
+            alert(err instanceof Error ? err.message : "Failed to update movie")
+        } finally {
+            setSavingMovieId(null)
+        }
+    }
+
+    const filteredTheaters = theaters.filter(t => {
+        const matchesSearch = !theaterSearch || 
+            t.name?.toLowerCase().includes(theaterSearch.toLowerCase()) || 
+            t.location?.toLowerCase().includes(theaterSearch.toLowerCase())
+        const matchesCity = theaterCityFilter === "All" || t.location === theaterCityFilter
+        return matchesSearch && matchesCity
+    })
+
+    const paginatedTheaters = filteredTheaters.slice(theaterSkip, theaterSkip + 20)
+    const uniqueTheaterCities = Array.from(new Set(theaters.map(t => t.location).filter(Boolean))) as string[]
 
     const handleAddTheater = async (e: React.FormEvent) => {
         e.preventDefault()
@@ -171,19 +249,12 @@ export default function AdminPage() {
     }
 
     useEffect(() => {
-        let filtered = movies
-        if (titleFilter) {
-            filtered = filtered.filter(m =>
-                m.title?.toLowerCase().includes(titleFilter.toLowerCase())
-            )
-        }
-        if (yearFilter) {
-            filtered = filtered.filter(m =>
-                String(m.year).includes(yearFilter)
-            )
-        }
-        setFilteredMovies(filtered)
-    }, [titleFilter, yearFilter, movies])
+        if (localLoading) return
+        const timer = setTimeout(() => {
+            fetchMoviesGlobal(0)
+        }, 300)
+        return () => clearTimeout(timer)
+    }, [titleFilter, yearFilter, languageFilter, missingPosterFilter, avgTimeFilter])
 
     const handleResolve = async (userId: string, action: 'APPROVE' | 'REJECT') => {
         try {
@@ -280,24 +351,48 @@ export default function AdminPage() {
                             <CardDescription>All movies in the database</CardDescription>
                         </CardHeader>
                         <CardContent>
-                            {/* Filters */}
-                            <div className="flex gap-4 mb-4">
-                                <div className="relative flex-1">
+                            {/* Global Filters */}
+                            <div className="flex flex-wrap items-center gap-3 mb-4 p-3 bg-muted/20 border rounded-lg">
+                                <div className="relative flex-1 min-w-[200px]">
                                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                     <Input
-                                        placeholder="Search by title..."
+                                        placeholder="Search globally by title or IMDb ID..."
                                         value={titleFilter}
                                         onChange={(e) => setTitleFilter(e.target.value)}
-                                        className="pl-9"
+                                        className="pl-9 h-9 text-sm"
                                     />
                                 </div>
                                 <Input
                                     placeholder="Year"
                                     value={yearFilter}
                                     onChange={(e) => setYearFilter(e.target.value)}
-                                    className="w-24"
+                                    className="w-20 h-9 text-sm"
                                     maxLength={4}
                                 />
+                                <Input
+                                    placeholder="Lang (e.g. Tamil)"
+                                    value={languageFilter === "All" ? "" : languageFilter}
+                                    onChange={(e) => setLanguageFilter(e.target.value || "All")}
+                                    className="w-28 h-9 text-sm"
+                                />
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant={missingPosterFilter ? "default" : "outline"}
+                                    onClick={() => setMissingPosterFilter(!missingPosterFilter)}
+                                    className="h-9 text-xs font-medium"
+                                >
+                                    No Poster
+                                </Button>
+                                <select
+                                    className="h-9 rounded-md border border-input bg-background px-2 py-1 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary"
+                                    value={avgTimeFilter}
+                                    onChange={(e) => setAvgTimeFilter(e.target.value)}
+                                >
+                                    <option value="All">All Title Card Times</option>
+                                    <option value="missing">Missing Title Card Time</option>
+                                    <option value="has">Has Title Card Time</option>
+                                </select>
                             </div>
 
                             <div className="overflow-x-auto">
@@ -305,39 +400,152 @@ export default function AdminPage() {
                                     <thead>
                                         <tr className="border-b">
                                             <th className="text-left py-3 px-2 font-medium">Title</th>
-                                            <th className="text-left py-3 px-2 font-medium">Year</th>
-                                            <th className="text-left py-3 px-2 font-medium">Runtime</th>
-                                            <th className="text-center py-3 px-2 font-medium">Submissions</th>
-                                            <th className="text-right py-3 px-2 font-medium">Avg Time</th>
-                                            <th className="text-center py-3 px-2 font-medium w-16">Action</th>
+                                            <th className="text-left py-3 px-2 font-medium w-20">Year</th>
+                                            <th className="text-left py-3 px-2 font-medium w-24">Language</th>
+                                            <th className="text-left py-3 px-2 font-medium w-28">Release Date</th>
+                                            <th className="text-left py-3 px-2 font-medium w-24">Runtime</th>
+                                            <th className="text-right py-3 px-2 font-medium">Title Card Time</th>
+                                            <th className="text-center py-3 px-2 font-medium w-20">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {filteredMovies.map((movie) => (
-                                            <tr key={movie.id} className="border-b hover:bg-muted/50">
-                                                <td className="py-3 px-2 font-medium">{movie.title}</td>
-                                                <td className="py-3 px-2">{movie.year}</td>
-                                                <td className="py-3 px-2">{movie.runtime || "N/A"}</td>
-                                                <td className="py-3 px-2 text-center">{movie.submissionCount || 0}</td>
-                                                <td className="py-3 px-2 text-right">
-                                                    {movie.averageTimeSeconds ? formatTimeDisplay(movie.averageTimeSeconds) : "N/A"}
-                                                </td>
-                                                <td className="py-3 px-2 text-center">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                                        onClick={() => setDeleteTarget(movie)}
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </td>
-                                            </tr>
-                                        ))}
+                                        {filteredMovies.map((movie) => {
+                                            const isEditing = editingMovieId === (movie.id || movie.imdbId);
+                                            return (
+                                                <tr key={movie.id || movie.imdbId} className="border-b hover:bg-muted/50">
+                                                    {isEditing ? (
+                                                        <>
+                                                            <td className="py-2 px-2">
+                                                                <Input
+                                                                    value={inlineMovieTitle}
+                                                                    onChange={(e) => setInlineMovieTitle(e.target.value)}
+                                                                    placeholder="Movie Title"
+                                                                    className="h-8 text-xs font-medium min-w-[150px]"
+                                                                />
+                                                            </td>
+                                                            <td className="py-2 px-2">
+                                                                <Input
+                                                                    type="number"
+                                                                    value={inlineMovieYear}
+                                                                    onChange={(e) => setInlineMovieYear(e.target.value)}
+                                                                    placeholder="Year"
+                                                                    className="h-8 text-xs w-20"
+                                                                />
+                                                            </td>
+                                                            <td className="py-2 px-2">
+                                                                <Input
+                                                                    value={inlineMovieLanguage}
+                                                                    onChange={(e) => setInlineMovieLanguage(e.target.value)}
+                                                                    placeholder="Language"
+                                                                    className="h-8 text-xs w-24"
+                                                                />
+                                                            </td>
+                                                            <td className="py-2 px-2">
+                                                                <Input
+                                                                    type="date"
+                                                                    value={inlineMovieReleaseDate}
+                                                                    onChange={(e) => setInlineMovieReleaseDate(e.target.value)}
+                                                                    className="h-8 text-xs w-32"
+                                                                />
+                                                            </td>
+                                                            <td className="py-2 px-2">
+                                                                <Input
+                                                                    value={inlineMovieRuntime}
+                                                                    onChange={(e) => setInlineMovieRuntime(e.target.value)}
+                                                                    placeholder="e.g. 148 min"
+                                                                    className="h-8 text-xs w-24"
+                                                                />
+                                                            </td>
+                                                            <td className="py-2 px-2 text-right text-xs text-muted-foreground">
+                                                                {movie.averageTimeSeconds ? formatTimeDisplay(movie.averageTimeSeconds) : "N/A"}
+                                                            </td>
+                                                            <td className="py-2 px-2 text-center">
+                                                                <div className="flex items-center justify-center gap-1">
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-500/10"
+                                                                        disabled={savingMovieId === (movie.id || movie.imdbId)}
+                                                                        onClick={() => saveInlineMovie(movie)}
+                                                                        title="Save Changes"
+                                                                    >
+                                                                        {savingMovieId === (movie.id || movie.imdbId) ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                                                                    </Button>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
+                                                                        disabled={savingMovieId === (movie.id || movie.imdbId)}
+                                                                        onClick={() => setEditingMovieId(null)}
+                                                                        title="Cancel Editing"
+                                                                    >
+                                                                        <X className="h-4 w-4" />
+                                                                    </Button>
+                                                                </div>
+                                                            </td>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <td className="py-3 px-2 font-medium">
+                                                                <a
+                                                                    href={`/movie/${movie.id || movie.imdbId}`}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="text-primary hover:underline flex items-center gap-1.5 font-semibold"
+                                                                    title="Open Movie Page"
+                                                                >
+                                                                    {movie.title}
+                                                                    <ExternalLink className="h-3 w-3 opacity-70 shrink-0" />
+                                                                </a>
+                                                            </td>
+                                                            <td className="py-3 px-2 text-muted-foreground">{movie.year || "N/A"}</td>
+                                                            <td className="py-3 px-2">
+                                                                <span className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
+                                                                    {movie.language || movie.Language || "N/A"}
+                                                                </span>
+                                                            </td>
+                                                            <td className="py-3 px-2 text-muted-foreground text-xs">
+                                                                {movie.releaseDate ? movie.releaseDate.split("T")[0] : "N/A"}
+                                                            </td>
+                                                            <td className="py-3 px-2 text-muted-foreground">{movie.runtime || "N/A"}</td>
+                                                            <td className="py-3 px-2 text-right font-medium">
+                                                                {movie.averageTimeSeconds ? (
+                                                                    <span className="text-primary">{formatTimeDisplay(movie.averageTimeSeconds)}</span>
+                                                                ) : (
+                                                                    <span className="text-muted-foreground text-xs">N/A</span>
+                                                                )}
+                                                            </td>
+                                                            <td className="py-3 px-2 text-center">
+                                                                <div className="flex items-center justify-center gap-1">
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
+                                                                        onClick={() => startEditingMovie(movie)}
+                                                                        title="Inline Edit Movie"
+                                                                    >
+                                                                        <Pencil className="h-4 w-4" />
+                                                                    </Button>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                                        onClick={() => setDeleteTarget(movie)}
+                                                                        title="Delete Movie"
+                                                                    >
+                                                                        <Trash2 className="h-4 w-4" />
+                                                                    </Button>
+                                                                </div>
+                                                            </td>
+                                                        </>
+                                                    )}
+                                                </tr>
+                                            );
+                                        })}
                                         {filteredMovies.length === 0 && (
                                             <tr>
-                                                <td colSpan={6} className="text-center py-8 text-muted-foreground">
-                                                    No movies found. Use the Add Movie button to add a movie.
+                                                <td colSpan={7} className="text-center py-10 text-muted-foreground">
+                                                    No movies found matching your filters.
                                                 </td>
                                             </tr>
                                         )}
@@ -412,6 +620,35 @@ export default function AdminPage() {
                                 </Button>
                             </form>
 
+                            {/* Theater Filters */}
+                            <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
+                                <div className="relative flex-1 w-full">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder="Search theaters by name or location..."
+                                        value={theaterSearch}
+                                        onChange={(e) => {
+                                            setTheaterSearch(e.target.value)
+                                            setTheaterSkip(0)
+                                        }}
+                                        className="pl-9 h-9 text-sm"
+                                    />
+                                </div>
+                                <select
+                                    className="h-9 w-full sm:w-48 rounded-md border border-input bg-background px-3 py-1 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary"
+                                    value={theaterCityFilter}
+                                    onChange={(e) => {
+                                        setTheaterCityFilter(e.target.value)
+                                        setTheaterSkip(0)
+                                    }}
+                                >
+                                    <option value="All">All Cities ({theaters.length})</option>
+                                    {uniqueTheaterCities.map((city: string) => (
+                                        <option key={city} value={city}>{city}</option>
+                                    ))}
+                                </select>
+                            </div>
+
                             {/* Theaters List */}
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
@@ -424,7 +661,7 @@ export default function AdminPage() {
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {theaters.map((t) => (
+                                        {paginatedTheaters.map((t) => (
                                             <tr key={t.id} className="border-b hover:bg-muted/50">
                                                 <td className="py-3 px-2 font-medium">{t.name}</td>
                                                 <td className="py-3 px-2 text-muted-foreground">{t.location || "N/A"}</td>
@@ -467,15 +704,38 @@ export default function AdminPage() {
                                                 </td>
                                             </tr>
                                         ))}
-                                        {theaters.length === 0 && (
+                                        {filteredTheaters.length === 0 && (
                                             <tr>
                                                 <td colSpan={4} className="text-center py-8 text-muted-foreground">
-                                                    No theaters added yet. Add a theater above to populate the list.
+                                                    No theaters found matching your filters.
                                                 </td>
                                             </tr>
                                         )}
                                     </tbody>
                                 </table>
+                            </div>
+                            <div className="flex items-center justify-between border-t pt-4">
+                                <div className="text-sm text-muted-foreground">
+                                    Showing {filteredTheaters.length > 0 ? theaterSkip + 1 : 0} - {Math.min(theaterSkip + 20, filteredTheaters.length)} of {filteredTheaters.length} theaters
+                                </div>
+                                <div className="flex gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={theaterSkip === 0 || localLoading}
+                                        onClick={() => setTheaterSkip(Math.max(0, theaterSkip - 20))}
+                                    >
+                                        Previous
+                                    </Button>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={theaterSkip + 20 >= filteredTheaters.length || localLoading}
+                                        onClick={() => setTheaterSkip(theaterSkip + 20)}
+                                    >
+                                        Next
+                                    </Button>
+                                </div>
                             </div>
                         </CardContent>
                     </Card>

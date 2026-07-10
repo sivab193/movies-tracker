@@ -118,10 +118,30 @@ export async function getPublicProfile(userId: string) {
     return result;
 }
 
-export async function getMovies(skip: number = 0, limit: number = 50, language: string = "") {
+export async function getMovies(
+    skip: number = 0,
+    limit: number = 50,
+    language: string = "",
+    search: string = "",
+    year: string = "",
+    missingPoster?: boolean,
+    avgTimeFilter?: string
+) {
     let url = `${API_BASE_URL}/movies/?skip=${skip}&limit=${limit}`;
     if (language && language.toLowerCase() !== "all") {
         url += `&language=${encodeURIComponent(language)}`;
+    }
+    if (search && search.trim() !== "") {
+        url += `&search=${encodeURIComponent(search.trim())}`;
+    }
+    if (year && year.trim() !== "" && year !== "All") {
+        url += `&year=${encodeURIComponent(year.trim())}`;
+    }
+    if (missingPoster) {
+        url += `&missingPoster=true`;
+    }
+    if (avgTimeFilter && avgTimeFilter !== "All") {
+        url += `&avgTimeFilter=${encodeURIComponent(avgTimeFilter)}`;
     }
     const response = await fetch(url);
     const data = await response.json();
@@ -222,6 +242,24 @@ export async function getMovie(id: string) {
     }
 
     return data;
+}
+
+export async function updateMovie(id: string, updateData: any) {
+    const token = await auth?.currentUser?.getIdToken();
+    if (!token) throw new Error("User not authenticated");
+
+    const response = await fetch(`${API_BASE_URL}/movies/${id}`, {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(updateData)
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Failed to update movie");
+    return data.movie || data;
 }
 
 export async function deleteMovie(id: string) {
