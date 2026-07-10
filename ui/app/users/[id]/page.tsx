@@ -64,7 +64,7 @@ export default function UserProfilePage() {
         })
     }
 
-    const sortedHistory = [...(profile.watchHistory || [])].sort((a, b) => {
+    const sortedHistory = [...(profile?.watchHistory || [])].sort((a, b) => {
         const dateA = new Date(a.timestamp || a.createdAt || 0).getTime()
         const dateB = new Date(b.timestamp || b.createdAt || 0).getTime()
         return dateB - dateA

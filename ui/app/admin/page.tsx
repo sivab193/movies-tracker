@@ -3,15 +3,14 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
-import { Loader2, Plus, ShieldAlert, Trash2, Search, Users, MapPin, ExternalLink, Pencil, Check, X, ChevronLeft, ChevronRight, BarChart3, Sparkles, Film, Clock3, Building2 } from "lucide-react"
+import { Loader2, Plus, ShieldAlert, Trash2, Search, Users, MapPin, ExternalLink, Pencil, Check, X, ChevronLeft, ChevronRight } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Header } from "@/components/header"
 import { getAdminRequests, resolveAdminRequest } from "@/services/user-service"
-import { getMovies, deleteMovie, getTheaters, addTheater, updateTheater, deleteTheater, updateMovie, getStatsSummary } from "@/services/api"
+import { getMovies, deleteMovie, getTheaters, addTheater, updateTheater, deleteTheater, updateMovie } from "@/services/api"
 import { formatTimeDisplay } from "@/lib/types"
 import {
     Dialog,
@@ -54,8 +53,6 @@ export default function AdminPage() {
     const [fetchingMovies, setFetchingMovies] = useState(false)
 
     const [deleteTarget, setDeleteTarget] = useState<any | null>(null)
-    const [stats, setStats] = useState<any | null>(null)
-    const [statsLoading, setStatsLoading] = useState(true)
     const [deleting, setDeleting] = useState(false)
     const [movieSkip, setMovieSkip] = useState(0)
     const [movieTotal, setMovieTotal] = useState(0)
@@ -99,11 +96,10 @@ export default function AdminPage() {
 
     const loadData = async () => {
         try {
-            const [reqs, moviesRes, theatersData, statsData] = await Promise.all([
+            const [reqs, moviesRes, theatersData] = await Promise.all([
                 getAdminRequests(),
                 getMovies(0, 20),
-                getTheaters(),
-                getStatsSummary()
+                getTheaters()
             ])
             const moviesList = moviesRes?.movies || moviesRes || []
             setRequests(reqs || [])
@@ -111,12 +107,10 @@ export default function AdminPage() {
             setFilteredMovies(moviesList)
             setMovieTotal(moviesRes?.total || moviesList.length)
             setTheaters(theatersData || [])
-            setStats(statsData || null)
         } catch (err) {
             console.error("Failed to load admin data", err)
         } finally {
             setLocalLoading(false)
-            setStatsLoading(false)
         }
     }
 
@@ -315,74 +309,7 @@ export default function AdminPage() {
                 </div>
 
                 <div className="grid gap-8">
-                    <Tabs defaultValue="stats" className="w-full">
-                        <TabsList className="grid w-full grid-cols-2 md:w-[320px]">
-                            <TabsTrigger value="stats">Stats</TabsTrigger>
-                            <TabsTrigger value="management">Management</TabsTrigger>
-                        </TabsList>
-
-                        <TabsContent value="stats" className="space-y-6 mt-6">
-                            <Card>
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2">
-                                        <BarChart3 className="h-5 w-5 text-primary" />
-                                        Community Pulse
-                                    </CardTitle>
-                                    <CardDescription>High-signal stats that help you spot momentum and keep users engaged.</CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-6">
-                                    {statsLoading ? (
-                                        <div className="flex items-center gap-2 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Loading insights…</div>
-                                    ) : (
-                                        <>
-                                            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                                                <div className="rounded-xl border bg-card p-4">
-                                                    <div className="flex items-center gap-2 text-sm text-muted-foreground"><Users className="h-4 w-4" /> Total Users</div>
-                                                    <div className="mt-3 text-2xl font-bold">{stats?.totalUsers ?? 0}</div>
-                                                </div>
-                                                <div className="rounded-xl border bg-card p-4">
-                                                    <div className="flex items-center gap-2 text-sm text-muted-foreground"><Film className="h-4 w-4" /> Movies</div>
-                                                    <div className="mt-3 text-2xl font-bold">{stats?.totalMovies ?? 0}</div>
-                                                </div>
-                                                <div className="rounded-xl border bg-card p-4">
-                                                    <div className="flex items-center gap-2 text-sm text-muted-foreground"><Building2 className="h-4 w-4" /> Theaters</div>
-                                                    <div className="mt-3 text-2xl font-bold">{stats?.totalTheaters ?? 0}</div>
-                                                </div>
-                                                <div className="rounded-xl border bg-card p-4">
-                                                    <div className="flex items-center gap-2 text-sm text-muted-foreground"><Clock3 className="h-4 w-4" /> Watch Entries</div>
-                                                    <div className="mt-3 text-2xl font-bold">{stats?.totalWatchEntries ?? 0}</div>
-                                                </div>
-                                            </div>
-
-                                            <div className="grid gap-4 lg:grid-cols-2">
-                                                <div className="rounded-xl border bg-card p-4">
-                                                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground"><Sparkles className="h-4 w-4" /> Most watched movie</div>
-                                                    <div className="mt-3 text-xl font-semibold">{stats?.mostWatchedMovie?.title || "No watches yet"}</div>
-                                                    <div className="mt-1 text-sm text-muted-foreground">{stats?.mostWatchedMovie?.count ?? 0} watches</div>
-                                                </div>
-                                                <div className="rounded-xl border bg-card p-4">
-                                                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground"><MapPin className="h-4 w-4" /> Top location</div>
-                                                    <div className="mt-3 text-xl font-semibold">{stats?.topLocation?.name || "No data"}</div>
-                                                    <div className="mt-1 text-sm text-muted-foreground">{stats?.topLocation?.count ?? 0} watch entries</div>
-                                                </div>
-                                            </div>
-
-                                            <div className="rounded-xl border bg-muted/20 p-4">
-                                                <div className="text-sm font-medium text-muted-foreground">Insightful takeaways</div>
-                                                <ul className="mt-3 space-y-2 text-sm text-foreground">
-                                                    {stats?.insights?.map((insight: string, index: number) => (
-                                                        <li key={index} className="flex gap-2"><span className="mt-1 h-2 w-2 rounded-full bg-primary" />{insight}</li>
-                                                    ))}
-                                                    {!stats?.insights?.length && <li>No insights available yet.</li>}
-                                                </ul>
-                                            </div>
-                                        </>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        </TabsContent>
-
-                        <TabsContent value="management" className="space-y-6 mt-6">
+                    <div className="space-y-6">
                             {/* Access Requests */}
                             {requests.length > 0 && (
                                 <Card>
@@ -813,8 +740,7 @@ export default function AdminPage() {
                             </div>
                         </CardContent>
                             </Card>
-                        </TabsContent>
-                    </Tabs>
+                    </div>
                 </div>
             </main>
 
