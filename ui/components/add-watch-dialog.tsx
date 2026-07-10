@@ -275,6 +275,7 @@ export function AddWatchDialog({
                   {(selectedMovieId || movieSearch) && (
                     <button
                       type="button"
+                      aria-label="Clear movie selection"
                       onClick={() => {
                         setSelectedMovieId("")
                         setMovieSearch("")
@@ -372,6 +373,7 @@ export function AddWatchDialog({
                   {(selectedTheaterId || theaterSearch) && (
                     <button
                       type="button"
+                      aria-label="Clear theater selection"
                       onClick={() => {
                         setSelectedTheaterId("")
                         setTheaterName("")
