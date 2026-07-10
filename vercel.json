@@ -15,6 +15,14 @@
             "dest": "backend/app.py"
         },
         {
+            "src": "/users/(.*)",
+            "dest": "/ui/users/[id]?id=$1"
+        },
+        {
+            "src": "/movie/(.*)",
+            "dest": "/ui/movie/[id]?id=$1"
+        },
+        {
             "src": "/(.*)",
             "dest": "/ui/$1"
         }

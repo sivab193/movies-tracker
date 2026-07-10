@@ -281,10 +281,15 @@ def get_movie(movie_id):
         return jsonify({"error": "Database not connected"}), 500
 
     try:
-        if not ObjectId.is_valid(movie_id):
-            return jsonify({"error": "Invalid movie ID"}), 400
-
-        movie = db.movies.find_one({"_id": ObjectId(movie_id)})
+        movie = None
+        if ObjectId.is_valid(movie_id):
+            movie = db.movies.find_one({"_id": ObjectId(movie_id)})
+        if not movie:
+            movie = db.movies.find_one({"_id": movie_id})
+        if not movie:
+            movie = db.movies.find_one({"id": movie_id})
+        if not movie:
+            movie = db.movies.find_one({"imdbId": movie_id})
         
         if not movie:
             return jsonify({"error": "Movie not found"}), 404
