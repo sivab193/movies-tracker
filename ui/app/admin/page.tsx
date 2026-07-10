@@ -3,16 +3,23 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
-import { Loader2, Plus, ShieldAlert, Trash2, Search, Users, MapPin, ExternalLink } from "lucide-react"
+import { Loader2, Plus, ShieldAlert, Trash2, Search, Users, MapPin, ExternalLink, Pencil } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Header } from "@/components/header"
 import { getAdminRequests, resolveAdminRequest } from "@/services/user-service"
-import { getMovies, deleteMovie, getTheaters, addTheater, deleteTheater } from "@/services/api"
+import { getMovies, deleteMovie, getTheaters, addTheater, updateTheater, deleteTheater } from "@/services/api"
 import { formatTimeDisplay } from "@/lib/types"
-// import { AddMovieDialog } from "@/components/add-movie-dialog"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -42,6 +49,16 @@ export default function AdminPage() {
     const [deleting, setDeleting] = useState(false)
     const [movieSkip, setMovieSkip] = useState(0)
     const [movieTotal, setMovieTotal] = useState(0)
+
+    // Theater edit & delete confirmation states
+    const [editingTheater, setEditingTheater] = useState<any | null>(null)
+    const [editTheaterName, setEditTheaterName] = useState("")
+    const [editTheaterLoc, setEditTheaterLoc] = useState("")
+    const [editTheaterGmapsLink, setEditTheaterGmapsLink] = useState("")
+    const [showEditConfirm, setShowEditConfirm] = useState(false)
+    const [updatingTheater, setUpdatingTheater] = useState(false)
+    const [deleteTheaterTarget, setDeleteTheaterTarget] = useState<any | null>(null)
+    const [deletingTheater, setDeletingTheater] = useState(false)
 
     useEffect(() => {
         if (!authLoading) {
@@ -109,14 +126,47 @@ export default function AdminPage() {
         }
     }
 
-    const handleDeleteTheater = async (id: string) => {
-        if (!confirm("Are you sure you want to delete this theater?")) return
+    const openEditTheater = (t: any) => {
+        setEditingTheater(t)
+        setEditTheaterName(t.name || "")
+        setEditTheaterLoc(t.location || "")
+        setEditTheaterGmapsLink(t.gmapsLink || "")
+        setShowEditConfirm(false)
+    }
+
+    const confirmUpdateTheater = async () => {
+        if (!editingTheater || !editTheaterName.trim()) return
+        setUpdatingTheater(true)
         try {
-            await deleteTheater(id)
-            setTheaters(theaters.filter(t => t.id !== id))
+            const updated = await updateTheater(
+                editingTheater.id,
+                editTheaterName.trim(),
+                editTheaterLoc.trim() || undefined,
+                editTheaterGmapsLink.trim() || undefined
+            )
+            setTheaters(theaters.map(t => t.id === editingTheater.id ? updated : t))
+            setEditingTheater(null)
+            setShowEditConfirm(false)
+        } catch (err) {
+            console.error("Failed to update theater", err)
+            alert(err instanceof Error ? err.message : "Failed to update theater")
+        } finally {
+            setUpdatingTheater(false)
+        }
+    }
+
+    const confirmDeleteTheater = async () => {
+        if (!deleteTheaterTarget) return
+        setDeletingTheater(true)
+        try {
+            await deleteTheater(deleteTheaterTarget.id)
+            setTheaters(theaters.filter(t => t.id !== deleteTheaterTarget.id))
+            setDeleteTheaterTarget(null)
         } catch (err) {
             console.error("Failed to delete theater", err)
             alert(err instanceof Error ? err.message : "Failed to delete theater")
+        } finally {
+            setDeletingTheater(false)
         }
     }
 
@@ -394,14 +444,26 @@ export default function AdminPage() {
                                                     )}
                                                 </td>
                                                 <td className="py-3 px-2 text-center">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                                        onClick={() => handleDeleteTheater(t.id)}
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
+                                                    <div className="flex items-center justify-center gap-1">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
+                                                            onClick={() => openEditTheater(t)}
+                                                            title="Edit Theater"
+                                                        >
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                            onClick={() => setDeleteTheaterTarget(t)}
+                                                            title="Delete Theater"
+                                                        >
+                                                            <Trash2 className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
@@ -420,7 +482,7 @@ export default function AdminPage() {
                 </div>
             </main>
 
-            {/* Delete Confirmation Dialog */}
+            {/* Delete Movie Confirmation Dialog */}
             <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -438,6 +500,97 @@ export default function AdminPage() {
                             className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                         >
                             {deleting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Edit Theater Modal */}
+            <Dialog open={!!editingTheater} onOpenChange={(open) => !open && setEditingTheater(null)}>
+                <DialogContent className="sm:max-w-[425px]">
+                    <DialogHeader>
+                        <DialogTitle>Edit Theater</DialogTitle>
+                        <DialogDescription>Update the name, location, or Google Maps link for this theater.</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-2">
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Theater Name *</label>
+                            <Input
+                                placeholder="e.g. PVR Cinemas"
+                                value={editTheaterName}
+                                onChange={(e) => setEditTheaterName(e.target.value)}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Location / City</label>
+                            <Input
+                                placeholder="e.g. Chennai"
+                                value={editTheaterLoc}
+                                onChange={(e) => setEditTheaterLoc(e.target.value)}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <label className="text-sm font-medium">Google Maps Link</label>
+                            <Input
+                                placeholder="https://maps.google.com/..."
+                                value={editTheaterGmapsLink}
+                                onChange={(e) => setEditTheaterGmapsLink(e.target.value)}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setEditingTheater(null)}>Cancel</Button>
+                        <Button
+                            onClick={() => setShowEditConfirm(true)}
+                            disabled={!editTheaterName.trim() || updatingTheater}
+                        >
+                            Save Changes
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Edit Confirmation Box */}
+            <AlertDialog open={showEditConfirm} onOpenChange={(open) => !open && setShowEditConfirm(false)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Confirm Theater Update</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to update <strong>{editingTheater?.name}</strong> to <strong>{editTheaterName}</strong>?
+                            Any watch history entries associated with this theater may reflect updated location information.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={updatingTheater}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={confirmUpdateTheater}
+                            disabled={updatingTheater}
+                            className="bg-primary text-primary-foreground hover:bg-primary/90"
+                        >
+                            {updatingTheater ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirm Update"}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+
+            {/* Delete Theater Confirmation Box */}
+            <AlertDialog open={!!deleteTheaterTarget} onOpenChange={() => setDeleteTheaterTarget(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Theater</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Are you sure you want to delete <strong>{deleteTheaterTarget?.name}</strong> ({deleteTheaterTarget?.location || "N/A"})?
+                            This action cannot be undone.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={deletingTheater}>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                            onClick={confirmDeleteTheater}
+                            disabled={deletingTheater}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        >
+                            {deletingTheater ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete Theater"}
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

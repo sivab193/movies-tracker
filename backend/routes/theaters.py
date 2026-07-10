@@ -117,6 +117,55 @@ def add_theater():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@theaters_bp.route('/<theater_id>', methods=['PUT'])
+def update_theater(theater_id):
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    token = auth_header.split(' ')[1]
+    if not is_admin(token):
+        return jsonify({"error": "Forbidden: Admin access required"}), 403
+
+    if db is None:
+        return jsonify({"error": "Database not connected"}), 500
+
+    if not ObjectId.is_valid(theater_id):
+        return jsonify({"error": "Invalid theater ID"}), 400
+
+    data = request.get_json()
+    name = data.get('name')
+    location = data.get('location', '')
+    gmaps_link = data.get('gmapsLink', '')
+
+    if not name:
+        return jsonify({"error": "Theater name is required"}), 400
+
+    try:
+        # Normalize location before updating
+        temp_obj = {"name": name, "location": location}
+        normalize_theater_location(temp_obj)
+        location = temp_obj['location']
+
+        update_data = {
+            "name": name,
+            "location": location,
+            "gmapsLink": gmaps_link
+        }
+        result = db.theaters.update_one({"_id": ObjectId(theater_id)}, {"$set": update_data})
+        if result.matched_count == 0:
+            return jsonify({"error": "Theater not found"}), 404
+
+        updated_theater = {
+            "id": theater_id,
+            "name": name,
+            "location": location,
+            "gmapsLink": gmaps_link
+        }
+        return jsonify({"message": "Theater updated successfully", "theater": updated_theater})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @theaters_bp.route('/<theater_id>', methods=['DELETE'])
 def delete_theater(theater_id):
     auth_header = request.headers.get('Authorization')

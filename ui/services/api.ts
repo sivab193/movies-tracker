@@ -170,6 +170,24 @@ export async function addTheater(name: string, location?: string, gmapsLink?: st
     return data.theater;
 }
 
+export async function updateTheater(id: string, name: string, location?: string, gmapsLink?: string) {
+    const token = await auth?.currentUser?.getIdToken();
+    if (!token) throw new Error("User not authenticated");
+
+    const response = await fetch(`${API_BASE_URL}/theaters/${id}`, {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ name, location, gmapsLink })
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Failed to update theater");
+    return data.theater;
+}
+
 export async function deleteTheater(id: string) {
     const token = await auth?.currentUser?.getIdToken();
     if (!token) throw new Error("User not authenticated");
