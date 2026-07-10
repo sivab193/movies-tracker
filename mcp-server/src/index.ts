@@ -69,7 +69,7 @@ class MoviesTrackerMCPServer {
         capabilities: {
           tools: {},
         },
-      }
+      },
     );
 
     this.api = axios.create({
@@ -203,7 +203,8 @@ class MoviesTrackerMCPServer {
             },
             limit: {
               type: "number",
-              description: "Number of results to return (default: 20, max: 100)",
+              description:
+                "Number of results to return (default: 20, max: 100)",
             },
             skip: {
               type: "number",
@@ -257,7 +258,8 @@ class MoviesTrackerMCPServer {
             },
             timestamp: {
               type: "string",
-              description: "ISO timestamp of when movie was watched (e.g., '2026-07-10T14:30:00Z')",
+              description:
+                "ISO timestamp of when movie was watched (e.g., '2026-07-10T14:30:00Z')",
             },
           },
           required: ["movieId", "theaterName"],
@@ -401,7 +403,7 @@ class MoviesTrackerMCPServer {
               watchHistory: user.watchHistory || [],
             },
             null,
-            2
+            2,
           ),
         },
       ],
@@ -446,7 +448,7 @@ class MoviesTrackerMCPServer {
               })),
             },
             null,
-            2
+            2,
           ),
         },
       ],
@@ -497,7 +499,7 @@ class MoviesTrackerMCPServer {
               entryId: response.data.id,
             },
             null,
-            2
+            2,
           ),
         },
       ],
@@ -521,7 +523,7 @@ class MoviesTrackerMCPServer {
               message: "Watch history entry deleted successfully",
             },
             null,
-            2
+            2,
           ),
         },
       ],
@@ -546,7 +548,10 @@ class MoviesTrackerMCPServer {
     if (args.currency) payload.currency = args.currency;
     if (args.timestamp) payload.timestamp = args.timestamp;
 
-    await this.api.put(`/users/${userId}/watch-history/${args.entryId}`, payload);
+    await this.api.put(
+      `/users/${userId}/watch-history/${args.entryId}`,
+      payload,
+    );
 
     return {
       content: [
@@ -558,7 +563,7 @@ class MoviesTrackerMCPServer {
               message: "Watch history entry updated successfully",
             },
             null,
-            2
+            2,
           ),
         },
       ],
@@ -592,7 +597,7 @@ class MoviesTrackerMCPServer {
               leaderboard: formattedLeaderboard,
             },
             null,
-            2
+            2,
           ),
         },
       ],
@@ -644,7 +649,7 @@ class MoviesTrackerMCPServer {
               message: "Settings updated successfully",
             },
             null,
-            2
+            2,
           ),
         },
       ],

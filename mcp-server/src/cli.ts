@@ -62,9 +62,14 @@ async function login() {
   try {
     // Step 1: Request device code
     const codeResponse = await axios.post(`${API_BASE_URL}/auth/device/code`);
-    const { userCode, deviceCode, verificationUri, expiresIn } = codeResponse.data;
+    const { userCode, deviceCode, verificationUri, expiresIn } =
+      codeResponse.data;
 
-    console.log("→ Visit: \x1b[36m\x1b[4mhttps://mt.siv19.dev" + verificationUri + "\x1b[0m");
+    console.log(
+      "→ Visit: \x1b[36m\x1b[4mhttps://mt.siv19.dev" +
+        verificationUri +
+        "\x1b[0m",
+    );
     console.log(`→ Enter code: \x1b[1m\x1b[33m${userCode}\x1b[0m\n`);
     console.log("Waiting for authorization... ⏳\n");
 
@@ -74,9 +79,12 @@ async function login() {
 
     while (Date.now() - startTime < maxTime) {
       try {
-        const pollResponse = await axios.post(`${API_BASE_URL}/auth/device/poll`, {
-          deviceCode,
-        });
+        const pollResponse = await axios.post(
+          `${API_BASE_URL}/auth/device/poll`,
+          {
+            deviceCode,
+          },
+        );
 
         if (pollResponse.data.status === "authorized") {
           const { refreshToken, user } = pollResponse.data;
@@ -88,7 +96,9 @@ async function login() {
             apiBaseUrl: API_BASE_URL,
           });
 
-          console.log("\x1b[32m✓\x1b[0m Logged in as \x1b[1m" + user.email + "\x1b[0m");
+          console.log(
+            "\x1b[32m✓\x1b[0m Logged in as \x1b[1m" + user.email + "\x1b[0m",
+          );
           console.log("\x1b[32m✓\x1b[0m Credentials saved to " + AUTH_FILE);
           console.log("\nYou can now use the MCP server!");
           return;
@@ -104,7 +114,9 @@ async function login() {
       await sleep(3000); // Poll every 3 seconds
     }
 
-    console.error("\n\x1b[31m✗\x1b[0m Authorization timed out. Please try again.");
+    console.error(
+      "\n\x1b[31m✗\x1b[0m Authorization timed out. Please try again.",
+    );
     process.exit(1);
   } catch (error: any) {
     console.error("\n\x1b[31m✗\x1b[0m Login failed:", error.message);
@@ -155,7 +167,9 @@ async function testConnection() {
   const auth = loadAuth();
 
   if (!auth) {
-    console.error("\x1b[31m✗\x1b[0m Not logged in. Run: npx movies-tracker-mcp login");
+    console.error(
+      "\x1b[31m✗\x1b[0m Not logged in. Run: npx movies-tracker-mcp login",
+    );
     process.exit(1);
   }
 
@@ -163,9 +177,12 @@ async function testConnection() {
 
   try {
     // Get a fresh access token
-    const refreshResponse = await axios.post(`${auth.apiBaseUrl}/auth/refresh`, {
-      refreshToken: auth.refreshToken,
-    });
+    const refreshResponse = await axios.post(
+      `${auth.apiBaseUrl}/auth/refresh`,
+      {
+        refreshToken: auth.refreshToken,
+      },
+    );
 
     const customToken = refreshResponse.data.customToken;
 
@@ -180,7 +197,13 @@ async function testConnection() {
     console.log("\nProfile:");
     console.log("  Display Name: " + response.data.displayName);
     console.log("  Movies:       " + response.data.totalMoviesWatched);
-    console.log("  Runtime:      " + Math.floor(response.data.totalRuntimeSeconds / 3600) + "h " + Math.floor((response.data.totalRuntimeSeconds % 3600) / 60) + "m");
+    console.log(
+      "  Runtime:      " +
+        Math.floor(response.data.totalRuntimeSeconds / 3600) +
+        "h " +
+        Math.floor((response.data.totalRuntimeSeconds % 3600) / 60) +
+        "m",
+    );
   } catch (error: any) {
     console.error("\x1b[31m✗\x1b[0m Connection failed:", error.message);
 

@@ -1,0 +1,18 @@
+# Source files (publish only dist/)
+src/
+tsconfig.json
+.env
+.env.example
+
+# Documentation (include README)
+SETUP.md
+
+# Development files
+*.log
+.DS_Store
+node_modules/
+
+# Test files
+test/
+*.test.ts
+*.spec.ts

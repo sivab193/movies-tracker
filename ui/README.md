@@ -62,18 +62,35 @@ npm run build
 ## 📁 Directory Structure
 ```
 ui/
-├── app/                  # Next.js App Router Pages
-│   ├── page.tsx          # Landing & Hero Page
-│   ├── auth/             # Google OAuth Login Page
-│   ├── timer/            # Movie Catalog & TitleCard Timer
-│   ├── leaderboard/      # Annual Runtime Leaderboard
-│   └── admin/            # Admin Control Center
-├── components/           # Reusable Shadcn UI & Custom Components
+├── app/                      # Next.js App Router Pages
+│   ├── page.tsx              # Landing & Hero Page
+│   ├── auth/                 # Google OAuth Login Page
+│   ├── device/               # Device Authorization Page (for MCP/CLI)
+│   ├── timer/                # Movie Catalog & TitleCard Timer
+│   ├── leaderboard/          # Annual Runtime Leaderboard
+│   ├── stats/                # Community Statistics
+│   ├── contact/              # Contact & Contribution Page
+│   └── admin/                # Admin Control Center
+├── components/               # Reusable Shadcn UI & Custom Components
 │   ├── add-watch-dialog.tsx  # Watch History Modal
 │   ├── movie-grid.tsx        # Infinite Scroll Movie Grid
 │   ├── header.tsx            # Navigation Bar
 │   └── ui/                   # Shadcn UI primitives
-├── contexts/             # React Context Providers (`AuthContext`)
-├── lib/                  # TypeScript Types & Utilities (`types.ts`)
-└── services/             # API Client Layer (`api.ts`, `user-service.ts`)
+├── contexts/                 # React Context Providers (`AuthContext`)
+├── lib/                      # TypeScript Types & Utilities (`types.ts`)
+└── services/                 # API Client Layer (`api.ts`, `user-service.ts`)
 ```
+
+---
+
+## 🔐 Device Authorization Page
+
+The `/device` route provides a web interface for authorizing CLI tools and MCP servers:
+
+**Flow:**
+1. CLI shows user a code (e.g., `WXYZ-ABCD`)
+2. User visits `https://mt.siv19.dev/device`
+3. User enters code and authorizes
+4. CLI receives long-lived refresh token
+
+See **[MCP Server Guide](../mcp-server/README.md)** for client setup.

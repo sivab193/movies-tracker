@@ -83,20 +83,41 @@ python3 bulk_watch.py --uid <firebase_user_uid> --csv watch_history.csv
 ## 📁 Directory Structure
 ```
 backend/
-├── routes/                # Blueprint routes by domain
-│   ├── users.py           # User profiles, watch history, admin requests
-│   ├── movies.py          # Movie catalog, poster serving, pagination
-│   ├── theaters.py        # Approved theater management
-│   └── leaderboard.py     # Annual runtime leaderboard calculation
-├── app.py                 # Flask application factory & CORS configuration
-├── firebase_config.py     # Firebase Admin SDK & @verify_token decorator
-├── mongo_config.py        # PyMongo database connection pool
-├── scripts/              # CLI batch utilities and migration helpers
+├── routes/                    # Blueprint routes by domain
+│   ├── users.py               # User profiles, watch history, admin requests
+│   ├── movies.py              # Movie catalog, poster serving, pagination
+│   ├── theaters.py            # Approved theater management
+│   ├── leaderboard.py         # Annual runtime leaderboard calculation
+│   ├── stats.py               # Community statistics and insights
+│   └── device_auth.py         # Device authorization flow for MCP/CLI clients
+├── app.py                     # Flask application factory & CORS configuration
+├── firebase_config.py         # Firebase Admin SDK & token verification
+├── mongo_config.py            # PyMongo database connection pool
+├── scripts/                   # CLI batch utilities and migration helpers
 │   ├── bulk_import.py
 │   ├── bulk_delete_no_poster.py
 │   ├── bulk_theaters.py
 │   ├── bulk_watch.py
 │   ├── migrate_watch_history_normalize.py
 │   └── seed_data.py
-├── requirements.txt       # Python package dependencies
+├── requirements.txt           # Python package dependencies
 ```
+
+---
+
+## 🔐 Device Authorization Flow (MCP/CLI Integration)
+
+The backend includes a device authorization flow (`/api/auth/device/*`) for CLI tools and MCP servers:
+
+**Endpoints:**
+- `POST /api/auth/device/code` - Generate device code for authorization
+- `POST /api/auth/device/poll` - CLI polls for user authorization
+- `POST /api/auth/device/verify` - User submits code from web UI
+- `POST /api/auth/refresh` - Refresh access tokens using refresh token
+- `POST /api/auth/revoke` - Revoke refresh token (logout)
+
+**Database Collections:**
+- `device_codes` - Temporary authorization codes (15 min TTL)
+- `refresh_tokens` - Long-lived tokens (1 year expiry)
+
+See **[MCP Server Guide](../mcp-server/README.md)** for client implementation.

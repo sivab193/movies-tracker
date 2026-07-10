@@ -14,7 +14,9 @@
 **A high-performance, full-stack movie watch history tracker, TitleCard timer, and community leaderboard.**  
 Built with **Next.js 16 App Router**, **Python Flask**, **MongoDB Atlas**, and **Firebase Google OAuth**.
 
-[Explore API Docs](./docs/API_DOCS.md) · [OpenAPI Spec](./docs/openapi.yaml) · [Architecture Reference](./docs/ARCHITECTURE.md) · [Frontend Guide](./ui/README.md) · [Backend Guide](./backend/README.md)
+🌐 **Live:** [mt.siv19.dev](https://mt.siv19.dev)
+
+[Explore API Docs](./docs/API_DOCS.md) · [OpenAPI Spec](./docs/openapi.yaml) · [Architecture Reference](./docs/ARCHITECTURE.md) · [MCP Server](./mcp-server/README.md) · [Frontend Guide](./ui/README.md) · [Backend Guide](./backend/README.md)
 
 </div>
 
@@ -30,6 +32,7 @@ Whether you're a cinephile tracking every minute spent in theaters or competing 
 - **♾️ Infinite Scroll Catalog**: Browse through hundreds of movies with zero UI lag thanks to intersection-observed paginated API endpoints (`20 movies/page`).
 - **🛡️ Embedded MongoDB Binary Posters**: Movie posters are downloaded and stored directly inside MongoDB (`movie_posters` collection), guaranteeing permanent availability even if external URLs expire.
 - **⚡ Hybrid Vercel Deployment**: Seamlessly bridges a Next.js frontend with a Python serverless API under one unified domain via `vercel.json`.
+- **🤖 MCP Server Integration**: Connect with Claude AI and other assistants through our Model Context Protocol server - search movies, manage watch history, and view stats via natural language.
 
 ---
 
@@ -56,6 +59,7 @@ For detailed sequence diagrams of request lifecycles and storage topologies, see
 
 | Document | Description |
 | :--- | :--- |
+| **[MCP Server Guide](./mcp-server/README.md)** | Connect Claude AI and other assistants to your Movies Tracker via Model Context Protocol. |
 | **[REST API Reference](./docs/API_DOCS.md)** | Complete documentation of all endpoints, authentication headers, schemas, and status codes. |
 | **[OpenAPI 3.0 Specification](./docs/openapi.yaml)** | Standard OpenAPI / Swagger definition ready for Postman or Redoc import. |
 | **[Backend Engineering Guide](./backend/README.md)** | Flask environment setup, CLI utility documentation (`bulk_import.py`, `bulk_watch.py`), and routes. |
@@ -152,7 +156,38 @@ In your Vercel Dashboard → Project Settings → Environment Variables, configu
 
 This project is licensed under the **MIT License**. Feel free to fork, customize, and deploy your own movie tracking portal!
 
+## 🤖 AI Integration
+
+### MCP Server for Claude AI
+
+Connect your Movies Tracker to Claude and other AI assistants:
+
+```bash
+# Install and login
+npx movies-tracker-mcp login
+
+# Configure Claude Desktop
+{
+  "mcpServers": {
+    "movies-tracker": {
+      "command": "npx",
+      "args": ["-y", "movies-tracker-mcp"]
+    }
+  }
+}
+```
+
+**Features:**
+- Search movies by title, year, or language
+- Add and manage watch history
+- View leaderboards and user profiles
+- Update settings
+
+See **[MCP Server Documentation](./mcp-server/README.md)** for full setup guide.
+
+---
+
 ## 👨‍💻 Connect
 
 Built by **Siva B**.  
-Check out more on [LinkedIn](https://linkedin.com) or explore the code right here!
+Live at **[mt.siv19.dev](https://mt.siv19.dev)**
