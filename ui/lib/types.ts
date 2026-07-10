@@ -46,11 +46,19 @@ export interface WatchHistoryEntry {
   moviePosterUrl: string
   theaterName: string | null
   theaterLocation: string | null
+  theaterGmapsLink?: string | null
   timestamp: string | null // ISO Date string
   ticketCost: number
   currency: "INR" | "USD"
   ticketStubUrl?: string | null
   createdAt: string // ISO Date string
+}
+
+export interface Theater {
+  id: string
+  name: string
+  location?: string
+  gmapsLink?: string
 }
 
 // Helper to format seconds to display string

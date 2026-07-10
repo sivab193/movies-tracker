@@ -63,11 +63,33 @@ export function AddWatchDialog({
   const [selectedTheaterId, setSelectedTheaterId] = useState<string>("")
   const [theaterName, setTheaterName] = useState("")
   const [theaterLocation, setTheaterLocation] = useState("")
+  const [theaterGmapsLink, setTheaterGmapsLink] = useState("")
   const [watchDate, setWatchDate] = useState(new Date().toISOString().split('T')[0])
   const [ticketCost, setTicketCost] = useState("")
   const [currency, setCurrency] = useState<"INR" | "USD">("INR")
   const [hasScreenshot, setHasScreenshot] = useState(false)
   const [ticketStubFile, setTicketStubFile] = useState<File | null>(null)
+
+  const [movieSearch, setMovieSearch] = useState("")
+  const [isMovieDropdownOpen, setIsMovieDropdownOpen] = useState(false)
+  const [theaterSearch, setTheaterSearch] = useState("")
+  const [isTheaterDropdownOpen, setIsTheaterDropdownOpen] = useState(false)
+  const [cityFilter, setCityFilter] = useState("All")
+
+  const uniqueCities = Array.from(new Set(theaters.map(t => t.location?.trim()).filter(Boolean))).sort()
+
+  const filteredMovies = movies.filter(m => 
+    (m.title || "").toLowerCase().includes(movieSearch.toLowerCase()) ||
+    (m.year || "").toString().includes(movieSearch)
+  )
+
+  const filteredTheaters = theaters.filter(t => {
+    const matchesCity = cityFilter === "All" || (t.location?.trim() === cityFilter)
+    const matchesSearch = !theaterSearch || 
+      (t.name || "").toLowerCase().includes(theaterSearch.toLowerCase()) ||
+      (t.location || "").toLowerCase().includes(theaterSearch.toLowerCase())
+    return matchesCity && matchesSearch
+  })
 
   // Load movies and theaters when dialog opens
   useEffect(() => {
@@ -83,6 +105,7 @@ export function AddWatchDialog({
       setSelectedMovieId(initialData.movieId)
       setTheaterName(initialData.theaterName || "")
       setTheaterLocation(initialData.theaterLocation || "")
+      setTheaterGmapsLink(initialData.theaterGmapsLink || "")
       setTicketCost(initialData.ticketCost?.toString() || "")
       setCurrency(initialData.currency || "INR")
       if (initialData.timestamp) {
@@ -113,6 +136,7 @@ export function AddWatchDialog({
     if (selected) {
       setTheaterName(selected.name)
       setTheaterLocation(selected.location || "")
+      setTheaterGmapsLink(selected.gmapsLink || "")
     }
   }
 
@@ -121,6 +145,11 @@ export function AddWatchDialog({
     setSelectedTheaterId("")
     setTheaterName("")
     setTheaterLocation("")
+    setTheaterGmapsLink("")
+    setMovieSearch("")
+    setTheaterSearch("")
+    setIsMovieDropdownOpen(false)
+    setIsTheaterDropdownOpen(false)
     setWatchDate(new Date().toISOString().split('T')[0])
     setTicketCost("")
     setCurrency("INR")
@@ -150,6 +179,7 @@ export function AddWatchDialog({
         movieId: selectedMovieId || initialData?.movieId,
         theaterName: theaterName.trim() || undefined,
         theaterLocation: theaterLocation.trim() || undefined,
+        theaterGmapsLink: theaterGmapsLink.trim() || undefined,
         timestamp: new Date(watchDate).toISOString(),
         ticketCost: ticketCost ? parseFloat(ticketCost) : 0,
         currency,
@@ -210,51 +240,175 @@ export function AddWatchDialog({
             </div>
           )}
 
-          {/* Movie Dropdown */}
-          <div className="space-y-2">
-            <Label htmlFor="movie-select">Movie</Label>
+          {/* Movie Search & Select */}
+          <div className="relative space-y-2">
+            <Label htmlFor="movie-search">Movie</Label>
             {initialData ? (
               <div className="flex items-center gap-3 p-2 border rounded-md bg-muted/50">
                 {initialData.moviePosterUrl && <img src={initialData.moviePosterUrl} alt="Poster" className="h-10 w-auto rounded" />}
                 <span className="font-medium">{initialData.movieTitle}</span>
               </div>
             ) : (
-              <Select value={selectedMovieId} onValueChange={setSelectedMovieId}>
-                <SelectTrigger id="movie-select">
-                  <SelectValue placeholder="Select a movie" />
-                </SelectTrigger>
-                <SelectContent>
-                  {movies.map((movie) => (
-                    <SelectItem key={movie.id} value={movie.id}>
-                      {movie.title} ({movie.year})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="relative">
+                <div className="relative">
+                  <Input
+                    id="movie-search"
+                    type="text"
+                    placeholder={selectedMovieId ? (movies.find(m => m.id === selectedMovieId)?.title || "Selected movie") : "Type to search movie (title or year)..."}
+                    value={movieSearch}
+                    onChange={(e) => {
+                      setMovieSearch(e.target.value)
+                      setIsMovieDropdownOpen(true)
+                    }}
+                    onFocus={() => setIsMovieDropdownOpen(true)}
+                    onBlur={() => setTimeout(() => setIsMovieDropdownOpen(false), 200)}
+                    className="pr-8"
+                  />
+                  {(selectedMovieId || movieSearch) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedMovieId("")
+                        setMovieSearch("")
+                        setIsMovieDropdownOpen(false)
+                      }}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs font-bold px-1"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+                {selectedMovieId && !isMovieDropdownOpen && (
+                  <div className="mt-1.5 flex items-center gap-2 p-2 border rounded-md bg-primary/5 border-primary/20 text-sm">
+                    <Film className="h-4 w-4 text-primary shrink-0" />
+                    <span className="font-medium truncate">{movies.find(m => m.id === selectedMovieId)?.title} ({movies.find(m => m.id === selectedMovieId)?.year})</span>
+                  </div>
+                )}
+                {isMovieDropdownOpen && (
+                  <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-52 overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-md p-1 space-y-1">
+                    {filteredMovies.length === 0 ? (
+                      <div className="py-6 text-center text-sm text-muted-foreground">No movies found.</div>
+                    ) : (
+                      filteredMovies.map((movie) => (
+                        <div
+                          key={movie.id}
+                          onClick={() => {
+                            setSelectedMovieId(movie.id)
+                            setMovieSearch("")
+                            setIsMovieDropdownOpen(false)
+                          }}
+                          className={`flex items-center gap-2 px-2.5 py-2 text-sm rounded-sm cursor-pointer hover:bg-accent hover:text-accent-foreground ${selectedMovieId === movie.id ? "bg-accent font-medium" : ""}`}
+                        >
+                          {movie.posterUrl ? (
+                            <img src={movie.posterUrl} alt="" className="h-8 w-6 object-cover rounded shrink-0" />
+                          ) : (
+                            <div className="h-8 w-6 bg-muted rounded flex items-center justify-center shrink-0"><Film className="h-3 w-3 text-muted-foreground" /></div>
+                          )}
+                          <div className="flex flex-col overflow-hidden">
+                            <span className="truncate">{movie.title}</span>
+                            <span className="text-xs text-muted-foreground">{movie.year}</span>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
-          {/* Theater Dropdown Selection */}
-          <div className="space-y-2">
-            <Label htmlFor="theater-select" className="flex items-center gap-2">
-              <MapPin className="h-4 w-4" />
-              Select Theater
-            </Label>
+          {/* Theater Search & City Filter */}
+          <div className="relative space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <Label htmlFor="theater-search" className="flex items-center gap-2">
+                <MapPin className="h-4 w-4" />
+                Select Theater
+              </Label>
+              {uniqueCities.length > 0 && (
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-muted-foreground">City:</span>
+                  <select
+                    value={cityFilter}
+                    onChange={(e) => {
+                      setCityFilter(e.target.value)
+                      setIsTheaterDropdownOpen(true)
+                    }}
+                    className="h-7 text-xs rounded border bg-background px-2 py-0.5 focus:outline-none focus:ring-1 focus:ring-ring"
+                  >
+                    <option value="All">All Cities ({theaters.length})</option>
+                    {uniqueCities.map(city => (
+                      <option key={city} value={city}>{city}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
             {theaters.length === 0 ? (
               <p className="text-sm text-muted-foreground italic">No theaters available. Ask your admin to add one.</p>
             ) : (
-              <Select value={selectedTheaterId} onValueChange={handleTheaterChange}>
-                <SelectTrigger id="theater-select">
-                  <SelectValue placeholder="Select a theater" />
-                </SelectTrigger>
-                <SelectContent>
-                  {theaters.map((t) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.name} {t.location ? `(${t.location})` : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="relative">
+                <div className="relative">
+                  <Input
+                    id="theater-search"
+                    type="text"
+                    placeholder={selectedTheaterId ? (theaters.find(t => t.id === selectedTheaterId)?.name || "Selected theater") : "Type to search theater name or city..."}
+                    value={theaterSearch}
+                    onChange={(e) => {
+                      setTheaterSearch(e.target.value)
+                      setIsTheaterDropdownOpen(true)
+                    }}
+                    onFocus={() => setIsTheaterDropdownOpen(true)}
+                    onBlur={() => setTimeout(() => setIsTheaterDropdownOpen(false), 200)}
+                    className="pr-8"
+                  />
+                  {(selectedTheaterId || theaterSearch) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedTheaterId("")
+                        setTheaterName("")
+                        setTheaterLocation("")
+                        setTheaterGmapsLink("")
+                        setTheaterSearch("")
+                        setIsTheaterDropdownOpen(false)
+                      }}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs font-bold px-1"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+                {selectedTheaterId && !isTheaterDropdownOpen && (
+                  <div className="mt-1.5 flex items-center justify-between p-2 border rounded-md bg-primary/5 border-primary/20 text-sm">
+                    <div className="flex items-center gap-2 overflow-hidden">
+                      <MapPin className="h-4 w-4 text-primary shrink-0" />
+                      <span className="font-medium truncate">{theaterName} {theaterLocation ? `(${theaterLocation})` : ""}</span>
+                    </div>
+                  </div>
+                )}
+                {isTheaterDropdownOpen && (
+                  <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-52 overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-md p-1 space-y-1">
+                    {filteredTheaters.length === 0 ? (
+                      <div className="py-6 text-center text-sm text-muted-foreground">No theaters matched your search.</div>
+                    ) : (
+                      filteredTheaters.map((t) => (
+                        <div
+                          key={t.id}
+                          onClick={() => {
+                            handleTheaterChange(t.id)
+                            setTheaterSearch("")
+                            setIsTheaterDropdownOpen(false)
+                          }}
+                          className={`flex items-center justify-between px-2.5 py-2 text-sm rounded-sm cursor-pointer hover:bg-accent hover:text-accent-foreground ${selectedTheaterId === t.id ? "bg-accent font-medium" : ""}`}
+                        >
+                          <span className="truncate">{t.name}</span>
+                          {t.location && <span className="text-xs text-muted-foreground shrink-0 ml-2">{t.location}</span>}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
+              </div>
             )}
           </div>
 

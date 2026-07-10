@@ -160,7 +160,8 @@ def add_watch_history():
         "movieTitle": movie.get('title'),
         "moviePosterUrl": movie.get('posterUrl'),
         "theaterName": data.get('theaterName'),
-        "theaterLocation": data.get('location'),
+        "theaterLocation": data.get('theaterLocation', data.get('location')),
+        "theaterGmapsLink": data.get('theaterGmapsLink', data.get('gmapsLink', '')),
         "ticketCost": data.get('ticketCost'),
         "currency": data.get('currency'),
         "ticketStubUrl": ticket_stub_url,
@@ -287,6 +288,7 @@ def update_watch_history(user_id, entry_id):
     updates = {}
     if 'theaterName' in data: updates['watchHistory.$.theaterName'] = data['theaterName']
     if 'theaterLocation' in data: updates['watchHistory.$.theaterLocation'] = data['theaterLocation']
+    if 'theaterGmapsLink' in data: updates['watchHistory.$.theaterGmapsLink'] = data['theaterGmapsLink']
     if 'ticketCost' in data: updates['watchHistory.$.ticketCost'] = data['ticketCost']
     if 'timestamp' in data: updates['watchHistory.$.timestamp'] = data['timestamp']
     if 'currency' in data: updates['watchHistory.$.currency'] = data['currency']
@@ -490,20 +492,25 @@ def get_public_profile(user_id):
             if caller and caller.get('isAdmin'):
                 is_admin = True
 
+    user = None
     try:
         user = db.users.find_one({"_id": ObjectId(user_id)})
     except:
+        pass
+    if not user:
         user = db.users.find_one({"firebaseUid": user_id})
+    if not user:
+        user = db.users.find_one({"_id": user_id})
 
     if not user:
         return jsonify({"error": "User not found"}), 404
     
-    if not user.get('isPublic', False) and not is_admin:
+    if not user.get('isPublic', False) and not user.get('joinedLeaderboard', False) and not is_admin:
         return jsonify({"error": "This profile is private"}), 403
 
     public_fields = user.get('publicFields', ['totalRuntime', 'movieCount'])
     profile = {
-        "userId": str(user['_id']),
+        "userId": user.get('firebaseUid') or str(user['_id']),
         "firebaseUid": user.get('firebaseUid'), # Return UID for admin actions
         "displayName": user.get('displayName', 'Anonymous'),
         "photoURL": user.get('photoURL'),

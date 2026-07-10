@@ -146,6 +146,8 @@ def import_movies_from_csv(csv_path, year=0, min_year=0, min_rating=0.0, min_vot
                 "posterUrl": None,
                 "imdbRating": float(omdb_data.get('imdbRating')) if omdb_data.get('imdbRating') != "N/A" else None,
                 "runtime": runtime_str,
+                "language": omdb_data.get('Language', 'English'),
+                "released": omdb_data.get('Released', str(omdb_data.get('Year', ''))),
                 "submissionCount": 0,
                 "averageTimeSeconds": average_time_seconds,
                 "createdAt": datetime.datetime.now(datetime.timezone.utc)

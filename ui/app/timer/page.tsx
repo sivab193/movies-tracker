@@ -72,10 +72,13 @@ const PAGE_SIZE = 20
 
 type SortOption = "latest" | "popular"
 
+const LANGUAGES = ["All", "English", "Tamil", "Hindi", "Telugu", "Malayalam", "Kannada", "Spanish", "French", "Korean", "Japanese"]
+
 export default function HomePage() {
   const [movies, setMovies] = useState<Movie[]>([])
   const [loading, setLoading] = useState(true)
   const [sortBy, setSortBy] = useState<SortOption>("latest")
+  const [language, setLanguage] = useState<string>("All")
   const [addedMovies, setAddedMovies] = useState<Movie[]>([])
   const [skip, setSkip] = useState(0)
   const [hasMore, setHasMore] = useState(true)
@@ -93,14 +96,14 @@ export default function HomePage() {
       }
 
       const currentSkip = isLoadMore ? skip : 0
-      const data = await getMovies(currentSkip, PAGE_SIZE)
+      const data = await getMovies(currentSkip, PAGE_SIZE, language === "All" ? "" : language)
       const movieList = data.movies || []
       const totalCount = data.total || 0
 
       // Sort in memory for now
       const sorted = [...movieList].sort((a, b) => {
         if (sortBy === "latest") {
-          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          return (b.year || 0) - (a.year || 0) || new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
         }
         return (b.submissionCount || 0) - (a.submissionCount || 0)
       })
@@ -125,16 +128,16 @@ export default function HomePage() {
       setLoading(false)
       setLoadingMore(false)
     }
-  }, [sortBy, skip])
+  }, [sortBy, skip, language])
 
-  // Initial load and sort change
+  // Initial load and sort/language change
   useEffect(() => {
     setSkip(0)
     setHasMore(true)
     setMovies([])
     fetchMovies(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortBy])
+  }, [sortBy, language])
 
   // Infinite scroll with IntersectionObserver
   useEffect(() => {
@@ -179,28 +182,42 @@ export default function HomePage() {
           {/* AddMovieDialog removed - see Admin Dashboard */}
         </section>
 
-        {/* Sort Options */}
-        <div className="mb-6 flex items-center justify-between">
+        {/* Sort and Language Options */}
+        <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <h2 className="text-xl font-semibold">Movies</h2>
-          <div className="flex items-center gap-2">
-            <Button
-              variant={sortBy === "latest" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setSortBy("latest")}
-              className="gap-1.5"
-            >
-              <Clock className="h-4 w-4" />
-              Latest
-            </Button>
-            <Button
-              variant={sortBy === "popular" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => setSortBy("popular")}
-              className="gap-1.5"
-            >
-              <TrendingUp className="h-4 w-4" />
-              Popular
-            </Button>
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-muted-foreground">Language:</span>
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              >
+                {LANGUAGES.map(lang => (
+                  <option key={lang} value={lang}>{lang}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-2 border-l pl-3 border-border">
+              <Button
+                variant={sortBy === "latest" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setSortBy("latest")}
+                className="gap-1.5"
+              >
+                <Clock className="h-4 w-4" />
+                Latest
+              </Button>
+              <Button
+                variant={sortBy === "popular" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setSortBy("popular")}
+                className="gap-1.5"
+              >
+                <TrendingUp className="h-4 w-4" />
+                Popular
+              </Button>
+            </div>
           </div>
         </div>
 

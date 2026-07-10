@@ -63,6 +63,9 @@ export async function updateUserSettings(settings: {
 
 export async function getUserProfile(userId: string) {
     const response = await fetch(`${API_BASE_URL}/users/${userId}`)
-    if (!response.ok) throw new Error("User profile not found or private")
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || "User profile not found or private")
+    }
     return response.json()
 }

@@ -13,6 +13,7 @@ def list_theaters():
         theaters = list(db.theaters.find({}))
         for t in theaters:
             t['id'] = str(t.pop('_id'))
+            t.setdefault('gmapsLink', '')
         return jsonify({"theaters": theaters})
     except Exception as e:
         print(f"Error fetching theaters: {e}")
@@ -31,6 +32,7 @@ def add_theater():
     data = request.get_json()
     name = data.get('name')
     location = data.get('location', '')
+    gmaps_link = data.get('gmapsLink', '')
 
     if not name:
         return jsonify({"error": "Theater name is required"}), 400
@@ -46,7 +48,8 @@ def add_theater():
 
         new_theater = {
             "name": name,
-            "location": location
+            "location": location,
+            "gmapsLink": gmaps_link
         }
         result = db.theaters.insert_one(new_theater)
         new_theater['id'] = str(result.inserted_id)

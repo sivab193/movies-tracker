@@ -118,8 +118,12 @@ export async function getPublicProfile(userId: string) {
     return result;
 }
 
-export async function getMovies(skip: number = 0, limit: number = 50) {
-    const response = await fetch(`${API_BASE_URL}/movies/?skip=${skip}&limit=${limit}`);
+export async function getMovies(skip: number = 0, limit: number = 50, language: string = "") {
+    let url = `${API_BASE_URL}/movies/?skip=${skip}&limit=${limit}`;
+    if (language && language.toLowerCase() !== "all") {
+        url += `&language=${encodeURIComponent(language)}`;
+    }
+    const response = await fetch(url);
     const data = await response.json();
 
     if (!response.ok) {
@@ -148,7 +152,7 @@ export async function getTheaters() {
     return data.theaters;
 }
 
-export async function addTheater(name: string, location?: string) {
+export async function addTheater(name: string, location?: string, gmapsLink?: string) {
     const token = await auth?.currentUser?.getIdToken();
     if (!token) throw new Error("User not authenticated");
 
@@ -158,7 +162,7 @@ export async function addTheater(name: string, location?: string) {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify({ name, location })
+        body: JSON.stringify({ name, location, gmapsLink })
     });
 
     const data = await response.json();

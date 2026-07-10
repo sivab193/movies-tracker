@@ -37,25 +37,41 @@ def main():
         return
 
     print(f"📖 Reading theaters from {file_path}...")
-    with open(file_path, "r", encoding="utf-8") as f:
-        lines = [line.strip() for line in f if line.strip() and not line.strip().startswith("#")]
+    entries = []
+    if file_path.lower().endswith(".csv"):
+        import csv
+        with open(file_path, "r", encoding="utf-8", newline="") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                name = row.get("Name", row.get("name", "")).strip()
+                location = row.get("City", row.get("Location", row.get("city", row.get("location", "")))).strip()
+                gmaps_link = row.get("Google Maps Location Link", row.get("gmapsLink", "")).strip()
+                if name:
+                    entries.append({"name": name, "location": location, "gmapsLink": gmaps_link})
+    else:
+        with open(file_path, "r", encoding="utf-8") as f:
+            lines = [line.strip() for line in f if line.strip() and not line.strip().startswith("#")]
+        for line in lines:
+            if "|" in line:
+                parts = [p.strip() for p in line.split("|", 1)]
+                name = parts[0]
+                location = parts[1]
+            else:
+                name = line
+                location = ""
+            if name:
+                entries.append({"name": name, "location": location, "gmapsLink": ""})
 
-    print(f"📦 Found {len(lines)} theater entries to process.")
+    print(f"📦 Found {len(entries)} theater entries to process.")
 
     added_count = 0
+    updated_count = 0
     skipped_count = 0
 
-    for idx, line in enumerate(lines, 1):
-        if "|" in line:
-            parts = [p.strip() for p in line.split("|", 1)]
-            name = parts[0]
-            location = parts[1]
-        else:
-            name = line
-            location = ""
-
-        if not name:
-            continue
+    for idx, entry in enumerate(entries, 1):
+        name = entry["name"]
+        location = entry["location"]
+        gmaps_link = entry.get("gmapsLink", "")
 
         # Check for duplicates case-insensitively
         existing = db.theaters.find_one({
@@ -64,22 +80,33 @@ def main():
         })
 
         if existing:
-            print(f"[{idx}/{len(lines)}] ⚠️  Skipped existing theater: '{name}' ({location})")
-            skipped_count += 1
+            if not existing.get("gmapsLink") and gmaps_link:
+                try:
+                    db.theaters.update_one({"_id": existing["_id"]}, {"$set": {"gmapsLink": gmaps_link}})
+                    print(f"[{idx}/{len(entries)}] 🔄 Updated existing theater '{name}' ({location}) with Google Maps link.")
+                    updated_count += 1
+                except Exception as e:
+                    print(f"[{idx}/{len(entries)}] ❌ Error updating '{name}': {e}")
+            else:
+                print(f"[{idx}/{len(entries)}] ⚠️  Skipped existing theater: '{name}' ({location})")
+                skipped_count += 1
             continue
 
         try:
             db.theaters.insert_one({
                 "name": name,
-                "location": location
+                "location": location,
+                "gmapsLink": gmaps_link
             })
-            print(f"[{idx}/{len(lines)}] ✅ Added theater: '{name}' ({location})")
+            print(f"[{idx}/{len(entries)}] ✅ Added theater: '{name}' ({location})")
             added_count += 1
         except Exception as e:
-            print(f"[{idx}/{len(lines)}] ❌ Error adding '{name}': {e}")
+            print(f"[{idx}/{len(entries)}] ❌ Error adding '{name}': {e}")
 
     print("\n--- Summary ---")
     print(f"✨ Successfully added: {added_count} theaters.")
+    if updated_count > 0:
+        print(f"🔄 Successfully updated with Maps link: {updated_count} theaters.")
     print(f"⚠️  Skipped (duplicates): {skipped_count} theaters.")
 
 def re_escape(s):

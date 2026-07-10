@@ -119,6 +119,8 @@ def add_movie():
             "posterUrl": None,
             "imdbRating": float(omdb_data.get('imdbRating')) if omdb_data.get('imdbRating') != "N/A" else None,
             "runtime": runtime_str,
+            "language": omdb_data.get('Language', 'English'),
+            "released": omdb_data.get('Released', str(omdb_data.get('Year', ''))),
             "submissionCount": 0,
             "averageTimeSeconds": average_time_seconds,
             "createdAt": datetime.datetime.now(datetime.timezone.utc)
@@ -156,6 +158,7 @@ def list_movies():
     # Get optional search/filter params
     title_search = request.args.get('title', '')
     year_filter = request.args.get('year', '')
+    language_filter = request.args.get('language', '')
     
     query = {}
     if title_search:
@@ -165,12 +168,17 @@ def list_movies():
             query['year'] = int(year_filter)
         except ValueError:
             pass
+    if language_filter and language_filter.lower() != 'all':
+        query['$or'] = [
+            {'language': {'$regex': language_filter, '$options': 'i'}},
+            {'Language': {'$regex': language_filter, '$options': 'i'}}
+        ]
     
     # Get total count for pagination
     total = db.movies.count_documents(query)
         
-    # Sort by createdAt desc with skip and limit
-    movies_cursor = db.movies.find(query).sort("createdAt", -1).skip(skip).limit(limit)
+    # Sort by year desc (latest release) then createdAt desc with skip and limit
+    movies_cursor = db.movies.find(query).sort([("year", -1), ("createdAt", -1)]).skip(skip).limit(limit)
     
     movies = []
     for m in movies_cursor:

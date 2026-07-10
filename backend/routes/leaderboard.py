@@ -16,13 +16,15 @@ def get_leaderboard():
         for user in users_cursor:
             public_fields = user.get('publicFields', ['totalRuntime', 'movieCount'])
             movies_watched = user.get('totalMoviesWatched', 0) if 'movieCount' in public_fields else -1
+            user_id = user.get('firebaseUid') or str(user['_id'])
             leaderboard.append({
-                "userId": str(user['_id']),
+                "userId": user_id,
                 "displayName": user.get('displayName', 'Anonymous'),
                 "photoURL": user.get('photoURL'),
                 "totalRuntimeSeconds": user.get('totalRuntimeSeconds', 0),
                 "totalMoviesWatched": movies_watched,
-                "isPublic": user.get('isPublic', False)
+                "isPublic": user.get('isPublic', False),
+                "joinedLeaderboard": user.get('joinedLeaderboard', False)
             })
             
         return jsonify({"leaderboard": leaderboard})

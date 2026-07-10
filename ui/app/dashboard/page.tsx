@@ -228,18 +228,24 @@ export default function DashboardPage() {
                         <div className="flex items-center gap-2">
                           <MapPin className="h-3.5 w-3.5" />
                           <span>{entry.theaterName}</span>
-                          {entry.theaterLocation && (
+                          {entry.theaterLocation && !entry.theaterLocation.startsWith("http") && (
+                            <span className="text-muted-foreground">({entry.theaterLocation})</span>
+                          )}
+                          {(entry.theaterGmapsLink || entry.theaterLocation) && (
                             <a
                               href={
-                                entry.theaterLocation.startsWith("http")
+                                entry.theaterGmapsLink
+                                  ? entry.theaterGmapsLink
+                                  : entry.theaterLocation?.startsWith("http")
                                   ? entry.theaterLocation
                                   : `https://maps.google.com/?q=${encodeURIComponent(
-                                      entry.theaterLocation
+                                      `${entry.theaterName || ""} ${entry.theaterLocation || ""}`.trim()
                                     )}`
                               }
                               target="_blank"
                               rel="noopener noreferrer"
-                              className="text-primary hover:underline"
+                              className="text-primary hover:underline inline-flex items-center"
+                              title="View on Google Maps"
                             >
                               <ExternalLink className="h-3.5 w-3.5" />
                             </a>

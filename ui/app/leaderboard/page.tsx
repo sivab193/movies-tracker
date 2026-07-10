@@ -90,39 +90,21 @@ export default function LeaderboardPage() {
                                     {index + 1 === 1 ? '🥇' : index + 1 === 2 ? '🥈' : index + 1 === 3 ? '🥉' : <span className="text-muted-foreground text-sm">#{index + 1}</span>}
                                 </div>
                                 <div className="col-span-6 md:col-span-8 overflow-hidden">
-                                    {user.isPublic ? (
-                                        <Link href={`/users/${user.userId}`} className="flex items-center gap-3 group truncate">
-                                            <div className="h-8 w-8 shrink-0 rounded-full bg-secondary flex items-center justify-center overflow-hidden ring-0 transition-all group-hover:ring-2 group-hover:ring-primary/50">
-                                                {user.photoURL ? (
-                                                    <img src={user.photoURL} alt={user.displayName} className="h-full w-full object-cover" />
-                                                ) : (
-                                                    <span className="text-xs font-bold">{user.displayName?.[0]?.toUpperCase() || 'U'}</span>
-                                                )}
-                                            </div>
-                                            <div className="flex flex-col md:flex-row md:items-center md:gap-2 truncate">
-                                                <span className="font-medium group-hover:text-primary transition-colors underline-offset-4 group-hover:underline truncate">{user.displayName || 'Anonymous'}</span>
-                                                <span className="hidden md:inline-flex text-xs text-muted-foreground items-center gap-1 shrink-0">
-                                                    • {user.totalMoviesWatched === -1 ? 'Hidden' : `${user.totalMoviesWatched} movies`}
-                                                </span>
-                                            </div>
-                                        </Link>
-                                    ) : (
-                                        <div className="flex items-center gap-3 truncate">
-                                            <div className="h-8 w-8 shrink-0 rounded-full bg-secondary flex items-center justify-center overflow-hidden">
-                                                {user.photoURL ? (
-                                                    <img src={user.photoURL} alt={user.displayName} className="h-full w-full object-cover" />
-                                                ) : (
-                                                    <span className="text-xs font-bold">{user.displayName?.[0]?.toUpperCase() || 'U'}</span>
-                                                )}
-                                            </div>
-                                            <div className="flex flex-col md:flex-row md:items-center md:gap-2 truncate">
-                                                <span className="font-medium truncate">{user.displayName || 'Anonymous'}</span>
-                                                <span className="hidden md:inline-flex text-xs text-muted-foreground items-center gap-1 shrink-0">
-                                                    • {user.totalMoviesWatched === -1 ? 'Hidden' : `${user.totalMoviesWatched} movies`}
-                                                </span>
-                                            </div>
+                                    <Link href={`/users/${user.userId}`} className="flex items-center gap-3 group truncate">
+                                        <div className="h-8 w-8 shrink-0 rounded-full bg-secondary flex items-center justify-center overflow-hidden ring-0 transition-all group-hover:ring-2 group-hover:ring-primary/50">
+                                            {user.photoURL ? (
+                                                <img src={user.photoURL} alt={user.displayName} className="h-full w-full object-cover" />
+                                            ) : (
+                                                <span className="text-xs font-bold">{user.displayName?.[0]?.toUpperCase() || 'U'}</span>
+                                            )}
                                         </div>
-                                    )}
+                                        <div className="flex flex-col md:flex-row md:items-center md:gap-2 truncate">
+                                            <span className="font-medium group-hover:text-primary transition-colors underline-offset-4 group-hover:underline truncate">{user.displayName || 'Anonymous'}</span>
+                                            <span className="hidden md:inline-flex text-xs text-muted-foreground items-center gap-1 shrink-0">
+                                                • {user.totalMoviesWatched === -1 ? 'Hidden' : `${user.totalMoviesWatched} movies`}
+                                            </span>
+                                        </div>
+                                    </Link>
                                 </div>
                                 <div className="col-span-4 md:col-span-3 text-right font-mono font-medium text-primary text-sm md:text-base">
                                     {formatRuntime(user.totalRuntimeSeconds)}

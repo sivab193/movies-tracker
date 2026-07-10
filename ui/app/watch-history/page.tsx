@@ -23,7 +23,8 @@ import {
     ArrowUpDown,
     CreditCard,
     Pencil,
-    Trash
+    Trash,
+    ExternalLink
 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { AddWatchDialog } from "@/components/add-watch-dialog"
@@ -277,12 +278,27 @@ export default function WatchHistoryPage() {
                                                     <div className="font-semibold">{entry.movieTitle}</div>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <div className="flex flex-col">
-                                                        <span>{entry.theaterName || "N/A"}</span>
-                                                        {entry.theaterLocation && (
-                                                            <span className="text-xs text-muted-foreground flex items-center gap-1">
-                                                                <MapPin className="h-3 w-3" /> {entry.theaterLocation}
-                                                            </span>
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <span className="font-medium">{entry.theaterName || "N/A"}</span>
+                                                        {(entry.theaterGmapsLink || entry.theaterLocation) && (
+                                                            <a
+                                                                href={
+                                                                    entry.theaterGmapsLink
+                                                                        ? entry.theaterGmapsLink
+                                                                        : entry.theaterLocation?.startsWith("http")
+                                                                        ? entry.theaterLocation
+                                                                        : `https://maps.google.com/?q=${encodeURIComponent(
+                                                                              `${entry.theaterName || ""} ${entry.theaterLocation || ""}`.trim()
+                                                                          )}`
+                                                                }
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                                                            >
+                                                                <MapPin className="h-3 w-3" />
+                                                                <span>{entry.theaterLocation && !entry.theaterLocation.startsWith("http") ? entry.theaterLocation : "View Map"}</span>
+                                                                <ExternalLink className="h-2.5 w-2.5" />
+                                                            </a>
                                                         )}
                                                     </div>
                                                 </TableCell>

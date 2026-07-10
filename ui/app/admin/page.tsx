@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
-import { Loader2, Plus, ShieldAlert, Trash2, Search, Users, MapPin } from "lucide-react"
+import { Loader2, Plus, ShieldAlert, Trash2, Search, Users, MapPin, ExternalLink } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -33,6 +33,7 @@ export default function AdminPage() {
     const [theaters, setTheaters] = useState<any[]>([])
     const [newTheaterName, setNewTheaterName] = useState("")
     const [newTheaterLoc, setNewTheaterLoc] = useState("")
+    const [newTheaterGmapsLink, setNewTheaterGmapsLink] = useState("")
     const [addingTheater, setAddingTheater] = useState(false)
     const [localLoading, setLocalLoading] = useState(true)
     const [titleFilter, setTitleFilter] = useState("")
@@ -95,10 +96,11 @@ export default function AdminPage() {
         if (!newTheaterName.trim()) return
         setAddingTheater(true)
         try {
-            const newT = await addTheater(newTheaterName.trim(), newTheaterLoc.trim() || undefined)
+            const newT = await addTheater(newTheaterName.trim(), newTheaterLoc.trim() || undefined, newTheaterGmapsLink.trim() || undefined)
             setTheaters([...theaters, newT])
             setNewTheaterName("")
             setNewTheaterLoc("")
+            setNewTheaterGmapsLink("")
         } catch (err) {
             console.error("Failed to add theater", err)
             alert(err instanceof Error ? err.message : "Failed to add theater")
@@ -329,7 +331,7 @@ export default function AdminPage() {
                         </CardHeader>
                         <CardContent className="space-y-6">
                             {/* Add Theater Form */}
-                            <form onSubmit={handleAddTheater} className="flex flex-col sm:flex-row gap-4 p-4 border rounded-lg bg-muted/20">
+                            <form onSubmit={handleAddTheater} className="flex flex-col md:flex-row gap-4 p-4 border rounded-lg bg-muted/20">
                                 <div className="flex-1 space-y-2">
                                     <Input
                                         placeholder="Theater Name (e.g. IMAX Cinemas)"
@@ -341,9 +343,17 @@ export default function AdminPage() {
                                 </div>
                                 <div className="flex-1 space-y-2">
                                     <Input
-                                        placeholder="Location (e.g. Forum Mall, Bangalore)"
+                                        placeholder="City / Location (e.g. Hosur, Bangalore)"
                                         value={newTheaterLoc}
                                         onChange={(e) => setNewTheaterLoc(e.target.value)}
+                                        disabled={addingTheater}
+                                    />
+                                </div>
+                                <div className="flex-1 space-y-2">
+                                    <Input
+                                        placeholder="Google Maps Link (https://maps.google.com/...)"
+                                        value={newTheaterGmapsLink}
+                                        onChange={(e) => setNewTheaterGmapsLink(e.target.value)}
                                         disabled={addingTheater}
                                     />
                                 </div>
@@ -359,6 +369,7 @@ export default function AdminPage() {
                                         <tr className="border-b">
                                             <th className="text-left py-3 px-2 font-medium">Name</th>
                                             <th className="text-left py-3 px-2 font-medium">Location</th>
+                                            <th className="text-left py-3 px-2 font-medium">Maps Link</th>
                                             <th className="text-center py-3 px-2 font-medium w-16">Action</th>
                                         </tr>
                                     </thead>
@@ -367,6 +378,21 @@ export default function AdminPage() {
                                             <tr key={t.id} className="border-b hover:bg-muted/50">
                                                 <td className="py-3 px-2 font-medium">{t.name}</td>
                                                 <td className="py-3 px-2 text-muted-foreground">{t.location || "N/A"}</td>
+                                                <td className="py-3 px-2">
+                                                    {t.gmapsLink ? (
+                                                        <a
+                                                            href={t.gmapsLink}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="inline-flex items-center gap-1.5 text-primary hover:underline font-medium text-xs bg-primary/10 px-2.5 py-1 rounded-full"
+                                                        >
+                                                            <ExternalLink className="h-3.5 w-3.5" />
+                                                            View Map
+                                                        </a>
+                                                    ) : (
+                                                        <span className="text-muted-foreground text-xs">N/A</span>
+                                                    )}
+                                                </td>
                                                 <td className="py-3 px-2 text-center">
                                                     <Button
                                                         variant="ghost"
@@ -381,7 +407,7 @@ export default function AdminPage() {
                                         ))}
                                         {theaters.length === 0 && (
                                             <tr>
-                                                <td colSpan={3} className="text-center py-8 text-muted-foreground">
+                                                <td colSpan={4} className="text-center py-8 text-muted-foreground">
                                                     No theaters added yet. Add a theater above to populate the list.
                                                 </td>
                                             </tr>
