@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/next"
 import { AuthProvider } from "@/contexts/auth-context"
 import { ThemeProvider } from "@/contexts/theme-context"
 import { Footer } from "@/components/footer"
+import { BottomNav } from "@/components/bottom-nav"
 import RegisterServiceWorker from "@/app/register-service-worker"
 import "./globals.css"
 
@@ -38,7 +39,7 @@ export const metadata: Metadata = {
     description: "Track your movie watch history, see your stats, and compete on the leaderboard.",
     images: [
       {
-        url: "/icon.svg",
+        url: "/opengraph-image",
         width: 1200,
         height: 630,
         alt: "Movies Tracker",
@@ -48,9 +49,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Movies Tracker",
-    description: "Track your movie watch history, see your stats, and compete on the leaderboard.",
-    images: ["/placeholder-logo.png"],
+    title: "Movies Tracker | Log, Analyze & Compete",
+    description: "Keep track of every movie you watch, analyze your statistics, and compete for the top spot on the global leaderboard.",
+    images: ["/opengraph-image"],
   },
 }
 
@@ -75,6 +76,7 @@ export default function RootLayout({
               {children}
             </div>
             <Footer />
+            <BottomNav />
             <Analytics />
             <RegisterServiceWorker />
           </AuthProvider>

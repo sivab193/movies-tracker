@@ -27,3 +27,5 @@ gcs-service-account.json
 # MCP Server
 .movies-tracker/
 
+backend/movies_search_log.json
+**/movies.txt

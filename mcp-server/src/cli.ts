@@ -171,6 +171,7 @@ async function testConnection() {
       "\x1b[31m✗\x1b[0m Not logged in. Run: npx movies-tracker-mcp login",
     );
     process.exit(1);
+    return;
   }
 
   console.log("Testing connection...\n");
@@ -264,7 +265,7 @@ function showHelp() {
   }
 
 \x1b[1mDOCUMENTATION:\x1b[0m
-  https://github.com/yourusername/movies-tracker-mcp
+  https://github.com/sivab/movies-tracker
 `);
 }
 

@@ -6,12 +6,12 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Movie Details | Movies Tracker",
     description: "See details, watch history, and user ratings for this movie.",
-    images: ["/icon.svg"],
+    images: ["/opengraph-image"],
   },
   twitter: {
     card: "summary_large_image",
     title: "Movie Details | Movies Tracker",
     description: "See details, watch history, and user ratings for this movie.",
-    images: ["/placeholder-logo.png"],
+    images: ["/opengraph-image"],
   },
 }

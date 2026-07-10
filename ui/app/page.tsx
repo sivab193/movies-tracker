@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Film, Trophy, List, Share2, ShieldCheck, MessageSquare } from "lucide-react"
+import { Film, Trophy, List, Share2, ShieldCheck, MessageSquare, Bot, Map, Users, Bell } from "lucide-react"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 
@@ -68,7 +68,7 @@ export default function HomePage() {
                   Detailed Watch History
                 </dt>
                 <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground group-hover:text-foreground">
-                  <p className="flex-auto text-pretty">Log every movie you watch with dates, ratings, and detailed technicinformation.</p>
+                  <p className="flex-auto text-pretty">Log every movie you watch with dates, ratings, and detailed technical and theater information.</p>
                 </dd>
               </Link>
 
@@ -115,6 +115,94 @@ export default function HomePage() {
                   <p className="flex-auto text-pretty">Choose exactly which fields and movies are public. Your data, your rules.</p>
                 </dd>
               </Link>
+            </dl>
+          </div>
+        </section>
+
+        {/* Upcoming Features Section */}
+        <section className="mx-auto max-w-7xl px-6 py-16 sm:py-20 lg:px-8 bg-card border border-border/60 rounded-3xl mb-12 animate-slide-up">
+          <div className="mx-auto max-w-2xl lg:text-center">
+            <h2 className="text-base font-semibold leading-7 text-primary">Roadmap</h2>
+            <p className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl text-balance">
+              Upcoming Features & AI Integration
+            </p>
+            <p className="mt-4 text-lg text-muted-foreground">
+              We are continuously evolving Movies Tracker. Here is what is actively in development:
+            </p>
+          </div>
+          <div className="mx-auto mt-12 max-w-2xl sm:mt-16 lg:mt-20 lg:max-w-none">
+            <dl className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-12 lg:max-w-none lg:grid-cols-2">
+              {/* Hosted MCP Server */}
+              <div className="group flex flex-col feature-card transition hover:bg-muted/50 border border-primary/20">
+                <dt className="flex items-center justify-between text-base font-semibold leading-7">
+                  <div className="flex items-center gap-x-3">
+                    <Bot className="h-5 w-5 text-primary group-hover:text-foreground" />
+                    Hosted AI MCP Server
+                  </div>
+                  <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                    In Development
+                  </span>
+                </dt>
+                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground group-hover:text-foreground">
+                  <p className="flex-auto text-pretty">
+                    Connect seamlessly with ChatGPT, Claude, and Gemini via Model Context Protocol (MCP). Search movies, log watches, and query your personal stats using natural language directly from your AI assistant.
+                  </p>
+                </dd>
+              </div>
+
+              {/* Movie Marathon Planner */}
+              <div className="group flex flex-col feature-card transition hover:bg-muted/50">
+                <dt className="flex items-center justify-between text-base font-semibold leading-7">
+                  <div className="flex items-center gap-x-3">
+                    <Map className="h-5 w-5 text-primary group-hover:text-foreground" />
+                    Movie Marathon Planner
+                  </div>
+                  <span className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+                    Planned
+                  </span>
+                </dt>
+                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground group-hover:text-foreground">
+                  <p className="flex-auto text-pretty">
+                    Plan back-to-back movie sessions effortlessly based on real-time showtimes, runtimes, and driving/transit distances between local cinemas.
+                  </p>
+                </dd>
+              </div>
+
+              {/* Community Discussions & Group Events */}
+              <div className="group flex flex-col feature-card transition hover:bg-muted/50">
+                <dt className="flex items-center justify-between text-base font-semibold leading-7">
+                  <div className="flex items-center gap-x-3">
+                    <Users className="h-5 w-5 text-primary group-hover:text-foreground" />
+                    Community Forums & Group Events
+                  </div>
+                  <span className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+                    Planned
+                  </span>
+                </dt>
+                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground group-hover:text-foreground">
+                  <p className="flex-auto text-pretty">
+                    Engage in dedicated discussions about new releases, share deep-dive reviews, and coordinate group theater outings with local cinephiles.
+                  </p>
+                </dd>
+              </div>
+
+              {/* Ticket Alerts */}
+              <div className="group flex flex-col feature-card transition hover:bg-muted/50">
+                <dt className="flex items-center justify-between text-base font-semibold leading-7">
+                  <div className="flex items-center gap-x-3">
+                    <Bell className="h-5 w-5 text-primary group-hover:text-foreground" />
+                    Ticket Opening Alerts
+                  </div>
+                  <span className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+                    Planned
+                  </span>
+                </dt>
+                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground group-hover:text-foreground">
+                  <p className="flex-auto text-pretty">
+                    Never miss opening day again. Get instant push notifications or Telegram alerts the moment bookings open for blockbuster releases at your favorite theaters.
+                  </p>
+                </dd>
+              </div>
             </dl>
           </div>
         </section>

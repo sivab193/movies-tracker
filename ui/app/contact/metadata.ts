@@ -6,12 +6,12 @@ export const metadata: Metadata = {
   openGraph: {
     title: "Contact Us | Movies Tracker",
     description: "Reach out to update missing data, report bugs, or contribute to Movies Tracker.",
-    images: ["/icon.svg"],
+    images: ["/opengraph-image"],
   },
   twitter: {
     card: "summary_large_image",
     title: "Contact Us | Movies Tracker",
     description: "Reach out to update missing data, report bugs, or contribute to Movies Tracker.",
-    images: ["/placeholder-logo.png"],
+    images: ["/opengraph-image"],
   },
 }
