@@ -257,7 +257,7 @@ export default function SettingsPage() {
                         </div>
 
                         <div className="space-y-6">
-                            <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-center justify-between gap-4">
                                 <Label htmlFor="public-toggle" className="flex flex-col gap-1 text-left cursor-pointer">
                                     <span className="text-base font-semibold">Enable Public Profile</span>
                                     <span className="font-normal text-muted-foreground">Allow others to view your profile via the leaderboard or direct link.</span>
@@ -266,7 +266,7 @@ export default function SettingsPage() {
                                     id="public-toggle"
                                     checked={isPublic}
                                     onCheckedChange={setIsPublic}
-                                    className="mt-1 shrink-0"
+                                    className="shrink-0"
                                 />
                             </div>
 

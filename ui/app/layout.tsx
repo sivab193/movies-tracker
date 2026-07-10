@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/next"
 import { AuthProvider } from "@/contexts/auth-context"
 import { ThemeProvider } from "@/contexts/theme-context"
 import { Footer } from "@/components/footer"
+import RegisterServiceWorker from "@/app/register-service-worker"
 import "./globals.css"
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
@@ -30,6 +31,7 @@ export const metadata: Metadata = {
     ],
     apple: "/apple-icon.png",
   },
+  manifest: "/manifest.webmanifest",
 }
 
 export const viewport: Viewport = {
@@ -54,6 +56,7 @@ export default function RootLayout({
             </div>
             <Footer />
             <Analytics />
+            <RegisterServiceWorker />
           </AuthProvider>
         </ThemeProvider>
       </body>

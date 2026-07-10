@@ -39,6 +39,9 @@ export function Header() {
               <BarChart3 className="h-4 w-4" />
               Stats
             </Link>
+            <Link href="/contact" className="text-muted-foreground transition-colors hover:text-foreground">
+              Contact Us
+            </Link>
           </nav>
         </div>
 
