@@ -1,6 +1,6 @@
 import { auth } from "@/lib/firebase";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 export async function addMovie(imdbId: string) {
     const user = auth?.currentUser;
@@ -115,6 +115,23 @@ export async function getPublicProfile(userId: string) {
     const response = await fetch(`${API_BASE_URL}/users/${userId}`);
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || "Failed to fetch profile");
+    return result;
+}
+
+export async function getAdminUserProfile(userId: string) {
+    const token = await auth?.currentUser?.getIdToken();
+    const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+        headers: token ? { "Authorization": `Bearer ${token}` } : {}
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Failed to fetch admin user profile");
+    return result;
+}
+
+export async function getStatsSummary() {
+    const response = await fetch(`${API_BASE_URL}/stats/summary`);
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Failed to load community stats");
     return result;
 }
 

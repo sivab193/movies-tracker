@@ -22,11 +22,13 @@ from routes.movies import movies_bp
 from routes.leaderboard import leaderboard_bp
 from routes.users import users_bp
 from routes.theaters import theaters_bp
+from routes.stats import stats_bp
 
 app.register_blueprint(movies_bp, url_prefix='/api/movies')
 app.register_blueprint(leaderboard_bp, url_prefix='/api/leaderboard')
 app.register_blueprint(users_bp, url_prefix='/api/users')
 app.register_blueprint(theaters_bp, url_prefix='/api/theaters')
+app.register_blueprint(stats_bp, url_prefix='/api/stats')
 
 
 if __name__ == '__main__':

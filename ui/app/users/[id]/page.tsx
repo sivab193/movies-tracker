@@ -64,6 +64,12 @@ export default function UserProfilePage() {
         })
     }
 
+    const sortedHistory = [...(profile.watchHistory || [])].sort((a, b) => {
+        const dateA = new Date(a.timestamp || a.createdAt || 0).getTime()
+        const dateB = new Date(b.timestamp || b.createdAt || 0).getTime()
+        return dateB - dateA
+    })
+
     if (loading) {
         return (
             <div className="min-h-screen bg-background">
@@ -135,7 +141,7 @@ export default function UserProfilePage() {
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y">
-                                    {profile.watchHistory.map((item, index) => (
+                                    {sortedHistory.map((item, index) => (
                                         <tr key={index} className="hover:bg-muted/30 transition-colors">
                                             <td className="px-6 py-4 font-medium">
                                                 <div className="flex items-center gap-3">

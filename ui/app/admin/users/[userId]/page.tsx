@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
-import { getPublicProfile, toggleLeaderboardBan, deleteWatchHistory } from "@/services/api"
+import { getPublicProfile, getAdminUserProfile, toggleLeaderboardBan, deleteWatchHistory } from "@/services/api"
 import { AddWatchDialog } from "@/components/add-watch-dialog"
 import { Loader2, Film, Shield, Ban, CheckCircle, Pencil, Trash, ArrowLeft, ArrowUpDown, CreditCard } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -29,14 +29,15 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
-// Helper to get public profile but we know it's admin enhanced
-async function getAdminUserProfile(uid: string, token: string) {
-    // We reuse public profile endpoint, backend handles admin logic if token is admin
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"}/users/${uid}`, {
-        headers: { "Authorization": `Bearer ${token}` }
-    });
-    if (!response.ok) throw new Error("Failed to fetch user");
-    return response.json();
+const formatSafeDate = (dateVal: any) => {
+    if (!dateVal) return "N/A"
+    try {
+        const d = new Date(dateVal)
+        if (isNaN(d.getTime())) return "N/A"
+        return format(d, "MMM d, yyyy")
+    } catch {
+        return "N/A"
+    }
 }
 
 export default function AdminUserDetailsPage() {
@@ -61,8 +62,7 @@ export default function AdminUserDetailsPage() {
     const refreshData = async () => {
         if (!user || !userId) return
         try {
-            const token = await user.getIdToken()
-            const data = await getAdminUserProfile(userId, token)
+            const data = await getAdminUserProfile(userId)
             setTargetUser(data)
         } catch (err) {
             console.error(err)
@@ -90,8 +90,8 @@ export default function AdminUserDetailsPage() {
     const history = useMemo(() => {
         let data = targetUser?.watchHistory || []
         return [...data].sort((a: any, b: any) => {
-            const dateA = new Date(a.timestamp || a.createdAt).getTime()
-            const dateB = new Date(b.timestamp || b.createdAt).getTime()
+            const dateA = new Date(a.timestamp || a.createdAt).getTime() || 0
+            const dateB = new Date(b.timestamp || b.createdAt).getTime() || 0
             return sortOrder === 'asc' ? dateA - dateB : dateB - dateA
         })
     }, [targetUser, sortOrder])
@@ -168,12 +168,12 @@ export default function AdminUserDetailsPage() {
                                 history.map((entry: WatchHistoryEntry, i: number) => (
                                     <TableRow key={entry._id || i}>
                                         <TableCell className="font-medium text-muted-foreground">
-                                            {format(new Date(entry.timestamp || entry.createdAt), "MMM d, yyyy")}
+                                            {formatSafeDate(entry.timestamp || entry.createdAt)}
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-3">
                                                 {entry.moviePosterUrl && (
-                                                    <img src={entry.moviePosterUrl} alt="" className="h-8 w-6 object-cover rounded hidden sm:block" />
+                                                    <img src={resolveApiUrl(entry.moviePosterUrl)} alt="" className="h-8 w-6 object-cover rounded hidden sm:block" />
                                                 )}
                                                 <span>{entry.movieTitle}</span>
                                             </div>
