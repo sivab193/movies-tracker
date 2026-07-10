@@ -24,3 +24,6 @@ gcs-service-account.json
 *.log
 */*.csv
 
+# MCP Server
+.movies-tracker/
+
