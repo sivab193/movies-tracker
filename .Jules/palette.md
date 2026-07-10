@@ -1,0 +1,3 @@
+## 2024-07-10 - Missing ARIA Labels on Icon-Only Buttons
+**Learning:** Found a recurring pattern across the application where icon-only action buttons (Edit, Delete, Search, Go Back) used `Button` component with `size="icon"` but lacked `aria-label` or `title` attributes. This makes screen reader navigation and general accessibility difficult.
+**Action:** Always ensure that any button without text content (like `<Trash />` or `<Pencil />`) has a descriptive `aria-label` and `title` to provide context for screen readers and tooltips for mouse users. Use the `size="icon"` attribute responsibly alongside accessibility labels.
