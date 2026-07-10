@@ -74,6 +74,68 @@ def save_poster_to_db(movie_id, poster_url):
         print(f"Error saving poster to MongoDB: {e}")
     return None
 
+def parse_release_date_to_iso(released_str, year_val=None):
+    if not released_str or released_str == 'N/A':
+        if year_val:
+            return f"{str(year_val)[:4]}-01-01"
+        return "1970-01-01"
+    try:
+        # e.g. "16 Jul 2010" -> "2010-07-16"
+        dt = datetime.datetime.strptime(str(released_str).strip(), "%d %b %Y")
+        return dt.strftime("%Y-%m-%d")
+    except ValueError:
+        try:
+            # e.g. "Jul 2010" -> "2010-07-01"
+            dt = datetime.datetime.strptime(str(released_str).strip(), "%b %Y")
+            return dt.strftime("%Y-%m-%d")
+        except ValueError:
+            try:
+                # e.g. "2010-07-16" (already ISO format)
+                if len(str(released_str)) == 10 and str(released_str)[4] == '-' and str(released_str)[7] == '-':
+                    return str(released_str)
+                return f"{str(released_str)[:4]}-01-01"
+            except:
+                if year_val:
+                    return f"{str(year_val)[:4]}-01-01"
+                return "1970-01-01"
+
+def ensure_movie_metadata(movie_doc):
+    """Ensure a movie document has language, released, and releaseDate fields populated."""
+    updates = {}
+    if not movie_doc.get('language') and not movie_doc.get('Language'):
+        imdb_id = movie_doc.get('imdbId') or movie_doc.get('imdbID')
+        lang = 'English' # fallback
+        released_str = str(movie_doc.get('year', ''))
+        
+        if imdb_id and OMDB_API_KEY:
+            try:
+                omdb_res = requests.get(f"http://www.omdbapi.com/?apikey={OMDB_API_KEY}&i={imdb_id}", timeout=4).json()
+                if omdb_res.get('Response') == 'True':
+                    lang = omdb_res.get('Language', 'English')
+                    released_str = omdb_res.get('Released', released_str)
+            except Exception as e:
+                print(f"OMDb fetch error during metadata sync for {imdb_id}: {e}")
+        
+        updates['language'] = lang
+        updates['Language'] = lang
+        if not movie_doc.get('released'):
+            updates['released'] = released_str
+            
+    if not movie_doc.get('releaseDate'):
+        rel_str = updates.get('released') or movie_doc.get('released') or str(movie_doc.get('year', ''))
+        year_val = movie_doc.get('year')
+        rel_date = parse_release_date_to_iso(rel_str, year_val)
+        updates['releaseDate'] = rel_date
+        
+    if updates:
+        try:
+            db.movies.update_one({"_id": movie_doc["_id"]}, {"$set": updates})
+            movie_doc.update(updates)
+        except Exception as e:
+            print(f"Error updating movie metadata: {e}")
+            
+    return movie_doc
+
 @movies_bp.route('/', methods=['POST'])
 def add_movie():
     # Verify Admin
@@ -112,15 +174,22 @@ def add_movie():
             except:
                 pass
 
+        lang = omdb_data.get('Language', 'English')
+        rel_str = omdb_data.get('Released', str(omdb_data.get('Year', '')))
+        year_val = int(omdb_data.get('Year')) if str(omdb_data.get('Year', '')).isdigit() else 2024
+        rel_date = parse_release_date_to_iso(rel_str, year_val)
+
         movie_data = {
             "imdbId": imdb_id,
             "title": omdb_data.get('Title'),
-            "year": int(omdb_data.get('Year')) if str(omdb_data.get('Year', '')).isdigit() else 2024,
+            "year": year_val,
             "posterUrl": None,
             "imdbRating": float(omdb_data.get('imdbRating')) if omdb_data.get('imdbRating') != "N/A" else None,
             "runtime": runtime_str,
-            "language": omdb_data.get('Language', 'English'),
-            "released": omdb_data.get('Released', str(omdb_data.get('Year', ''))),
+            "language": lang,
+            "Language": lang,
+            "released": rel_str,
+            "releaseDate": rel_date,
             "submissionCount": 0,
             "averageTimeSeconds": average_time_seconds,
             "createdAt": datetime.datetime.now(datetime.timezone.utc)
@@ -148,6 +217,23 @@ def list_movies():
     if db is None:
         return jsonify({"movies": []})
     
+    # Quick self-healing: ensure up to 50 movies lacking metadata get language/releaseDate populated
+    try:
+        missing_meta = list(db.movies.find({
+            "$or": [
+                {"language": {"$exists": False}},
+                {"language": None},
+                {"language": ""},
+                {"releaseDate": {"$exists": False}},
+                {"releaseDate": None},
+                {"releaseDate": ""}
+            ]
+        }).limit(50))
+        for doc in missing_meta:
+            ensure_movie_metadata(doc)
+    except Exception as e:
+        print(f"Error during metadata backfill check: {e}")
+
     # Get optional limit param (default 50, max 500)
     limit = request.args.get('limit', 50, type=int)
     limit = min(limit, 500)
@@ -177,14 +263,23 @@ def list_movies():
     # Get total count for pagination
     total = db.movies.count_documents(query)
         
-    # Sort by year desc (latest release) then createdAt desc with skip and limit
-    movies_cursor = db.movies.find(query).sort([("year", -1), ("createdAt", -1)]).skip(skip).limit(limit)
+    # Sort by releaseDate desc (latest release) then year desc then createdAt desc
+    movies_cursor = db.movies.find(query).sort([("releaseDate", -1), ("year", -1), ("createdAt", -1)]).skip(skip).limit(limit)
     
     movies = []
     for m in movies_cursor:
         m['id'] = str(m.pop('_id')) # Rename _id to id for frontend compatibility
-        if m.get('createdAt'):
+        if m.get('createdAt') and hasattr(m['createdAt'], 'isoformat'):
            m['createdAt'] = m['createdAt'].isoformat()
+        if not m.get('language'):
+           m['language'] = m.get('Language', 'English')
+        if not m.get('Language'):
+           m['Language'] = m.get('language', 'English')
+        if not m.get('releaseDate'):
+           rel_str = m.get('released') or str(m.get('year', ''))
+           m['releaseDate'] = parse_release_date_to_iso(rel_str, m.get('year'))
+        if not m.get('released'):
+           m['released'] = m.get('releaseDate') or str(m.get('year', ''))
         movies.append(m)
         
     return jsonify({"movies": movies, "total": total})

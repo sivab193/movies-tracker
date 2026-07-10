@@ -50,6 +50,28 @@ def save_poster_to_db(movie_id, poster_url):
         print(f"  ⚠️ Error saving poster to MongoDB: {e}")
     return None
 
+def parse_release_date_to_iso(released_str, year_val=None):
+    if not released_str or released_str == 'N/A':
+        if year_val:
+            return f"{str(year_val)[:4]}-01-01"
+        return "1970-01-01"
+    try:
+        dt = datetime.datetime.strptime(str(released_str).strip(), "%d %b %Y")
+        return dt.strftime("%Y-%m-%d")
+    except ValueError:
+        try:
+            dt = datetime.datetime.strptime(str(released_str).strip(), "%b %Y")
+            return dt.strftime("%Y-%m-%d")
+        except ValueError:
+            try:
+                if len(str(released_str)) == 10 and str(released_str)[4] == '-' and str(released_str)[7] == '-':
+                    return str(released_str)
+                return f"{str(released_str)[:4]}-01-01"
+            except:
+                if year_val:
+                    return f"{str(year_val)[:4]}-01-01"
+                return "1970-01-01"
+
 def import_movies_from_csv(csv_path, year=0, min_year=0, min_rating=0.0, min_votes=0, limit=20):
     if db is None:
         print("❌ Error: MongoDB connection is not active.")
@@ -139,15 +161,22 @@ def import_movies_from_csv(csv_path, year=0, min_year=0, min_rating=0.0, min_vot
                 except Exception:
                     pass
 
+            lang = omdb_data.get('Language', 'English')
+            rel_str = omdb_data.get('Released', str(omdb_data.get('Year', '')))
+            year_val = int(omdb_data.get('Year')) if str(omdb_data.get('Year', '')).isdigit() else (movie["year"] or 2026)
+            rel_date = parse_release_date_to_iso(rel_str, year_val)
+
             movie_data = {
                 "imdbId": imdb_id,
                 "title": omdb_data.get('Title'),
-                "year": int(omdb_data.get('Year')) if str(omdb_data.get('Year', '')).isdigit() else (movie["year"] or 2026),
+                "year": year_val,
                 "posterUrl": None,
                 "imdbRating": float(omdb_data.get('imdbRating')) if omdb_data.get('imdbRating') != "N/A" else None,
                 "runtime": runtime_str,
-                "language": omdb_data.get('Language', 'English'),
-                "released": omdb_data.get('Released', str(omdb_data.get('Year', ''))),
+                "language": lang,
+                "Language": lang,
+                "released": rel_str,
+                "releaseDate": rel_date,
                 "submissionCount": 0,
                 "averageTimeSeconds": average_time_seconds,
                 "createdAt": datetime.datetime.now(datetime.timezone.utc)

@@ -149,8 +149,13 @@ export default function MovieDetailPage({
               <div className="mt-3 flex flex-wrap items-center gap-4 text-muted-foreground">
                 <div className="flex items-center gap-1.5">
                   <Calendar className="h-4 w-4" />
-                  <span>{movie.year}</span>
+                  <span>{movie.released || movie.releaseDate || movie.year}</span>
                 </div>
+                {((movie.language || movie.Language) && (movie.language || movie.Language) !== "N/A") && (
+                  <span className="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-semibold text-secondary-foreground border border-border">
+                    {movie.language || movie.Language}
+                  </span>
+                )}
                 {movie.imdbRating && (
                   <div className="flex items-center gap-1.5">
                     <Star className="h-4 w-4 fill-accent text-accent" />

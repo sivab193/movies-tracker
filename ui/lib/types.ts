@@ -10,6 +10,10 @@ export interface Movie {
   createdAt: Date
   submissionCount: number
   averageTimeSeconds: number | null
+  language?: string
+  Language?: string
+  released?: string
+  releaseDate?: string
 }
 
 // Title card submission

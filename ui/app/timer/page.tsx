@@ -100,9 +100,14 @@ export default function HomePage() {
       const movieList = data.movies || []
       const totalCount = data.total || 0
 
-      // Sort in memory for now
+      // Sort in memory chronologically by releaseDate
       const sorted = [...movieList].sort((a, b) => {
         if (sortBy === "latest") {
+          const dateB = new Date(b.releaseDate || `${b.year || 1970}-01-01`).getTime()
+          const dateA = new Date(a.releaseDate || `${a.year || 1970}-01-01`).getTime()
+          if (!isNaN(dateB) && !isNaN(dateA) && dateB !== dateA) {
+            return dateB - dateA
+          }
           return (b.year || 0) - (a.year || 0) || new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
         }
         return (b.submissionCount || 0) - (a.submissionCount || 0)

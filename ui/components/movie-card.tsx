@@ -43,13 +43,20 @@ export function MovieCard({ movie }: MovieCardProps) {
           <h3 className="font-semibold leading-tight text-balance line-clamp-2 group-hover:text-primary transition-colors">
             {movie.title}
           </h3>
-          <div className="mt-2 flex items-center gap-3 text-sm text-muted-foreground">
-            <span>{movie.year}</span>
-            {movie.imdbRating && (
-              <div className="flex items-center gap-1">
-                <Star className="h-3.5 w-3.5 fill-accent text-accent" />
-                <span>{movie.imdbRating}</span>
-              </div>
+          <div className="mt-2 flex items-center justify-between gap-2 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2">
+              <span className="truncate">{movie.released || movie.releaseDate || movie.year}</span>
+              {movie.imdbRating && (
+                <div className="flex items-center gap-1 shrink-0">
+                  <Star className="h-3.5 w-3.5 fill-accent text-accent" />
+                  <span>{movie.imdbRating}</span>
+                </div>
+              )}
+            </div>
+            {((movie.language || movie.Language) && (movie.language || movie.Language) !== "N/A") && (
+              <span className="rounded bg-secondary px-1.5 py-0.5 text-xs font-medium text-secondary-foreground shrink-0 max-w-[70px] truncate">
+                {(movie.language || movie.Language || "").split(",")[0].trim()}
+              </span>
             )}
           </div>
           {movie.submissionCount > 0 && (
