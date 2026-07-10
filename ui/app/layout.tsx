@@ -69,13 +69,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans antialiased pb-16`}>
+      <body className={`${inter.variable} font-sans antialiased min-h-[100dvh] flex flex-col bg-background`}>
         <ThemeProvider>
           <AuthProvider>
-            <div className="min-h-screen flex flex-col">
+            <div className="min-h-screen flex flex-col flex-1 pb-20 md:pb-0">
               {children}
+              <Footer />
             </div>
-            <Footer />
             <BottomNav />
             <Analytics />
             <RegisterServiceWorker />

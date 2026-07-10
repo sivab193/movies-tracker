@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback, useRef } from "react"
-import { Film, Clock, TrendingUp, Loader2 } from "lucide-react"
+import { Film, Clock, Calendar, Loader2 } from "lucide-react"
 import { Header } from "@/components/header"
 import { MovieGrid } from "@/components/movie-grid"
 // import { AddMovieDialog } from "@/components/add-movie-dialog"
@@ -70,7 +70,7 @@ function checkFirebaseConfig() {
 
 const PAGE_SIZE = 20
 
-type SortOption = "latest" | "popular"
+type SortOption = "latest" | "upcoming"
 
 const LANGUAGES = ["All", "English", "Tamil", "Hindi", "Telugu", "Malayalam", "Kannada", "Spanish", "French", "Korean", "Japanese"]
 
@@ -96,21 +96,32 @@ export default function HomePage() {
       }
 
       const currentSkip = isLoadMore ? skip : 0
-      const data = await getMovies(currentSkip, PAGE_SIZE, language === "All" ? "" : language)
+      const data = await getMovies(currentSkip, PAGE_SIZE, language === "All" ? "" : language, "", "", false, "All", sortBy)
       const movieList = data.movies || []
       const totalCount = data.total || 0
 
-      // Sort in memory chronologically by releaseDate
-      const sorted = [...movieList].sort((a, b) => {
+      // Filter and sort in memory chronologically
+      const now = new Date()
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+
+      const filtered = movieList.filter((m: Movie) => {
+        const relDateStr = m.releaseDate || `${m.year || 1970}-01-01`
+        const mTime = new Date(relDateStr).getTime()
+        if (isNaN(mTime)) return true
         if (sortBy === "latest") {
-          const dateB = new Date(b.releaseDate || `${b.year || 1970}-01-01`).getTime()
-          const dateA = new Date(a.releaseDate || `${a.year || 1970}-01-01`).getTime()
-          if (!isNaN(dateB) && !isNaN(dateA) && dateB !== dateA) {
-            return dateB - dateA
-          }
-          return (b.year || 0) - (a.year || 0) || new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+          return mTime <= now.getTime() || !m.releaseDate
+        } else {
+          return mTime > todayStart && Boolean(m.releaseDate)
         }
-        return (b.submissionCount || 0) - (a.submissionCount || 0)
+      })
+
+      const sorted = [...filtered].sort((a, b) => {
+        const dateB = new Date(b.releaseDate || `${b.year || 1970}-01-01`).getTime()
+        const dateA = new Date(a.releaseDate || `${a.year || 1970}-01-01`).getTime()
+        if (!isNaN(dateB) && !isNaN(dateA) && dateB !== dateA) {
+          return sortBy === "latest" ? dateB - dateA : dateA - dateB
+        }
+        return (b.year || 0) - (a.year || 0) || new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
       })
 
       if (isLoadMore) {
@@ -214,13 +225,13 @@ export default function HomePage() {
                 Latest
               </Button>
               <Button
-                variant={sortBy === "popular" ? "default" : "ghost"}
+                variant={sortBy === "upcoming" ? "default" : "ghost"}
                 size="sm"
-                onClick={() => setSortBy("popular")}
+                onClick={() => setSortBy("upcoming")}
                 className="gap-1.5"
               >
-                <TrendingUp className="h-4 w-4" />
-                Popular
+                <Calendar className="h-4 w-4" />
+                Upcoming
               </Button>
             </div>
           </div>

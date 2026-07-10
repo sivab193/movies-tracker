@@ -142,7 +142,8 @@ export async function getMovies(
     search: string = "",
     year: string = "",
     missingPoster?: boolean,
-    avgTimeFilter?: string
+    avgTimeFilter?: string,
+    releaseFilter?: string
 ) {
     let url = `${API_BASE_URL}/movies/?skip=${skip}&limit=${limit}`;
     if (language && language.toLowerCase() !== "all") {
@@ -159,6 +160,9 @@ export async function getMovies(
     }
     if (avgTimeFilter && avgTimeFilter !== "All") {
         url += `&avgTimeFilter=${encodeURIComponent(avgTimeFilter)}`;
+    }
+    if (releaseFilter && releaseFilter.toLowerCase() !== "all") {
+        url += `&releaseFilter=${encodeURIComponent(releaseFilter)}`;
     }
     const response = await fetch(url);
     const data = await response.json();

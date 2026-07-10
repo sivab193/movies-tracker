@@ -247,6 +247,7 @@ def list_movies():
     language_filter = request.args.get('language', '')
     missing_poster = request.args.get('missingPoster', '')
     avg_time_filter = request.args.get('avgTimeFilter', '')
+    release_filter = request.args.get('releaseFilter', '')
     
     query = {}
     if title_search:
@@ -305,11 +306,34 @@ def list_movies():
             query['averageTimeSeconds'] = {"$gt": 0}
             query['submissionCount'] = {"$gt": 0}
     
+    now_str = datetime.datetime.utcnow().strftime('%Y-%m-%d')
+    if release_filter == 'latest':
+        date_cond = [
+            {"releaseDate": {"$lte": now_str}},
+            {"releaseDate": {"$exists": False}},
+            {"releaseDate": None},
+            {"releaseDate": ""}
+        ]
+        if '$and' in query:
+            query['$and'].append({'$or': date_cond})
+        elif '$or' in query:
+            query = {'$and': [{'$or': query['$or']}, {'$or': date_cond}]}
+        else:
+            query['$or'] = date_cond
+    elif release_filter == 'upcoming':
+        if '$and' in query:
+            query['$and'].append({"releaseDate": {"$gt": now_str}})
+        else:
+            query["releaseDate"] = {"$gt": now_str}
+    
     # Get total count for pagination
     total = db.movies.count_documents(query)
         
-    # Sort by releaseDate desc (latest release) then year desc then createdAt desc
-    movies_cursor = db.movies.find(query).sort([("releaseDate", -1), ("year", -1), ("createdAt", -1)]).skip(skip).limit(limit)
+    sort_order = [("releaseDate", -1), ("year", -1), ("createdAt", -1)]
+    if release_filter == 'upcoming':
+        sort_order = [("releaseDate", 1), ("year", 1), ("createdAt", -1)]
+        
+    movies_cursor = db.movies.find(query).sort(sort_order).skip(skip).limit(limit)
     
     movies = []
     for m in movies_cursor:
