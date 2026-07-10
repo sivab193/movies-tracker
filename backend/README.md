@@ -91,7 +91,12 @@ backend/
 ├── app.py                 # Flask application factory & CORS configuration
 ├── firebase_config.py     # Firebase Admin SDK & @verify_token decorator
 ├── mongo_config.py        # PyMongo database connection pool
-├── seed_data.py           # Initial data seeding utility
-├── bulk_*.py              # CLI batch utilities
-└── requirements.txt       # Python package dependencies
+├── scripts/              # CLI batch utilities and migration helpers
+│   ├── bulk_import.py
+│   ├── bulk_delete_no_poster.py
+│   ├── bulk_theaters.py
+│   ├── bulk_watch.py
+│   ├── migrate_watch_history_normalize.py
+│   └── seed_data.py
+├── requirements.txt       # Python package dependencies
 ```

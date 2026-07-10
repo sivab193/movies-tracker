@@ -39,7 +39,7 @@ export default function ContactPage() {
                 Bugs can also be created directly in the GitHub Issues page for this repository.
               </p>
               <Link
-                href="https://github.com/siv19/movies-tracker/issues"
+                href="https://github.com/sivab193/movies-tracker/issues"
                 target="_blank"
                 rel="noreferrer"
                 className="mt-4 inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-2 text-sm font-medium text-foreground transition hover:bg-secondary/90"

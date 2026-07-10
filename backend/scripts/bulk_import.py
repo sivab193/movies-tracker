@@ -7,11 +7,10 @@ import requests
 from dotenv import load_dotenv
 from bson import ObjectId, Binary
 
-# Load env variables from backend/.env
-load_dotenv()
-
-# Add current directory to path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# Ensure backend root is on the path for imports and .env lookup
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, ROOT_DIR)
+load_dotenv(os.path.join(ROOT_DIR, ".env"))
 
 from mongo_config import db
 

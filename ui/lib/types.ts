@@ -48,6 +48,7 @@ export interface WatchHistoryEntry {
   movieId: string
   movieTitle: string
   moviePosterUrl: string
+  theaterId?: string | null
   theaterName: string | null
   theaterLocation: string | null
   theaterGmapsLink?: string | null

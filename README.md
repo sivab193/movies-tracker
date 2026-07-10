@@ -119,10 +119,10 @@ Our backend includes dedicated high-performance CLI utilities for batch seeding 
 
 | Utility Script | Purpose | Command Example |
 | :--- | :--- | :--- |
-| `backend/bulk_import.py` | Import movies & binary posters from OMDb or Kaggle CSV | `python3 backend/bulk_import.py --file movies.txt` |
-| `backend/bulk_delete_no_poster.py` | Audit & clean up movies missing binary posters | `python3 backend/bulk_delete_no_poster.py --execute` |
-| `backend/bulk_theaters.py` | Batch seed approved movie theaters without duplicates | `python3 backend/bulk_theaters.py --file theaters.txt` |
-| `backend/bulk_watch.py` | Batch ingest user watch history from CSV logs | `python3 backend/bulk_watch.py --uid <user_uid> --csv watch_history.csv` |
+| `backend/scripts/bulk_import.py` | Import movies & binary posters from OMDb or Kaggle CSV | `cd backend && python3 scripts/bulk_import.py --file movies.txt` |
+| `backend/scripts/bulk_delete_no_poster.py` | Audit & clean up movies missing binary posters | `cd backend && python3 scripts/bulk_delete_no_poster.py --execute` |
+| `backend/scripts/bulk_theaters.py` | Batch seed approved movie theaters without duplicates | `cd backend && python3 scripts/bulk_theaters.py --file theaters.txt` |
+| `backend/scripts/bulk_watch.py` | Batch ingest user watch history from CSV logs | `cd backend && python3 scripts/bulk_watch.py --uid <user_uid> --csv watch_history.csv` |
 
 ---
 

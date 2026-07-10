@@ -1,9 +1,13 @@
 import os
+import sys
 from pymongo import MongoClient
 import certifi
 from dotenv import load_dotenv
 
-load_dotenv()
+# Ensure backend root is on the path for imports and .env lookup
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.insert(0, ROOT_DIR)
+load_dotenv(os.path.join(ROOT_DIR, ".env"))
 
 def get_db():
     mongo_uri = os.environ.get('MONGO_URI')

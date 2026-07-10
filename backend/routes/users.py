@@ -17,6 +17,90 @@ def get_user_from_token(token):
         print(f"Error verifying token: {e}")
         return None
 
+
+def resolve_movie_details(movie_id, fallback_title=None, fallback_poster=None):
+    if not movie_id:
+        return {
+            "movieTitle": fallback_title,
+            "moviePosterUrl": fallback_poster,
+        }
+
+    try:
+        movie = db.movies.find_one({"_id": ObjectId(movie_id)})
+        if movie:
+            return {
+                "movieTitle": movie.get('title', fallback_title),
+                "moviePosterUrl": movie.get('posterUrl', fallback_poster),
+            }
+    except Exception:
+        pass
+
+    return {
+        "movieTitle": fallback_title,
+        "moviePosterUrl": fallback_poster,
+    }
+
+
+def resolve_theater_details(theater_id, fallback_name=None, fallback_location=None, fallback_gmaps=None):
+    if theater_id:
+        try:
+            theater = db.theaters.find_one({"_id": ObjectId(theater_id)})
+            if theater:
+                return {
+                    "theaterName": theater.get('name', fallback_name),
+                    "theaterLocation": theater.get('location', fallback_location),
+                    "theaterGmapsLink": theater.get('gmapsLink', fallback_gmaps or ''),
+                }
+        except Exception:
+            pass
+
+    if fallback_name:
+        theater = db.theaters.find_one({"name": fallback_name, "location": fallback_location})
+        if not theater:
+            theater = db.theaters.find_one({"name": fallback_name})
+        if theater:
+            return {
+                "theaterName": theater.get('name', fallback_name),
+                "theaterLocation": theater.get('location', fallback_location),
+                "theaterGmapsLink": theater.get('gmapsLink', fallback_gmaps or ''),
+            }
+
+    return {
+        "theaterName": fallback_name,
+        "theaterLocation": fallback_location,
+        "theaterGmapsLink": fallback_gmaps,
+    }
+
+
+def enrich_watch_history(history):
+    enriched = []
+    for entry in history:
+        if '_id' in entry and isinstance(entry['_id'], ObjectId):
+            entry['_id'] = str(entry['_id'])
+        if 'movieId' in entry and isinstance(entry['movieId'], ObjectId):
+            entry['movieId'] = str(entry['movieId'])
+        if 'movieId' in entry and isinstance(entry['movieId'], str) and ObjectId.is_valid(entry['movieId']):
+            entry['movieId'] = entry['movieId']
+        if 'theaterId' in entry and isinstance(entry['theaterId'], ObjectId):
+            entry['theaterId'] = str(entry['theaterId'])
+
+        if 'createdAt' in entry and isinstance(entry['createdAt'], datetime.datetime):
+            entry['createdAt'] = entry['createdAt'].isoformat()
+        if 'timestamp' in entry and isinstance(entry['timestamp'], datetime.datetime):
+            entry['timestamp'] = entry['timestamp'].isoformat()
+
+        movie_details = resolve_movie_details(entry.get('movieId'), entry.get('movieTitle'), entry.get('moviePosterUrl'))
+        entry['movieTitle'] = movie_details.get('movieTitle')
+        entry['moviePosterUrl'] = movie_details.get('moviePosterUrl')
+
+        theater_details = resolve_theater_details(entry.get('theaterId'), entry.get('theaterName'), entry.get('theaterLocation'), entry.get('theaterGmapsLink'))
+        entry['theaterName'] = theater_details.get('theaterName')
+        entry['theaterLocation'] = theater_details.get('theaterLocation')
+        entry['theaterGmapsLink'] = theater_details.get('theaterGmapsLink')
+
+        enriched.append(entry)
+    return enriched
+
 @users_bp.route('/me', methods=['GET'])
 def get_my_settings():
     auth_header = request.headers.get('Authorization')
@@ -69,16 +153,7 @@ def get_my_settings():
         
     # Convert datetimes and ObjectIds in watchHistory
     if 'watchHistory' in user:
-        for movie in user['watchHistory']:
-            # Convert _id if present (added in migration)
-            if '_id' in movie and isinstance(movie['_id'], ObjectId):
-                movie['_id'] = str(movie['_id'])
-            if 'movieId' in movie and isinstance(movie['movieId'], ObjectId):
-                movie['movieId'] = str(movie['movieId'])
-            if 'createdAt' in movie and isinstance(movie['createdAt'], datetime.datetime):
-                movie['createdAt'] = movie['createdAt'].isoformat()
-            if 'timestamp' in movie and isinstance(movie['timestamp'], datetime.datetime):
-                movie['timestamp'] = movie['timestamp'].isoformat()
+        user['watchHistory'] = enrich_watch_history(user['watchHistory'])
 
     return jsonify(user)
 
@@ -159,6 +234,7 @@ def add_watch_history():
         "imdbId": movie.get('imdbId'),
         "movieTitle": movie.get('title'),
         "moviePosterUrl": movie.get('posterUrl'),
+        "theaterId": data.get('theaterId'),
         "theaterName": data.get('theaterName'),
         "theaterLocation": data.get('theaterLocation', data.get('location')),
         "theaterGmapsLink": data.get('theaterGmapsLink', data.get('gmapsLink', '')),
@@ -286,12 +362,20 @@ def update_watch_history(user_id, entry_id):
     data = request.get_json()
     
     updates = {}
-    if 'theaterName' in data: updates['watchHistory.$.theaterName'] = data['theaterName']
-    if 'theaterLocation' in data: updates['watchHistory.$.theaterLocation'] = data['theaterLocation']
-    if 'theaterGmapsLink' in data: updates['watchHistory.$.theaterGmapsLink'] = data['theaterGmapsLink']
-    if 'ticketCost' in data: updates['watchHistory.$.ticketCost'] = data['ticketCost']
-    if 'timestamp' in data: updates['watchHistory.$.timestamp'] = data['timestamp']
-    if 'currency' in data: updates['watchHistory.$.currency'] = data['currency']
+    if 'theaterId' in data:
+        updates['watchHistory.$.theaterId'] = data['theaterId']
+    if 'theaterName' in data:
+        updates['watchHistory.$.theaterName'] = data['theaterName']
+    if 'theaterLocation' in data:
+        updates['watchHistory.$.theaterLocation'] = data['theaterLocation']
+    if 'theaterGmapsLink' in data:
+        updates['watchHistory.$.theaterGmapsLink'] = data['theaterGmapsLink']
+    if 'ticketCost' in data:
+        updates['watchHistory.$.ticketCost'] = data['ticketCost']
+    if 'timestamp' in data:
+        updates['watchHistory.$.timestamp'] = data['timestamp']
+    if 'currency' in data:
+        updates['watchHistory.$.currency'] = data['currency']
     
     ticket_stub_image = data.get('ticketStubImage')
     if ticket_stub_image and ticket_stub_image.startswith('data:'):
@@ -535,15 +619,7 @@ def get_public_profile(user_id):
             if not is_admin and str(m.get('imdbId')) in hidden_ids:
                 continue
 
-            # Convert ID
-            if '_id' in m: m['_id'] = str(m['_id'])
-            if 'movieId' in m: m['movieId'] = str(m['movieId'])
-
-            if 'createdAt' in m and isinstance(m['createdAt'], datetime.datetime):
-                m['createdAt'] = m['createdAt'].isoformat()
-            if 'timestamp' in m and isinstance(m['timestamp'], datetime.datetime):
-                m['timestamp'] = m['timestamp'].isoformat()
-            history_to_return.append(m)
+            history_to_return.append(enrich_watch_history([m])[0])
                 
         profile['watchHistory'] = history_to_return
         profile['privateMoviesCount'] = len(full_history) - len(history_to_return) if not is_admin else 0

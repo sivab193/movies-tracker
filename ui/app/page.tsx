@@ -46,12 +46,12 @@ export default function HomePage() {
           <div className="mx-auto mt-12 max-w-2xl sm:mt-16 lg:mt-20 lg:max-w-none">
             <dl className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-12 lg:max-w-none lg:grid-cols-3">
               {/* Telegram Bot - Coming Soon (FIRST) */}
-              <div className="flex flex-col feature-card">
+              <Link href="/contact" className="group flex flex-col feature-card transition hover:bg-muted/80">
                 <dt className="flex items-center gap-x-3 text-base font-semibold leading-7">
-                  <MessageSquare className="h-5 w-5 text-primary" />
+                  <MessageSquare className="h-5 w-5 text-primary group-hover:text-foreground" />
                   Telegram Bot
                 </dt>
-                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground">
+                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground group-hover:text-foreground">
                   <p className="flex-auto text-pretty">Track your movies directly from Telegram. Quick logging, stats, and notifications.</p>
                   <div className="mt-3">
                     <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
@@ -59,62 +59,62 @@ export default function HomePage() {
                     </span>
                   </div>
                 </dd>
-              </div>
+              </Link>
 
               {/* Detailed Watch History */}
-              <div className="flex flex-col feature-card">
+              <Link href="/watch-history" className="group flex flex-col feature-card transition hover:bg-muted/80">
                 <dt className="flex items-center gap-x-3 text-base font-semibold leading-7">
-                  <List className="h-5 w-5 text-primary" />
+                  <List className="h-5 w-5 text-primary group-hover:text-foreground" />
                   Detailed Watch History
                 </dt>
-                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground">
+                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground group-hover:text-foreground">
                   <p className="flex-auto text-pretty">Log every movie you watch with dates, ratings, and detailed technicinformation.</p>
                 </dd>
-              </div>
+              </Link>
 
               {/* Global Leaderboard */}
-              <div className="flex flex-col feature-card">
+              <Link href="/leaderboard" className="group flex flex-col feature-card transition hover:bg-muted/80">
                 <dt className="flex items-center gap-x-3 text-base font-semibold leading-7">
-                  <Trophy className="h-5 w-5 text-primary" />
+                  <Trophy className="h-5 w-5 text-primary group-hover:text-foreground" />
                   Global Leaderboard
                 </dt>
-                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground">
+                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground group-hover:text-foreground">
                   <p className="flex-auto text-pretty">Compete with friends and the world. See who has the most total watch time.</p>
                 </dd>
-              </div>
+              </Link>
 
               {/* TitleCard Timer */}
-              <div className="flex flex-col feature-card">
+              <Link href="/timer" className="group flex flex-col feature-card transition hover:bg-muted/80">
                 <dt className="flex items-center gap-x-3 text-base font-semibold leading-7">
-                  <Film className="h-5 w-5 text-primary" />
+                  <Film className="h-5 w-5 text-primary group-hover:text-foreground" />
                   TitleCard Timer
                 </dt>
-                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground">
+                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground group-hover:text-foreground">
                   <p className="flex-auto text-pretty">Know exactly when the title card appears in every movie you watch.</p>
                 </dd>
-              </div>
+              </Link>
 
               {/* Public Profiles */}
-              <div className="flex flex-col feature-card">
+              <Link href="/settings" className="group flex flex-col feature-card transition hover:bg-muted/80">
                 <dt className="flex items-center gap-x-3 text-base font-semibold leading-7">
-                  <Share2 className="h-5 w-5 text-primary" />
+                  <Share2 className="h-5 w-5 text-primary group-hover:text-foreground" />
                   Public Profiles
                 </dt>
-                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground">
+                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground group-hover:text-foreground">
                   <p className="flex-auto text-pretty">Share your movie taste with the world or keep it private with granular controls.</p>
                 </dd>
-              </div>
+              </Link>
 
               {/* Privacy First */}
-              <div className="flex flex-col feature-card">
+              <Link href="/settings" className="group flex flex-col feature-card transition hover:bg-muted/80">
                 <dt className="flex items-center gap-x-3 text-base font-semibold leading-7">
-                  <ShieldCheck className="h-5 w-5 text-primary" />
+                  <ShieldCheck className="h-5 w-5 text-primary group-hover:text-foreground" />
                   Privacy First
                 </dt>
-                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground">
+                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground group-hover:text-foreground">
                   <p className="flex-auto text-pretty">Choose exactly which fields and movies are public. Your data, your rules.</p>
                 </dd>
-              </div>
+              </Link>
             </dl>
           </div>
         </section>

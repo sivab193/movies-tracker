@@ -14,6 +14,7 @@ export const metadata: Metadata = {
   title: "Movies Tracker",
   description:
     "Track your movie watch history, see your stats, and compete on the leaderboard.",
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://mt.siv19.dev"),
   icons: {
     icon: [
       {
@@ -32,6 +33,25 @@ export const metadata: Metadata = {
     apple: "/apple-icon.png",
   },
   manifest: "/manifest.webmanifest",
+  openGraph: {
+    title: "Movies Tracker",
+    description: "Track your movie watch history, see your stats, and compete on the leaderboard.",
+    images: [
+      {
+        url: "/icon.svg",
+        width: 1200,
+        height: 630,
+        alt: "Movies Tracker",
+      },
+    ],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Movies Tracker",
+    description: "Track your movie watch history, see your stats, and compete on the leaderboard.",
+    images: ["/placeholder-logo.png"],
+  },
 }
 
 export const viewport: Viewport = {

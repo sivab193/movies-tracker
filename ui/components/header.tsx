@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Film, Moon, Sun, User, LogOut, LayoutDashboard, Settings, LogIn, BarChart3 } from "lucide-react"
+import { Film, Moon, Sun, User, Eye, Menu, LogOut, LayoutDashboard, Settings, LogIn, BarChart3 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -43,6 +43,32 @@ export function Header() {
               Contact Us
             </Link>
           </nav>
+          <div className="md:hidden">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="icon" aria-label="Open site navigation">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem asChild>
+                  <Link href="/timer">TitleCard Timer</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/leaderboard">Leaderboard</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/watch-history">Watch History</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/stats">Stats</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/contact">Contact Us</Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">

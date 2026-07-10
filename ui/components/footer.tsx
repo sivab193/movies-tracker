@@ -19,7 +19,7 @@ export function Footer() {
                         siv19.dev
                     </a>
                     <a
-                        href="https://github.com/sivab193/movies-tracker"
+                        href="https://github.com/sivab193"
                         target="_blank"
                         rel="noopener noreferrer"
                         aria-label="GitHub"

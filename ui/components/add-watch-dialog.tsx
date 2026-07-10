@@ -109,6 +109,7 @@ export function AddWatchDialog({
   useEffect(() => {
     if (open && initialData) {
       setSelectedMovieId(initialData.movieId)
+      setSelectedTheaterId(initialData.theaterId || "")
       setTheaterName(initialData.theaterName || "")
       setTheaterLocation(initialData.theaterLocation || "")
       setTheaterGmapsLink(initialData.theaterGmapsLink || "")
@@ -183,6 +184,7 @@ export function AddWatchDialog({
     try {
       const payload: any = {
         movieId: selectedMovieId || initialData?.movieId,
+        theaterId: selectedTheaterId || initialData?.theaterId,
         theaterName: theaterName.trim() || undefined,
         theaterLocation: theaterLocation.trim() || undefined,
         theaterGmapsLink: theaterGmapsLink.trim() || undefined,
