@@ -32,9 +32,11 @@ export function Header() {
             <Link href="/leaderboard" className="text-muted-foreground transition-colors hover:text-foreground">
               Leaderboard
             </Link>
-            <Link href="/watch-history" className="text-muted-foreground transition-colors hover:text-foreground">
-              Watch History
-            </Link>
+            {user && (
+              <Link href="/watch-history" className="text-muted-foreground transition-colors hover:text-foreground">
+                Watch History
+              </Link>
+            )}
             <Link href="/stats" className="text-muted-foreground transition-colors hover:text-foreground flex items-center gap-1.5">
               <BarChart3 className="h-4 w-4" />
               Stats

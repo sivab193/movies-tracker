@@ -127,14 +127,29 @@ export default function MovieDetailPage({
               )}
             </div>
 
+            {/* Top Right Runtime Badge */}
+            {movie.runtime && movie.runtime !== "N/A" && (
+              <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded-full bg-black/80 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md border border-white/15 shadow-lg">
+                <Timer className="h-3.5 w-3.5 text-sky-400 shrink-0" />
+                <span>Runtime: {movie.runtime}</span>
+              </div>
+            )}
+
             {/* Title card time badge */}
-            {movie.averageTimeSeconds !== null && (
-              <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground px-4 py-2 rounded-full shadow-lg">
+            {movie.submissionCount > 0 && movie.averageTimeSeconds && movie.averageTimeSeconds > 0 ? (
+              <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground px-4 py-2 rounded-full shadow-lg border border-border/20 whitespace-nowrap">
                 <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
-                  <span className="font-semibold">
-                    {formatTimeDisplay(movie.averageTimeSeconds)}
+                  <Clock className="h-4 w-4 shrink-0" />
+                  <span className="font-semibold text-sm">
+                    Title at: {formatTimeDisplay(movie.averageTimeSeconds)}
                   </span>
+                </div>
+              </div>
+            ) : (
+              <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-secondary text-secondary-foreground px-4 py-1.5 rounded-full shadow border border-border whitespace-nowrap">
+                <div className="flex items-center gap-1.5">
+                  <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                  <span className="text-xs font-medium italic">No title time yet</span>
                 </div>
               </div>
             )}
@@ -203,24 +218,22 @@ export default function MovieDetailPage({
               </CardContent>
             </Card>
 
-            {/* Submission Form */}
-            {userProfile?.isAdmin && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg">Submit Title Card Time</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <SubmissionForm
-                    movieId={id}
-                    runtimeMinutes={movie.runtime ? parseInt(movie.runtime) : undefined}
-                    onSubmitted={async () => {
-                      const data = await getSubmissions(id)
-                      if (data.submissions) setSubmissions(data.submissions)
-                    }}
-                  />
-                </CardContent>
-              </Card>
-            )}
+            {/* Submission Form - Open to anyone! */}
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-lg">Submit Title Card Time</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <SubmissionForm
+                  movieId={id}
+                  runtimeMinutes={movie.runtime ? parseInt(movie.runtime) : undefined}
+                  onSubmitted={async () => {
+                    const data = await getSubmissions(id)
+                    if (data.submissions) setSubmissions(data.submissions)
+                  }}
+                />
+              </CardContent>
+            </Card>
           </div>
         </div>
 

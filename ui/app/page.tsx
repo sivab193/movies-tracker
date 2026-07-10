@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Film, Trophy, List, Share2, ShieldCheck, MessageSquare, Bot, Map, Users, Bell } from "lucide-react"
+import { Film, Trophy, List, Share2, ShieldCheck, MessageSquare, Bot, Map, Users, Bell, Tv, Volume2, Sparkles, CreditCard, Tag } from "lucide-react"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 
@@ -200,6 +200,78 @@ export default function HomePage() {
                 <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground group-hover:text-foreground">
                   <p className="flex-auto text-pretty">
                     Never miss opening day again. Get instant push notifications or Telegram alerts the moment bookings open for blockbuster releases at your favorite theaters.
+                  </p>
+                </dd>
+              </div>
+
+              {/* OTT Watch History & Series */}
+              <div className="group flex flex-col feature-card transition hover:bg-muted/50">
+                <dt className="flex items-center justify-between text-base font-semibold leading-7">
+                  <div className="flex items-center gap-x-3">
+                    <Tv className="h-5 w-5 text-primary group-hover:text-foreground" />
+                    OTT & Series Watch History
+                  </div>
+                  <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                    In Development
+                  </span>
+                </dt>
+                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground group-hover:text-foreground">
+                  <p className="flex-auto text-pretty">
+                    Log and track your streaming watches across platforms (Netflix, Prime Video, Disney+, Apple TV+). Track full TV series, season progress, individual episodes, and binge-watching streaks right alongside your theater history!
+                  </p>
+                </dd>
+              </div>
+
+              {/* Cinema Specs & Screen Info */}
+              <div className="group flex flex-col feature-card transition hover:bg-muted/50">
+                <dt className="flex items-center justify-between text-base font-semibold leading-7">
+                  <div className="flex items-center gap-x-3">
+                    <Volume2 className="h-5 w-5 text-primary group-hover:text-foreground" />
+                    Cinema Specs & Sound Audit
+                  </div>
+                  <span className="inline-flex items-center rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+                    Planned
+                  </span>
+                </dt>
+                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground group-hover:text-foreground">
+                  <p className="flex-auto text-pretty">
+                    Rate and discover theater screens by their exact technical specifications: IMAX 70mm vs Dual Laser, Dolby Cinema, 64-channel Atmos audio, screen dimensions, projection brightness, and seat comfort ratings.
+                  </p>
+                </dd>
+              </div>
+
+              {/* Card Offers & Ticket Savings Hub */}
+              <div className="group flex flex-col feature-card transition hover:bg-muted/50">
+                <dt className="flex items-center justify-between text-base font-semibold leading-7">
+                  <div className="flex items-center gap-x-3">
+                    <CreditCard className="h-5 w-5 text-primary group-hover:text-foreground" />
+                    Card Offers & Savings Hub
+                  </div>
+                  <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
+                    In Development
+                  </span>
+                </dt>
+                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground group-hover:text-foreground">
+                  <p className="flex-auto text-pretty">
+                    Discover and share community-verified ticket hacks, credit/debit card 1+1 offers, loyalty reward codes, and discount tips for major cinema chains (BookMyShow, PVR INOX, AMC, Regal) so everyone saves on their theater outings!
+                  </p>
+                </dd>
+              </div>
+
+              {/* MT Wrapped */}
+              <div className="group flex flex-col feature-card transition hover:bg-muted/50 border border-primary/30 bg-primary/5">
+                <dt className="flex items-center justify-between text-base font-semibold leading-7">
+                  <div className="flex items-center gap-x-3">
+                    <Sparkles className="h-5 w-5 text-primary animate-pulse" />
+                    MT Wrapped (End of Year)
+                  </div>
+                  <span className="inline-flex items-center rounded-full bg-primary/20 px-3 py-1 text-xs font-semibold text-primary">
+                    Coming Dec 2026
+                  </span>
+                </dt>
+                <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground group-hover:text-foreground">
+                  <p className="flex-auto text-pretty">
+                    Get your personalized **MT Wrapped** every December! Experience a dynamic, shareable visual showcase highlighting your total minutes watched, top movie genres, most visited theaters, ticket cost breakdowns, and cinematic milestones of the year!
                   </p>
                 </dd>
               </div>

@@ -3,12 +3,7 @@ import { auth } from "@/lib/firebase";
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
 export async function addMovie(imdbId: string) {
-    const user = auth?.currentUser;
-    if (!user) {
-        throw new Error("User not authenticated");
-    }
-
-    const token = await user.getIdToken();
+    const token = (await auth?.currentUser?.getIdToken().catch(() => null)) || "anonymous";
 
     const response = await fetch(`${API_BASE_URL}/movies/`, {
         method: "POST",
@@ -303,8 +298,7 @@ export async function addSubmission(submission: {
     rawInput: string;
     comment?: string;
 }) {
-    const token = await auth?.currentUser?.getIdToken();
-    if (!token) throw new Error("User not authenticated");
+    const token = (await auth?.currentUser?.getIdToken().catch(() => null)) || "anonymous";
 
     const response = await fetch(`${API_BASE_URL}/movies/submissions`, {
         method: "POST",

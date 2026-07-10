@@ -138,14 +138,17 @@ def ensure_movie_metadata(movie_doc):
 
 @movies_bp.route('/', methods=['POST'])
 def add_movie():
-    # Verify Admin
+    # Verify User (or allow guest)
     auth_header = request.headers.get('Authorization')
-    if not auth_header or not auth_header.startswith('Bearer '):
-        return jsonify({"error": "Unauthorized"}), 401
-    
-    token = auth_header.split(' ')[1]
-    if not is_admin(token):
-        return jsonify({"error": "Forbidden: Admin access required"}), 403
+    uid = "anonymous"
+    if auth_header and auth_header.startswith('Bearer '):
+        token = auth_header.split(' ')[1]
+        if token != "anonymous":
+            try:
+                decoded = firebase_auth.verify_id_token(token)
+                uid = decoded.get('uid', 'anonymous')
+            except Exception:
+                pass
 
     data = request.get_json()
     imdb_id = data.get('imdbId')
@@ -565,14 +568,17 @@ def delete_movie(movie_id):
 
 @movies_bp.route('/submissions', methods=['POST'])
 def add_submission():
-    # Verify Admin
+    # Verify User (or allow guest)
     auth_header = request.headers.get('Authorization')
-    if not auth_header or not auth_header.startswith('Bearer '):
-        return jsonify({"error": "Unauthorized"}), 401
-    
-    token = auth_header.split(' ')[1]
-    if not is_admin(token):
-        return jsonify({"error": "Forbidden: Admin access required"}), 403
+    uid = "anonymous"
+    if auth_header and auth_header.startswith('Bearer '):
+        token = auth_header.split(' ')[1]
+        if token != "anonymous":
+            try:
+                decoded = firebase_auth.verify_id_token(token)
+                uid = decoded.get('uid', 'anonymous')
+            except Exception:
+                pass
 
     data = request.get_json()
     movie_id = data.get('movieId')

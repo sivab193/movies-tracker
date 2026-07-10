@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react"
 import { Film, Clock, Calendar, Loader2 } from "lucide-react"
 import { Header } from "@/components/header"
 import { MovieGrid } from "@/components/movie-grid"
-// import { AddMovieDialog } from "@/components/add-movie-dialog"
+import { AddMovieDialog } from "@/components/add-movie-dialog"
 import { Button } from "@/components/ui/button"
 import type { Movie } from "@/lib/types"
 import { getMovies } from "@/services/api"
@@ -195,7 +195,9 @@ export default function HomePage() {
             Find out exactly when movie title cards show up, so you know the perfect moment
             to snap that theater photo without missing a beat.
           </p>
-          {/* AddMovieDialog removed - see Admin Dashboard */}
+          <div className="mt-6">
+            <AddMovieDialog onMovieAdded={() => fetchMovies(false)} />
+          </div>
         </section>
 
         {/* Sort and Language Options */}

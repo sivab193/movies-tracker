@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Home, Film, Trophy, Clock, BarChart3 } from "lucide-react"
+import { useAuth } from "@/contexts/auth-context"
 
 const navItems = [
   { href: "/", label: "Home", icon: Home },
@@ -14,11 +15,14 @@ const navItems = [
 
 export function BottomNav() {
   const pathname = usePathname()
+  const { user } = useAuth()
+
+  const items = navItems.filter(item => item.href !== "/watch-history" || user)
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/98 backdrop-blur-md md:hidden pb-[env(safe-area-inset-bottom)] shadow-2xl">
       <div className="flex items-center justify-around h-16">
-        {navItems.map(({ href, label, icon: Icon }) => {
+        {items.map(({ href, label, icon: Icon }) => {
           const isActive = href === "/" ? pathname === "/" : pathname.startsWith(href)
           return (
             <Link

@@ -201,6 +201,27 @@ export default function WatchHistoryPage() {
         })
     }
 
+    if (!user) {
+        return (
+            <div className="min-h-screen bg-background pb-12">
+                <Header />
+                <main className="container py-16 max-w-lg mx-auto px-4 text-center">
+                    <Card className="p-8 border-dashed">
+                        <CardHeader className="p-0 mb-4">
+                            <Clock className="h-12 w-12 text-primary mx-auto mb-2" />
+                            <CardTitle className="text-2xl">Your Personal Movie Log</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0 text-muted-foreground space-y-4">
+                            <p>
+                                Sign in to start logging your watched movies, tracking ticket expenses across currencies (INR / USD), and analyzing your personal cinema stats!
+                            </p>
+                        </CardContent>
+                    </Card>
+                </main>
+            </div>
+        )
+    }
+
     return (
         <div className="min-h-screen bg-background pb-12">
             <Header />
