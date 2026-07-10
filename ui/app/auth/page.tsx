@@ -23,6 +23,8 @@ export default function AuthPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const isGmail = email.trim().toLowerCase().endsWith("@gmail.com") || email.trim().toLowerCase().endsWith("@googlemail.com")
+
   // Forgot Password State
   const [resetEmail, setResetEmail] = useState("")
   const [resetOpen, setResetOpen] = useState(false)
@@ -185,6 +187,23 @@ export default function AuthPage() {
                         required
                       />
                     </div>
+                    {isGmail && (
+                      <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-1">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-amber-500" />
+                          <span>Gmail address detected. Please use the <strong>Continue with Google</strong> button above to sign in.</span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          className="h-7 text-xs px-2.5 font-semibold shrink-0 bg-amber-500/20 hover:bg-amber-500/30 text-amber-900 dark:text-amber-100 border border-amber-500/30"
+                          onClick={handleGoogleSignIn}
+                        >
+                          Use Google
+                        </Button>
+                      </div>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
@@ -263,7 +282,7 @@ export default function AuthPage() {
                     </div>
                   )}
 
-                  <Button type="submit" className="w-full" disabled={loading}>
+                  <Button type="submit" className="w-full" disabled={loading || isGmail}>
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Sign In
                   </Button>
@@ -313,6 +332,23 @@ export default function AuthPage() {
                         required
                       />
                     </div>
+                    {isGmail && (
+                      <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 mt-1">
+                        <div className="flex items-start gap-2">
+                          <AlertCircle className="h-4 w-4 shrink-0 mt-0.5 text-amber-500" />
+                          <span>Gmail address detected. Please use the <strong>Continue with Google</strong> button above to sign up.</span>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          className="h-7 text-xs px-2.5 font-semibold shrink-0 bg-amber-500/20 hover:bg-amber-500/30 text-amber-900 dark:text-amber-100 border border-amber-500/30"
+                          onClick={handleGoogleSignIn}
+                        >
+                          Use Google
+                        </Button>
+                      </div>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signup-password">Password</Label>
@@ -342,7 +378,7 @@ export default function AuthPage() {
                     </div>
                   )}
 
-                  <Button type="submit" className="w-full" disabled={loading}>
+                  <Button type="submit" className="w-full" disabled={loading || isGmail}>
                     {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Create Account
                   </Button>
