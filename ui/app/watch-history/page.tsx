@@ -46,6 +46,9 @@ export default function WatchHistoryPage() {
     const { user, userProfile: contextProfile } = useAuth()
     const [profile, setProfile] = useState(contextProfile)
     const [searchQuery, setSearchQuery] = useState("")
+    const [yearFilter, setYearFilter] = useState("All")
+    const [monthFilter, setMonthFilter] = useState("All")
+    const [cityFilter, setCityFilter] = useState("All")
     const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc')
     const [loading, setLoading] = useState(false)
     const [editingEntry, setEditingEntry] = useState<WatchHistoryEntry | null>(null)
@@ -78,16 +81,82 @@ export default function WatchHistoryPage() {
         }
     }
 
+    const uniqueYears = useMemo(() => {
+        const years = new Set<string>()
+        profile?.watchHistory?.forEach(h => {
+            const d = new Date(h.timestamp || h.createdAt)
+            if (!isNaN(d.getTime())) {
+                years.add(d.getFullYear().toString())
+            }
+        })
+        return Array.from(years).sort().reverse()
+    }, [profile?.watchHistory])
+
+    const uniqueCities = useMemo(() => {
+        const cities = new Set<string>()
+        profile?.watchHistory?.forEach(h => {
+            const loc = (h.theaterLocation || "").trim()
+            if (loc && !loc.startsWith("http")) {
+                const city = loc.split(",")[0].replace(/\s+(Indiana|Illinois|IN|IL)$/i, "").trim()
+                if (city) cities.add(city)
+            }
+        })
+        return Array.from(cities).sort()
+    }, [profile?.watchHistory])
+
+    const monthsList = [
+        { value: "All", label: "All Months" },
+        { value: "0", label: "Jan" },
+        { value: "1", label: "Feb" },
+        { value: "2", label: "Mar" },
+        { value: "3", label: "Apr" },
+        { value: "4", label: "May" },
+        { value: "5", label: "Jun" },
+        { value: "6", label: "Jul" },
+        { value: "7", label: "Aug" },
+        { value: "8", label: "Sep" },
+        { value: "9", label: "Oct" },
+        { value: "10", label: "Nov" },
+        { value: "11", label: "Dec" }
+    ]
+
     const history = useMemo(() => {
         let data = profile?.watchHistory || []
 
-        // Filter
+        // Filter by Search Query
         if (searchQuery) {
             const lower = searchQuery.toLowerCase()
             data = data.filter(item =>
                 (item.movieTitle || "").toLowerCase().includes(lower) ||
-                (item.theaterName || "").toLowerCase().includes(lower)
+                (item.theaterName || "").toLowerCase().includes(lower) ||
+                (item.theaterLocation || "").toLowerCase().includes(lower)
             )
+        }
+
+        // Filter by Year
+        if (yearFilter !== "All") {
+            data = data.filter(item => {
+                const d = new Date(item.timestamp || item.createdAt)
+                return !isNaN(d.getTime()) && d.getFullYear().toString() === yearFilter
+            })
+        }
+
+        // Filter by Month
+        if (monthFilter !== "All") {
+            data = data.filter(item => {
+                const d = new Date(item.timestamp || item.createdAt)
+                return !isNaN(d.getTime()) && d.getMonth().toString() === monthFilter
+            })
+        }
+
+        // Filter by City
+        if (cityFilter !== "All") {
+            data = data.filter(item => {
+                const loc = (item.theaterLocation || "").trim()
+                if (!loc || loc.startsWith("http")) return false
+                const city = loc.split(",")[0].replace(/\s+(Indiana|Illinois|IN|IL)$/i, "").trim()
+                return city.toLowerCase() === cityFilter.toLowerCase()
+            })
         }
 
         // Sort by timestamp
@@ -96,7 +165,7 @@ export default function WatchHistoryPage() {
             const dateB = new Date(b.timestamp || b.createdAt).getTime()
             return sortOrder === 'desc' ? dateB - dateA : dateA - dateB
         })
-    }, [profile?.watchHistory, searchQuery, sortOrder])
+    }, [profile?.watchHistory, searchQuery, yearFilter, monthFilter, cityFilter, sortOrder])
 
     // Stats
     const stats = useMemo(() => {
@@ -232,16 +301,47 @@ export default function WatchHistoryPage() {
                 {/* Filters & Table */}
                 <Card>
                     <CardHeader>
-                        <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
                             <CardTitle>History Log</CardTitle>
-                            <div className="relative w-full md:w-72">
-                                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    placeholder="Search movies or theaters..."
-                                    className="pl-8"
-                                    value={searchQuery}
-                                    onChange={(e) => setSearchQuery(e.target.value)}
-                                />
+                            <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+                                <div className="relative flex-1 sm:flex-none sm:w-56">
+                                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder="Search logs..."
+                                        className="pl-8 h-9 text-sm"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                    />
+                                </div>
+                                <select
+                                    className="h-9 rounded-md border border-input bg-background px-2 py-1 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary"
+                                    value={yearFilter}
+                                    onChange={(e) => setYearFilter(e.target.value)}
+                                >
+                                    <option value="All">All Years</option>
+                                    {uniqueYears.map(y => (
+                                        <option key={y} value={y}>{y}</option>
+                                    ))}
+                                </select>
+                                <select
+                                    className="h-9 rounded-md border border-input bg-background px-2 py-1 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary"
+                                    value={monthFilter}
+                                    onChange={(e) => setMonthFilter(e.target.value)}
+                                >
+                                    {monthsList.map(m => (
+                                        <option key={m.value} value={m.value}>{m.label}</option>
+                                    ))}
+                                </select>
+                                <select
+                                    className="h-9 rounded-md border border-input bg-background px-2 py-1 text-xs font-medium max-w-[140px] truncate focus:outline-none focus:ring-2 focus:ring-primary"
+                                    value={cityFilter}
+                                    onChange={(e) => setCityFilter(e.target.value)}
+                                >
+                                    <option value="All">All Cities</option>
+                                    {uniqueCities.map(c => (
+                                        <option key={c} value={c}>{c}</option>
+                                    ))}
+                                </select>
                             </div>
                         </div>
                     </CardHeader>
@@ -249,19 +349,19 @@ export default function WatchHistoryPage() {
                         {history.length === 0 ? (
                             <div className="text-center py-12 text-muted-foreground">
                                 <Film className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                                <p>No movies logged yet.</p>
-                                <p className="text-sm">Click "Add Watch" to log your first movie!</p>
+                                <p>No watch logs match your filters.</p>
+                                <p className="text-sm mt-1">Try clearing filters or log a new watch!</p>
                             </div>
                         ) : (
                             <div className="rounded-md border">
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
-                                            {/* <TableHead className="w-[180px] cursor-pointer" onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}>
-                                                <div className="flex items-center gap-2">
-                                                    Date <ArrowUpDown className="h-3 w-3" />
+                                            <TableHead className="w-[140px] cursor-pointer hover:text-foreground transition-colors" onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}>
+                                                <div className="flex items-center gap-1.5 font-semibold">
+                                                    Date <ArrowUpDown className="h-3.5 w-3.5 text-primary" />
                                                 </div>
-                                            </TableHead> */}
+                                            </TableHead>
                                             <TableHead>Movie</TableHead>
                                             <TableHead>Theater</TableHead>
                                             <TableHead className="text-right">Cost</TableHead>
@@ -271,9 +371,9 @@ export default function WatchHistoryPage() {
                                     <TableBody>
                                         {history.map((entry, i) => (
                                             <TableRow key={entry._id || i}>
-                                                {/* <TableCell className="font-medium text-muted-foreground">
+                                                <TableCell className="font-medium text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
                                                     {formatDate(entry.timestamp || entry.createdAt)}
-                                                </TableCell> */}
+                                                </TableCell>
                                                 <TableCell>
                                                     <div className="font-semibold">{entry.movieTitle}</div>
                                                 </TableCell>

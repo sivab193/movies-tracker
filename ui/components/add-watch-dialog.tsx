@@ -76,7 +76,12 @@ export function AddWatchDialog({
   const [isTheaterDropdownOpen, setIsTheaterDropdownOpen] = useState(false)
   const [cityFilter, setCityFilter] = useState("All")
 
-  const uniqueCities = Array.from(new Set(theaters.map(t => t.location?.trim()).filter(Boolean))).sort()
+  const uniqueCities = Array.from(new Set(
+    theaters.map(t => {
+      const loc = t.location?.trim() || ""
+      return loc.split(",")[0].replace(/\s+(Indiana|Illinois|IN|IL)$/i, "").trim()
+    }).filter(Boolean)
+  )).sort()
 
   const filteredMovies = movies.filter(m => 
     (m.title || "").toLowerCase().includes(movieSearch.toLowerCase()) ||
@@ -84,7 +89,8 @@ export function AddWatchDialog({
   )
 
   const filteredTheaters = theaters.filter(t => {
-    const matchesCity = cityFilter === "All" || (t.location?.trim() === cityFilter)
+    const locCity = (t.location?.trim() || "").split(",")[0].replace(/\s+(Indiana|Illinois|IN|IL)$/i, "").trim()
+    const matchesCity = cityFilter === "All" || (locCity === cityFilter)
     const matchesSearch = !theaterSearch || 
       (t.name || "").toLowerCase().includes(theaterSearch.toLowerCase()) ||
       (t.location || "").toLowerCase().includes(theaterSearch.toLowerCase())
