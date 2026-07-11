@@ -852,7 +852,7 @@ def shorten_movie_url(movie_id):
     if existing and existing.get('code'):
         return jsonify({
             "code": existing['code'],
-            "shortUrl": f"/s/{existing['code']}"
+            "shortUrl": f"/m/{existing['code']}"
         })
 
     code = secrets.token_urlsafe(4)[:6].replace('-', 'x').replace('_', 'z')
@@ -870,10 +870,10 @@ def shorten_movie_url(movie_id):
 
     return jsonify({
         "code": code,
-        "shortUrl": f"/s/{code}"
+        "shortUrl": f"/m/{code}"
     })
 
-@movies_bp.route('/s/<code>', methods=['GET'])
+@movies_bp.route('/m/<code>', methods=['GET'])
 def resolve_short_movie_url(code):
     if db is None:
         return jsonify({"error": "Database not connected"}), 500

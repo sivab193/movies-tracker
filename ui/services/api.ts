@@ -350,7 +350,7 @@ export async function createShortUrl(movieId: string): Promise<{ code: string; s
 }
 
 export async function resolveShortUrl(code: string): Promise<{ movieId: string }> {
-    const response = await fetch(`${API_BASE_URL}/movies/s/${encodeURIComponent(code)}`);
+    const response = await fetch(`${API_BASE_URL}/movies/m/${encodeURIComponent(code)}`);
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "Failed to resolve short URL");
     return data;

@@ -19,6 +19,14 @@
             "dest": "/ui/users/[id]?id=$1"
         },
         {
+            "src": "/u/(.*)",
+            "dest": "/ui/u/[username]?username=$1"
+        },
+        {
+            "src": "/m/(.*)",
+            "dest": "/ui/m/[code]?code=$1"
+        },
+        {
             "src": "/movie/(.*)",
             "dest": "/ui/movie/[id]?id=$1"
         },

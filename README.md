@@ -29,6 +29,8 @@ Whether you're a cinephile tracking every minute spent in theaters or competing 
 - **🍿 Comprehensive Watch Logging**: Record movies, verified theaters, ticket costs, currencies (`INR` / `USD`), and optional ticket stub photos.
 - **⏱️ TitleCard Precision Timer**: Exactly know when movie title cards appear on screen so you never miss a beat.
 - **🏆 Annual Runtime Leaderboard**: Real-time rankings calculated directly from exact runtime seconds (`2026` season).
+- **🆔 Custom Profile Usernames (`/u/{username}`)**: Claim a clean, memorable public link for your watch history profile (`5-10 characters`).
+- **🔗 Instant Movie Short Links (`/m/<code>`)**: Generate and share 6-character short URLs that automatically clear after 30 days.
 - **♾️ Infinite Scroll Catalog**: Browse through hundreds of movies with zero UI lag thanks to intersection-observed paginated API endpoints (`20 movies/page`).
 - **🛡️ Embedded MongoDB Binary Posters**: Movie posters are downloaded and stored directly inside MongoDB (`movie_posters` collection), guaranteeing permanent availability even if external URLs expire.
 - **⚡ Hybrid Vercel Deployment**: Seamlessly bridges a Next.js frontend with a Python serverless API under one unified domain via `vercel.json`.

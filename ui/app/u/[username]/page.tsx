@@ -111,10 +111,14 @@ export default function CustomUserProfilePage() {
                     <div className="flex-1">
                         <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                             <h1 className="text-4xl font-bold tracking-tight">{profile.displayName}</h1>
-                            {profile.customUrl && (
+                            {profile.customUrl ? (
                                 <span className="inline-block rounded-full bg-primary/10 px-3 py-1 text-xs font-mono font-semibold text-primary">
                                     /u/{profile.customUrl}
                                 </span>
+                            ) : (
+                                <a href="/settings" className="inline-block rounded-full bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-500 hover:bg-amber-500/20 transition-colors border border-amber-500/20">
+                                    ✨ Claim your short URL (/u/name) in Settings
+                                </a>
                             )}
                         </div>
                         <div className="mt-4 flex flex-wrap justify-center gap-6 md:justify-start">

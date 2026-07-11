@@ -242,17 +242,31 @@ export default function SettingsPage() {
                                         Claim a short, clean username (5-10 characters) for your public profile link
                                     </p>
                                 </div>
-                                {!editingCustomUrl ? (
+                                {!customUrl && !editingCustomUrl ? (
+                                    <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full mt-2">
+                                        <div>
+                                            <h3 className="font-semibold text-foreground text-sm flex items-center gap-1.5">
+                                                ✨ Claim your short profile URL now!
+                                            </h3>
+                                            <p className="text-xs text-muted-foreground mt-0.5">
+                                                Replace your long database ID with a clean, memorable username within 10 characters (e.g. /u/siv19).
+                                            </p>
+                                        </div>
+                                        <Button size="sm" onClick={() => { setEditingCustomUrl(true); setCustomUrlError(null); }} className="shrink-0">
+                                            Claim URL Now
+                                        </Button>
+                                    </div>
+                                ) : !editingCustomUrl ? (
                                     <div className="flex items-center gap-3">
                                         <span className="font-mono font-medium text-primary">
-                                            {customUrl ? `/u/${customUrl}` : `/u/${user?.uid?.slice(0, 8)}...`}
+                                            /u/{customUrl}
                                         </span>
                                         <Button variant="ghost" size="sm" onClick={() => { setEditingCustomUrl(true); setCustomUrlError(null); }}>
                                             <Pencil className="h-4 w-4" />
                                         </Button>
                                     </div>
                                 ) : (
-                                    <div className="flex flex-col gap-2 items-end">
+                                    <div className="flex flex-col gap-2 items-end w-full sm:w-auto mt-2 sm:mt-0">
                                         <div className="flex items-center gap-2">
                                             <span className="text-sm font-mono text-muted-foreground">/u/</span>
                                             <Input
@@ -279,18 +293,26 @@ export default function SettingsPage() {
                                 </div>
                             )}
                             <div className="flex items-center justify-between pt-3 border-t border-border/40 text-xs text-muted-foreground">
-                                <span className="truncate">
-                                    Public Link: <strong className="font-mono text-foreground">{typeof window !== "undefined" ? window.location.origin : ""}/u/{customUrl || user?.uid}</strong>
-                                </span>
-                                <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={handleCopyProfileUrl}
-                                    className="h-7 gap-1.5 rounded-lg shrink-0 text-xs"
-                                >
-                                    {copiedUrl ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
-                                    {copiedUrl ? "Copied!" : "Copy Link"}
-                                </Button>
+                                {customUrl ? (
+                                    <>
+                                        <span className="truncate">
+                                            Public Link: <strong className="font-mono text-foreground">{typeof window !== "undefined" ? window.location.origin : ""}/u/{customUrl}</strong>
+                                        </span>
+                                        <Button
+                                            variant="outline"
+                                            size="sm"
+                                            onClick={handleCopyProfileUrl}
+                                            className="h-7 gap-1.5 rounded-lg shrink-0 text-xs"
+                                        >
+                                            {copiedUrl ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+                                            {copiedUrl ? "Copied!" : "Copy Link"}
+                                        </Button>
+                                    </>
+                                ) : (
+                                    <span className="text-amber-500/90 font-medium">
+                                        ⚠️ You are currently using a long database ID. Claim a short username above!
+                                    </span>
+                                )}
                             </div>
                         </div>
                     </section>
