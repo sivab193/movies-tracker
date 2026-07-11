@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { Plus, Loader2, Film, MapPin, Ticket, Clock, UtensilsCrossed } from "lucide-react"
+import { Plus, Loader2, Film, MapPin, Ticket, Clock, UtensilsCrossed, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -283,14 +283,15 @@ export function AddWatchDialog({
                   {(selectedMovieId || movieSearch) && (
                     <button
                       type="button"
+                      aria-label="Clear movie search"
                       onClick={() => {
                         setSelectedMovieId("")
                         setMovieSearch("")
                         setIsMovieDropdownOpen(false)
                       }}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs font-bold px-1"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     >
-                      ✕
+                      <X className="h-3.5 w-3.5" />
                     </button>
                   )}
                 </div>
@@ -380,6 +381,7 @@ export function AddWatchDialog({
                   {(selectedTheaterId || theaterSearch) && (
                     <button
                       type="button"
+                      aria-label="Clear theater search"
                       onClick={() => {
                         setSelectedTheaterId("")
                         setTheaterName("")
@@ -388,9 +390,9 @@ export function AddWatchDialog({
                         setTheaterSearch("")
                         setIsTheaterDropdownOpen(false)
                       }}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs font-bold px-1"
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 rounded-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
                     >
-                      ✕
+                      <X className="h-3.5 w-3.5" />
                     </button>
                   )}
                 </div>
