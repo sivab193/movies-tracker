@@ -5,6 +5,7 @@ import datetime
 from firebase_config import auth as firebase_auth
 from mongo_config import db
 from bson import ObjectId, Binary
+import base64
 
 movies_bp = Blueprint('movies', __name__)
 
@@ -74,6 +75,26 @@ def save_poster_to_db(movie_id, poster_url):
         print(f"Error saving poster to MongoDB: {e}")
     return None
 
+def save_poster_base64_to_db(movie_id, base64_str):
+    if not base64_str or not base64_str.startswith('data:'):
+        return None
+    try:
+        header, encoded = base64_str.split(",", 1)
+        mime_type = header.split(";")[0].split(":")[1]
+        image_data = Binary(base64.b64decode(encoded))
+        db.movie_posters.update_one(
+            {"movieId": str(movie_id)},
+            {"$set": {
+                "imageData": image_data,
+                "mimeType": mime_type
+            }},
+            upsert=True
+        )
+        return f"/api/movies/{movie_id}/poster"
+    except Exception as e:
+        print(f"Error saving base64 poster to MongoDB: {e}")
+    return None
+
 def parse_release_date_to_iso(released_str, year_val=None):
     if not released_str or released_str == 'N/A':
         if year_val:
@@ -136,6 +157,64 @@ def ensure_movie_metadata(movie_doc):
             
     return movie_doc
 
+@movies_bp.route('/fetch-omdb', methods=['POST', 'GET'])
+def fetch_omdb_endpoint():
+    if request.method == 'GET':
+        imdb_id = request.args.get('imdbId')
+    else:
+        data = request.get_json() or {}
+        imdb_id = data.get('imdbId')
+        
+    if not imdb_id or not imdb_id.startswith('tt'):
+        return jsonify({"error": "Invalid IMDb ID format"}), 400
+        
+    if db is None:
+        return jsonify({"error": "Database not connected"}), 500
+        
+    existing = db.movies.find_one({"imdbId": imdb_id})
+    if existing:
+        existing['id'] = str(existing.pop('_id'))
+        if existing.get('createdAt') and hasattr(existing['createdAt'], 'isoformat'):
+            existing['createdAt'] = existing['createdAt'].isoformat()
+        return jsonify({"exists": True, "movie": existing})
+        
+    try:
+        omdb_data = fetch_movie_from_omdb(imdb_id)
+        runtime_str = omdb_data.get('Runtime', 'N/A')
+        average_time_seconds = 0
+        if runtime_str != 'N/A':
+            try:
+                minutes = int(runtime_str.split(' ')[0])
+                average_time_seconds = minutes * 60
+            except:
+                pass
+                
+        lang = omdb_data.get('Language', 'English')
+        rel_str = omdb_data.get('Released', str(omdb_data.get('Year', '')))
+        year_val = int(omdb_data.get('Year')) if str(omdb_data.get('Year', '')).isdigit() else 2024
+        rel_date = parse_release_date_to_iso(rel_str, year_val)
+        try:
+            imdb_rating = float(omdb_data.get('imdbRating')) if omdb_data.get('imdbRating') not in [None, '', 'N/A'] else None
+        except:
+            imdb_rating = None
+            
+        movie_preview = {
+            "imdbId": imdb_id,
+            "title": omdb_data.get('Title', f"Movie {imdb_id}"),
+            "year": year_val,
+            "language": lang,
+            "Language": lang,
+            "released": rel_str,
+            "releaseDate": rel_date,
+            "runtime": runtime_str,
+            "averageTimeSeconds": average_time_seconds,
+            "imdbRating": imdb_rating,
+            "posterUrl": omdb_data.get('Poster') if omdb_data.get('Poster') != "N/A" else ""
+        }
+        return jsonify({"exists": False, "movie": movie_preview})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @movies_bp.route('/', methods=['POST'])
 def add_movie():
     # Verify User (or allow guest)
@@ -150,7 +229,7 @@ def add_movie():
             except Exception:
                 pass
 
-    data = request.get_json()
+    data = request.get_json() or {}
     imdb_id = data.get('imdbId')
 
     if not imdb_id or not imdb_id.startswith('tt'):
@@ -162,32 +241,60 @@ def add_movie():
     # Check if movie exists
     existing = db.movies.find_one({"imdbId": imdb_id})
     if existing:
-        existing['_id'] = str(existing['_id'])
+        existing['id'] = str(existing.pop('_id'))
+        if existing.get('createdAt') and hasattr(existing['createdAt'], 'isoformat'):
+            existing['createdAt'] = existing['createdAt'].isoformat()
         return jsonify({"message": "Movie already exists", "movie": existing})
 
     try:
-        omdb_data = fetch_movie_from_omdb(imdb_id)
-        
-        runtime_str = omdb_data.get('Runtime', 'N/A')
-        average_time_seconds = 0
-        if runtime_str != 'N/A':
+        if data.get('title'):
+            title_val = str(data.get('title')).strip()
             try:
-                minutes = int(runtime_str.split(' ')[0])
-                average_time_seconds = minutes * 60
+                year_val = int(data.get('year', 2024))
             except:
-                pass
-
-        lang = omdb_data.get('Language', 'English')
-        rel_str = omdb_data.get('Released', str(omdb_data.get('Year', '')))
-        year_val = int(omdb_data.get('Year')) if str(omdb_data.get('Year', '')).isdigit() else 2024
-        rel_date = parse_release_date_to_iso(rel_str, year_val)
+                year_val = 2024
+            lang = str(data.get('language') or data.get('Language') or 'English').strip()
+            rel_str = str(data.get('released') or data.get('releaseDate') or str(year_val)).strip()
+            rel_date = parse_release_date_to_iso(rel_str, year_val)
+            runtime_str = str(data.get('runtime', 'N/A')).strip()
+            average_time_seconds = 0
+            if runtime_str != 'N/A':
+                try:
+                    minutes = int(runtime_str.split(' ')[0])
+                    average_time_seconds = minutes * 60
+                except:
+                    pass
+            try:
+                imdb_rating = float(data.get('imdbRating')) if data.get('imdbRating') not in [None, '', 'N/A'] else None
+            except:
+                imdb_rating = None
+            omdb_data = {}
+        else:
+            omdb_data = fetch_movie_from_omdb(imdb_id)
+            runtime_str = omdb_data.get('Runtime', 'N/A')
+            average_time_seconds = 0
+            if runtime_str != 'N/A':
+                try:
+                    minutes = int(runtime_str.split(' ')[0])
+                    average_time_seconds = minutes * 60
+                except:
+                    pass
+            lang = omdb_data.get('Language', 'English')
+            rel_str = omdb_data.get('Released', str(omdb_data.get('Year', '')))
+            year_val = int(omdb_data.get('Year')) if str(omdb_data.get('Year', '')).isdigit() else 2024
+            rel_date = parse_release_date_to_iso(rel_str, year_val)
+            title_val = omdb_data.get('Title')
+            try:
+                imdb_rating = float(omdb_data.get('imdbRating')) if omdb_data.get('imdbRating') != "N/A" else None
+            except:
+                imdb_rating = None
 
         movie_data = {
             "imdbId": imdb_id,
-            "title": omdb_data.get('Title'),
+            "title": title_val,
             "year": year_val,
             "posterUrl": None,
-            "imdbRating": float(omdb_data.get('imdbRating')) if omdb_data.get('imdbRating') != "N/A" else None,
+            "imdbRating": imdb_rating,
             "runtime": runtime_str,
             "language": lang,
             "Language": lang,
@@ -201,15 +308,38 @@ def add_movie():
         result = db.movies.insert_one(movie_data)
         movie_id = str(result.inserted_id)
         movie_data['_id'] = movie_id
+        movie_data['id'] = movie_id
 
-        # Download and save poster in MongoDB
-        omdb_poster_url = omdb_data.get('Poster')
-        if omdb_poster_url and omdb_poster_url != "N/A":
-            poster_url = save_poster_to_db(movie_id, omdb_poster_url)
-            if poster_url:
-                db.movies.update_one({"_id": ObjectId(movie_id)}, {"$set": {"posterUrl": poster_url}})
-                movie_data['posterUrl'] = poster_url
-        
+        # Handle posterImage (Base64 file upload) OR posterUrl OR omdb poster
+        poster_image = data.get('posterImage')
+        poster_url = data.get('posterUrl')
+        final_poster_url = None
+
+        if poster_image and str(poster_image).startswith('data:'):
+            saved_url = save_poster_base64_to_db(movie_id, poster_image)
+            if saved_url:
+                final_poster_url = saved_url
+        elif poster_url and str(poster_url).strip() not in ['', 'N/A', 'null']:
+            p_url = str(poster_url).strip()
+            if p_url.startswith("http://") or p_url.startswith("https://"):
+                saved_url = save_poster_to_db(movie_id, p_url)
+                final_poster_url = saved_url or p_url
+            else:
+                final_poster_url = p_url
+        elif omdb_data.get('Poster') and omdb_data.get('Poster') != "N/A":
+            saved_url = save_poster_to_db(movie_id, omdb_data.get('Poster'))
+            if saved_url:
+                final_poster_url = saved_url
+
+        if final_poster_url:
+            db.movies.update_one({"_id": ObjectId(movie_id)}, {"$set": {"posterUrl": final_poster_url}})
+            movie_data['posterUrl'] = final_poster_url
+
+        if 'createdAt' in movie_data and hasattr(movie_data['createdAt'], 'isoformat'):
+            movie_data['createdAt'] = movie_data['createdAt'].isoformat()
+        if '_id' in movie_data:
+            del movie_data['_id']
+
         return jsonify({"message": "Movie added successfully", "movie": movie_data})
 
     except Exception as e:
@@ -503,13 +633,25 @@ def update_movie(movie_id):
         update_fields['Language'] = lang_val
     if 'runtime' in data and data['runtime'] is not None:
         update_fields['runtime'] = str(data['runtime']).strip()
-    if 'posterUrl' in data and data['posterUrl'] is not None:
-        update_fields['posterUrl'] = str(data['posterUrl']).strip()
     if 'imdbRating' in data:
         try:
             update_fields['imdbRating'] = float(data['imdbRating']) if data['imdbRating'] != '' and data['imdbRating'] is not None else None
         except ValueError:
             pass
+
+    # Handle posterImage (Base64) or posterUrl
+    poster_image = data.get('posterImage')
+    if poster_image and str(poster_image).startswith('data:'):
+        saved_url = save_poster_base64_to_db(movie_id, poster_image)
+        if saved_url:
+            update_fields['posterUrl'] = saved_url
+    elif 'posterUrl' in data and data['posterUrl'] is not None:
+        p_url = str(data['posterUrl']).strip()
+        if p_url.startswith("http://") or p_url.startswith("https://"):
+            saved_url = save_poster_to_db(movie_id, p_url)
+            update_fields['posterUrl'] = saved_url or p_url
+        else:
+            update_fields['posterUrl'] = p_url
 
     if not update_fields:
         return jsonify({"error": "No valid fields provided for update"}), 400

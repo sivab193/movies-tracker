@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { Clock, Star, Timer } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
-import { formatTimeDisplay, type Movie } from "@/lib/types"
+import { formatTimeDisplay, formatRuntimeToHHMM, type Movie } from "@/lib/types"
 
 interface MovieCardProps {
   movie: Movie
@@ -26,13 +26,11 @@ export function MovieCard({ movie }: MovieCardProps) {
             </div>
           )}
           
-          {/* Top Right Badge: Total Runtime */}
-          {movie.runtime && movie.runtime !== "N/A" && (
-            <div className="absolute top-2 right-2 z-10 flex items-center gap-1 rounded-full bg-black/80 px-2 py-0.5 text-[11px] font-medium text-white/90 backdrop-blur-md border border-white/10 shadow-md">
-              <Timer className="h-3 w-3 text-sky-400 shrink-0" />
-              <span>{movie.runtime}</span>
-            </div>
-          )}
+          {/* Top Right Badge: Total Runtime in hh:mm or ? mins */}
+          <div className="absolute top-2 right-2 z-10 flex items-center gap-1 rounded-full bg-black/80 px-2 py-0.5 text-[11px] font-medium text-white/90 backdrop-blur-md border border-white/10 shadow-md">
+            <Timer className="h-3 w-3 text-sky-400 shrink-0" />
+            <span>{formatRuntimeToHHMM(movie.runtime)}</span>
+          </div>
 
           {/* Bottom Bar: Title Card Time */}
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent p-3 pt-8">

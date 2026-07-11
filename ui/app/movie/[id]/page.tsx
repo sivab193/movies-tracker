@@ -9,7 +9,7 @@ import { SubmissionForm } from "@/components/submission-form"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { formatTimeDisplay, type Movie, type TitleCardSubmission } from "@/lib/types"
+import { formatTimeDisplay, formatRuntimeToHHMM, type Movie, type TitleCardSubmission } from "@/lib/types"
 import { useAuth } from "@/contexts/auth-context"
 
 export default function MovieDetailPage({
@@ -128,12 +128,10 @@ export default function MovieDetailPage({
             </div>
 
             {/* Top Right Runtime Badge */}
-            {movie.runtime && movie.runtime !== "N/A" && (
-              <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded-full bg-black/80 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md border border-white/15 shadow-lg">
-                <Timer className="h-3.5 w-3.5 text-sky-400 shrink-0" />
-                <span>Runtime: {movie.runtime}</span>
-              </div>
-            )}
+            <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded-full bg-black/80 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md border border-white/15 shadow-lg">
+              <Timer className="h-3.5 w-3.5 text-sky-400 shrink-0" />
+              <span>Runtime: {formatRuntimeToHHMM(movie.runtime)}</span>
+            </div>
 
             {/* Title card time badge */}
             {movie.submissionCount > 0 && movie.averageTimeSeconds && movie.averageTimeSeconds > 0 ? (
@@ -177,12 +175,10 @@ export default function MovieDetailPage({
                     <span>{movie.imdbRating}/10</span>
                   </div>
                 )}
-                {movie.runtime && (
-                  <div className="flex items-center gap-1.5">
-                    <Timer className="h-4 w-4" />
-                    <span>{movie.runtime}</span>
-                  </div>
-                )}
+                <div className="flex items-center gap-1.5">
+                  <Timer className="h-4 w-4" />
+                  <span>{formatRuntimeToHHMM(movie.runtime)}</span>
+                </div>
               </div>
             </div>
 

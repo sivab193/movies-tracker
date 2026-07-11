@@ -2,8 +2,24 @@ import { auth } from "@/lib/firebase";
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
-export async function addMovie(imdbId: string) {
+export async function fetchOmdbPreview(imdbId: string) {
     const token = (await auth?.currentUser?.getIdToken().catch(() => null)) || "anonymous";
+    const response = await fetch(`${API_BASE_URL}/movies/fetch-omdb?imdbId=${encodeURIComponent(imdbId)}`, {
+        method: "GET",
+        headers: {
+            Authorization: `Bearer ${token}`,
+        },
+    });
+    const data = await response.json();
+    if (!response.ok) {
+        throw new Error(data.error || "Failed to fetch OMDB details");
+    }
+    return data;
+}
+
+export async function addMovie(payload: string | any) {
+    const token = (await auth?.currentUser?.getIdToken().catch(() => null)) || "anonymous";
+    const bodyData = typeof payload === "string" ? { imdbId: payload } : payload;
 
     const response = await fetch(`${API_BASE_URL}/movies/`, {
         method: "POST",
@@ -11,7 +27,7 @@ export async function addMovie(imdbId: string) {
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ imdbId }),
+        body: JSON.stringify(bodyData),
     });
 
     const data = await response.json();

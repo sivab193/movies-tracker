@@ -174,13 +174,20 @@ export default function WatchHistoryPage() {
 
         let costINR = 0
         let costUSD = 0
+        let foodINR = 0
+        let foodUSD = 0
 
         profile?.watchHistory?.forEach(h => {
-            if (h.currency === 'INR') costINR += h.ticketCost
-            else if (h.currency === 'USD') costUSD += h.ticketCost
+            if (h.currency === 'INR') {
+                costINR += h.ticketCost
+                foodINR += h.foodCost || 0
+            } else if (h.currency === 'USD') {
+                costUSD += h.ticketCost
+                foodUSD += h.foodCost || 0
+            }
         })
 
-        return { totalRuntime, totalMovies, costINR, costUSD }
+        return { totalRuntime, totalMovies, costINR, costUSD, foodINR, foodUSD }
     }, [profile])
 
 
@@ -195,9 +202,7 @@ export default function WatchHistoryPage() {
         return new Date(dateStr).toLocaleDateString('en-US', {
             year: 'numeric',
             month: 'short',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
+            day: 'numeric'
         })
     }
 
@@ -309,12 +314,12 @@ export default function WatchHistoryPage() {
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">
-                                {stats.costINR > 0 && <span>{formatCurrency(stats.costINR, 'INR')}</span>}
-                                {stats.costINR > 0 && stats.costUSD > 0 && <span className="mx-2">+</span>}
-                                {stats.costUSD > 0 && <span>{formatCurrency(stats.costUSD, 'USD')}</span>}
-                                {stats.costINR === 0 && stats.costUSD === 0 && "0.00"}
+                                {(stats.costINR + stats.foodINR) > 0 && <span>{formatCurrency(stats.costINR + stats.foodINR, 'INR')}</span>}
+                                {(stats.costINR + stats.foodINR) > 0 && (stats.costUSD + stats.foodUSD) > 0 && <span className="mx-2">+</span>}
+                                {(stats.costUSD + stats.foodUSD) > 0 && <span>{formatCurrency(stats.costUSD + stats.foodUSD, 'USD')}</span>}
+                                {(stats.costINR + stats.foodINR) === 0 && (stats.costUSD + stats.foodUSD) === 0 && "0.00"}
                             </div>
-                            <p className="text-xs text-muted-foreground">On movie tickets</p>
+                            <p className="text-xs text-muted-foreground">Tickets + Food</p>
                         </CardContent>
                     </Card>
                 </div>
@@ -393,7 +398,13 @@ export default function WatchHistoryPage() {
                                         {history.map((entry, i) => (
                                             <TableRow key={entry._id || i}>
                                                 <TableCell className="font-medium text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
-                                                    {formatDate(entry.timestamp || entry.createdAt)}
+                                                    <div>{formatDate(entry.timestamp || entry.createdAt)}</div>
+                                                    {entry.showTime && (
+                                                        <div className="text-xs text-muted-foreground/70 flex items-center gap-1 mt-0.5">
+                                                            <Clock className="h-3 w-3" />
+                                                            {entry.showTime}
+                                                        </div>
+                                                    )}
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="font-semibold">{entry.movieTitle}</div>
@@ -426,6 +437,11 @@ export default function WatchHistoryPage() {
                                                 <TableCell className="text-right">
                                                     <div className="flex flex-col items-end">
                                                         <span className="font-mono">{formatCurrency(entry.ticketCost, entry.currency)}</span>
+                                                        {(entry.foodCost != null && entry.foodCost > 0) && (
+                                                            <span className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                                                                🍿 {formatCurrency(entry.foodCost, entry.currency)}
+                                                            </span>
+                                                        )}
                                                         {entry.ticketStubUrl && (
                                                             <a 
                                                                 href={resolveApiUrl(entry.ticketStubUrl)} 

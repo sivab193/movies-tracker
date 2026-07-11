@@ -53,7 +53,9 @@ export interface WatchHistoryEntry {
   theaterLocation: string | null
   theaterGmapsLink?: string | null
   timestamp: string | null // ISO Date string
+  showTime?: string | null // e.g. "7:30 PM"
   ticketCost: number
+  foodCost?: number | null
   currency: "INR" | "USD"
   ticketStubUrl?: string | null
   createdAt: string // ISO Date string
@@ -121,4 +123,16 @@ export function resolveApiUrl(url: string) {
   // Replace the leading "/api" with the full API base domain
   const root = apiBase.replace(/\/api$/, "")
   return url.startsWith("/api") ? `${root}${url}` : `${apiBase}${url}`
+}
+
+export function formatRuntimeToHHMM(runtime?: string | null | number): string {
+  if (!runtime || runtime === "N/A" || runtime === "null") return "? mins"
+  const str = String(runtime).trim()
+  const match = str.match(/(\d+)/)
+  if (!match) return "? mins"
+  const mins = parseInt(match[1], 10)
+  if (isNaN(mins) || mins <= 0) return "? mins"
+  const hrs = Math.floor(mins / 60)
+  const remMins = mins % 60
+  return `${hrs.toString().padStart(2, "0")}:${remMins.toString().padStart(2, "0")}`
 }

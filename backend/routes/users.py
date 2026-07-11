@@ -239,8 +239,10 @@ def add_watch_history():
         "theaterLocation": data.get('theaterLocation', data.get('location')),
         "theaterGmapsLink": data.get('theaterGmapsLink', data.get('gmapsLink', '')),
         "ticketCost": data.get('ticketCost'),
+        "foodCost": data.get('foodCost'),
         "currency": data.get('currency'),
         "ticketStubUrl": ticket_stub_url,
+        "showTime": data.get('showTime'),
         "timestamp": data.get('timestamp'), # Expecting ISO string
         "createdAt": datetime.datetime.now(datetime.timezone.utc).isoformat()
     }
@@ -372,6 +374,10 @@ def update_watch_history(user_id, entry_id):
         updates['watchHistory.$.theaterGmapsLink'] = data['theaterGmapsLink']
     if 'ticketCost' in data:
         updates['watchHistory.$.ticketCost'] = data['ticketCost']
+    if 'foodCost' in data:
+        updates['watchHistory.$.foodCost'] = data['foodCost']
+    if 'showTime' in data:
+        updates['watchHistory.$.showTime'] = data['showTime']
     if 'timestamp' in data:
         updates['watchHistory.$.timestamp'] = data['timestamp']
     if 'currency' in data:

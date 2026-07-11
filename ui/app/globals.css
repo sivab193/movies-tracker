@@ -168,3 +168,9 @@
   transform: translateY(-4px);
 }
 
+/* Fix native time/date input icons in dark mode */
+.dark input[type="time"]::-webkit-calendar-picker-indicator,
+.dark input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+

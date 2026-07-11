@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect } from "react"
-import { Plus, Loader2, Film, MapPin, Ticket } from "lucide-react"
+import { Plus, Loader2, Film, MapPin, Ticket, Clock, UtensilsCrossed } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/select"
 import { type WatchHistoryEntry } from "@/lib/types"
 import { addWatchHistory, updateWatchHistory, getMovies, getTheaters } from "@/services/api"
-// Standard date input used instead of MUI DatePicker
+import { DatePicker } from "@/components/ui/date-picker"
 
 interface AddWatchDialogProps {
   uid: string
@@ -65,7 +65,9 @@ export function AddWatchDialog({
   const [theaterLocation, setTheaterLocation] = useState("")
   const [theaterGmapsLink, setTheaterGmapsLink] = useState("")
   const [watchDate, setWatchDate] = useState(new Date().toISOString().split('T')[0])
+  const [showTime, setShowTime] = useState("")
   const [ticketCost, setTicketCost] = useState("")
+  const [foodCost, setFoodCost] = useState("")
   const [currency, setCurrency] = useState<"INR" | "USD">("INR")
   const [hasScreenshot, setHasScreenshot] = useState(false)
   const [ticketStubFile, setTicketStubFile] = useState<File | null>(null)
@@ -114,6 +116,8 @@ export function AddWatchDialog({
       setTheaterLocation(initialData.theaterLocation || "")
       setTheaterGmapsLink(initialData.theaterGmapsLink || "")
       setTicketCost(initialData.ticketCost?.toString() || "")
+      setFoodCost(initialData.foodCost?.toString() || "")
+      setShowTime(initialData.showTime || "")
       setCurrency(initialData.currency || "INR")
       if (initialData.timestamp) {
         try {
@@ -158,7 +162,9 @@ export function AddWatchDialog({
     setIsMovieDropdownOpen(false)
     setIsTheaterDropdownOpen(false)
     setWatchDate(new Date().toISOString().split('T')[0])
+    setShowTime("")
     setTicketCost("")
+    setFoodCost("")
     setCurrency("INR")
     setHasScreenshot(false)
     setTicketStubFile(null)
@@ -189,7 +195,9 @@ export function AddWatchDialog({
         theaterLocation: theaterLocation.trim() || undefined,
         theaterGmapsLink: theaterGmapsLink.trim() || undefined,
         timestamp: new Date(watchDate).toISOString(),
+        showTime: showTime.trim() || null,
         ticketCost: ticketCost ? parseFloat(ticketCost) : 0,
+        foodCost: foodCost ? parseFloat(foodCost) : 0,
         currency,
       }
 
@@ -422,13 +430,27 @@ export function AddWatchDialog({
 
           <div className="space-y-2">
             <Label>Date of Watch</Label>
-            <input
-              type="date"
+            <DatePicker
               value={watchDate}
-              onChange={(e) => setWatchDate(e.target.value)}
+              onChange={setWatchDate}
               disabled={loading}
               max={new Date().toISOString().split('T')[0]}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              placeholder="Select date"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="show-time" className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Show Time <span className="text-xs text-muted-foreground">(Optional)</span>
+            </Label>
+            <Input
+              id="show-time"
+              type="time"
+              value={showTime}
+              onChange={(e) => setShowTime(e.target.value)}
+              disabled={loading}
+              className="[color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]"
             />
           </div>
 
@@ -450,6 +472,25 @@ export function AddWatchDialog({
               />
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="food-cost" className="flex items-center gap-2">
+                <UtensilsCrossed className="h-4 w-4" />
+                Food Cost <span className="text-xs text-muted-foreground">(Optional)</span>
+              </Label>
+              <Input
+                id="food-cost"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                value={foodCost}
+                onChange={(e) => setFoodCost(e.target.value)}
+                disabled={loading}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label htmlFor="currency">Currency</Label>
               <Select value={currency} onValueChange={(v) => setCurrency(v as "INR" | "USD")}>

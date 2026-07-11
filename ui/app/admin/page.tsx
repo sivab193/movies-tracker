@@ -10,8 +10,10 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Header } from "@/components/header"
 import { getAdminRequests, resolveAdminRequest } from "@/services/user-service"
-import { getMovies, deleteMovie, getTheaters, addTheater, updateTheater, deleteTheater, updateMovie } from "@/services/api"
-import { formatTimeDisplay } from "@/lib/types"
+import { getMovies, deleteMovie, getTheaters, addTheater, updateTheater, deleteTheater, updateMovie, addMovie, fetchOmdbPreview } from "@/services/api"
+import { formatTimeDisplay, resolveApiUrl } from "@/lib/types"
+import { Label } from "@/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
     Dialog,
     DialogContent,
@@ -66,6 +68,26 @@ export default function AdminPage() {
     const [inlineMovieRuntime, setInlineMovieRuntime] = useState("")
     const [inlineMoviePosterUrl, setInlineMoviePosterUrl] = useState("")
     const [savingMovieId, setSavingMovieId] = useState<string | null>(null)
+
+    // Add & Edit Movie Modal states
+    const [isMovieModalOpen, setIsMovieModalOpen] = useState(false)
+    const [modalMode, setModalMode] = useState<"add" | "edit">("add")
+    const [modalStep, setModalStep] = useState<1 | 2>(1)
+    const [modalMovieId, setModalMovieId] = useState<string | null>(null)
+    const [modalImdbId, setModalImdbId] = useState("")
+    const [fetchingOmdb, setFetchingOmdb] = useState(false)
+    const [modalTitle, setModalTitle] = useState("")
+    const [modalYear, setModalYear] = useState("")
+    const [modalLanguage, setModalLanguage] = useState("English")
+    const [modalReleaseDate, setModalReleaseDate] = useState("")
+    const [modalRuntime, setModalRuntime] = useState("")
+    const [modalImdbRating, setModalImdbRating] = useState("")
+    const [modalPosterUrl, setModalPosterUrl] = useState("")
+    const [modalPosterFile, setModalPosterFile] = useState<File | null>(null)
+    const [modalPosterPreview, setModalPosterPreview] = useState<string>("")
+    const [modalPosterType, setModalPosterType] = useState<"url" | "file">("url")
+    const [savingModalMovie, setSavingModalMovie] = useState(false)
+    const [modalError, setModalError] = useState<string | null>(null)
 
     // Theater search & pagination states
     const [theaterSearch, setTheaterSearch] = useState("")
@@ -142,6 +164,112 @@ export default function AdminPage() {
         fetchMoviesGlobal(newSkip)
     }
 
+    const fileToBase64 = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = error => reject(error);
+        });
+    }
+
+    const openAddMovieModal = () => {
+        setModalMode("add")
+        setModalMovieId(null)
+        setModalImdbId("")
+        setModalTitle("")
+        setModalYear("")
+        setModalLanguage("English")
+        setModalReleaseDate("")
+        setModalRuntime("")
+        setModalImdbRating("")
+        setModalPosterUrl("")
+        setModalPosterFile(null)
+        setModalPosterPreview("")
+        setModalPosterType("url")
+        setModalStep(1)
+        setModalError(null)
+        setIsMovieModalOpen(true)
+    }
+
+    const handleFetchOmdb = async () => {
+        if (!modalImdbId.trim() || !modalImdbId.trim().startsWith("tt")) {
+            setModalError("Please enter a valid IMDb ID (e.g. tt1375666)")
+            return
+        }
+        setFetchingOmdb(true)
+        setModalError(null)
+        try {
+            const data = await fetchOmdbPreview(modalImdbId.trim())
+            if (data.exists && data.movie) {
+                setModalMode("edit")
+                setModalMovieId(data.movie.id || data.movie.imdbId)
+                setModalTitle(data.movie.title || "")
+                setModalYear(String(data.movie.year || ""))
+                setModalLanguage(data.movie.language || data.movie.Language || "")
+                setModalReleaseDate(data.movie.releaseDate ? data.movie.releaseDate.split("T")[0] : "")
+                setModalRuntime(data.movie.runtime || "")
+                setModalImdbRating(data.movie.imdbRating != null ? String(data.movie.imdbRating) : "")
+                setModalPosterUrl(data.movie.posterUrl || "")
+                setModalPosterType("url")
+                setModalStep(2)
+            } else if (data.movie) {
+                setModalTitle(data.movie.title || "")
+                setModalYear(String(data.movie.year || ""))
+                setModalLanguage(data.movie.language || data.movie.Language || "English")
+                setModalReleaseDate(data.movie.releaseDate ? data.movie.releaseDate.split("T")[0] : "")
+                setModalRuntime(data.movie.runtime || "")
+                setModalImdbRating(data.movie.imdbRating != null ? String(data.movie.imdbRating) : "")
+                setModalPosterUrl(data.movie.posterUrl || "")
+                setModalPosterType("url")
+                setModalStep(2)
+            }
+        } catch (err) {
+            setModalError(err instanceof Error ? err.message : "Failed to fetch OMDB details")
+        } finally {
+            setFetchingOmdb(false)
+        }
+    }
+
+    const handleSaveModalMovie = async () => {
+        setSavingModalMovie(true)
+        setModalError(null)
+        try {
+            let base64Image: string | undefined = undefined
+            if (modalPosterType === "file" && modalPosterFile) {
+                base64Image = await fileToBase64(modalPosterFile)
+            }
+
+            const payload: any = {
+                title: modalTitle,
+                year: modalYear ? Number(modalYear) : undefined,
+                language: modalLanguage,
+                releaseDate: modalReleaseDate || undefined,
+                runtime: modalRuntime,
+                imdbRating: modalImdbRating ? Number(modalImdbRating) : null,
+                posterUrl: modalPosterType === "url" ? modalPosterUrl : undefined,
+                posterImage: base64Image
+            }
+
+            if (modalMode === "add") {
+                payload.imdbId = modalImdbId.trim()
+                const added = await addMovie(payload)
+                const newMovie = added.movie || added
+                setMovies([newMovie, ...movies])
+                setFilteredMovies([newMovie, ...filteredMovies])
+            } else if (modalMovieId) {
+                const updated = await updateMovie(modalMovieId, payload)
+                setMovies(movies.map(item => (item.id || item.imdbId) === modalMovieId ? { ...item, ...updated } : item))
+                setFilteredMovies(filteredMovies.map(item => (item.id || item.imdbId) === modalMovieId ? { ...item, ...updated } : item))
+            }
+            setIsMovieModalOpen(false)
+        } catch (err) {
+            setModalError(err instanceof Error ? err.message : "Failed to save movie")
+        } finally {
+            setSavingModalMovie(false)
+        }
+    }
+
     const startEditingMovie = (m: any) => {
         setEditingMovieId(m.id || m.imdbId)
         setInlineMovieTitle(m.title || "")
@@ -150,6 +278,23 @@ export default function AdminPage() {
         setInlineMovieReleaseDate(m.releaseDate ? m.releaseDate.split("T")[0] : "")
         setInlineMovieRuntime(m.runtime || "")
         setInlineMoviePosterUrl(m.posterUrl || "")
+
+        setModalMode("edit")
+        setModalMovieId(m.id || m.imdbId)
+        setModalImdbId(m.imdbId || "")
+        setModalTitle(m.title || "")
+        setModalYear(String(m.year || ""))
+        setModalLanguage(m.language || m.Language || "")
+        setModalReleaseDate(m.releaseDate ? m.releaseDate.split("T")[0] : "")
+        setModalRuntime(m.runtime || "")
+        setModalImdbRating(m.imdbRating != null ? String(m.imdbRating) : "")
+        setModalPosterUrl(m.posterUrl || "")
+        setModalPosterFile(null)
+        setModalPosterPreview("")
+        setModalPosterType("url")
+        setModalStep(2)
+        setModalError(null)
+        setIsMovieModalOpen(true)
     }
 
     const saveInlineMovie = async (m: any) => {
@@ -347,9 +492,18 @@ export default function AdminPage() {
 
                             {/* Movies List */}
                             <Card>
-                        <CardHeader>
-                            <CardTitle>Movies ({filteredMovies.length})</CardTitle>
-                            <CardDescription>All movies in the database</CardDescription>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                            <div>
+                                <CardTitle>Movies ({filteredMovies.length})</CardTitle>
+                                <CardDescription>All movies in the database</CardDescription>
+                            </div>
+                            <Button
+                                onClick={openAddMovieModal}
+                                className="flex items-center gap-2 bg-primary text-primary-foreground shadow hover:bg-primary/90"
+                            >
+                                <Plus className="h-4 w-4" />
+                                Add Movie
+                            </Button>
                         </CardHeader>
                         <CardContent>
                             {/* Global Filters */}
@@ -857,6 +1011,224 @@ export default function AdminPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* Add & Edit Movie Modal */}
+            <Dialog open={isMovieModalOpen} onOpenChange={setIsMovieModalOpen}>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                            {modalMode === "add" ? (
+                                <>
+                                    <Plus className="h-5 w-5 text-primary" />
+                                    <span>Add New Movie via IMDb</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Pencil className="h-5 w-5 text-primary" />
+                                    <span>Edit Movie Details & Cover</span>
+                                </>
+                            )}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {modalMode === "add" && modalStep === 1
+                                ? "Enter the IMDb ID (e.g. tt1375666) to perform a single fetch from OMDB."
+                                : "Review and edit movie details before submitting. You can also upload a custom cover image or provide an image URL."}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {modalError && (
+                        <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm font-medium">
+                            {modalError}
+                        </div>
+                    )}
+
+                    {modalMode === "add" && modalStep === 1 ? (
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="imdbIdInput">IMDb ID</Label>
+                                <div className="flex gap-2">
+                                    <Input
+                                        id="imdbIdInput"
+                                        placeholder="e.g. tt1375666"
+                                        value={modalImdbId}
+                                        onChange={(e) => setModalImdbId(e.target.value)}
+                                        onKeyDown={(e) => e.key === "Enter" && handleFetchOmdb()}
+                                    />
+                                    <Button
+                                        onClick={handleFetchOmdb}
+                                        disabled={fetchingOmdb || !modalImdbId.trim()}
+                                        className="shrink-0"
+                                    >
+                                        {fetchingOmdb ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Search className="h-4 w-4 mr-2" />}
+                                        Fetch Details
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="space-y-4 py-2">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="modalImdbId">IMDb ID</Label>
+                                    <Input
+                                        id="modalImdbId"
+                                        value={modalImdbId}
+                                        disabled={modalMode === "edit"}
+                                        onChange={(e) => setModalImdbId(e.target.value)}
+                                        placeholder="tt1234567"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="modalTitle">Title</Label>
+                                    <Input
+                                        id="modalTitle"
+                                        value={modalTitle}
+                                        onChange={(e) => setModalTitle(e.target.value)}
+                                        placeholder="Movie Title"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="modalYear">Year</Label>
+                                    <Input
+                                        id="modalYear"
+                                        type="number"
+                                        value={modalYear}
+                                        onChange={(e) => setModalYear(e.target.value)}
+                                        placeholder="2024"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="modalLanguage">Language</Label>
+                                    <Input
+                                        id="modalLanguage"
+                                        value={modalLanguage}
+                                        onChange={(e) => setModalLanguage(e.target.value)}
+                                        placeholder="English, Tamil, etc."
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="modalReleaseDate">Release Date</Label>
+                                    <Input
+                                        id="modalReleaseDate"
+                                        type="date"
+                                        value={modalReleaseDate}
+                                        onChange={(e) => setModalReleaseDate(e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="modalRuntime">Runtime</Label>
+                                    <Input
+                                        id="modalRuntime"
+                                        value={modalRuntime}
+                                        onChange={(e) => setModalRuntime(e.target.value)}
+                                        placeholder="148 min"
+                                    />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="modalImdbRating">IMDb Rating (out of 10)</Label>
+                                    <Input
+                                        id="modalImdbRating"
+                                        type="number"
+                                        step="0.1"
+                                        min="0"
+                                        max="10"
+                                        value={modalImdbRating}
+                                        onChange={(e) => setModalImdbRating(e.target.value)}
+                                        placeholder="8.5"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Cover Image Upload & URL Section */}
+                            <div className="space-y-3 pt-2 border-t border-border/40">
+                                <Label className="text-base font-semibold">Cover Image / Poster</Label>
+                                <Tabs value={modalPosterType} onValueChange={(v) => setModalPosterType(v as any)} className="w-full">
+                                    <TabsList className="grid w-full grid-cols-2">
+                                        <TabsTrigger value="url">Image URL</TabsTrigger>
+                                        <TabsTrigger value="file">Upload File</TabsTrigger>
+                                    </TabsList>
+                                    <TabsContent value="url" className="space-y-3 mt-3">
+                                        <div className="space-y-1">
+                                            <Label htmlFor="modalPosterUrl" className="text-xs text-muted-foreground">Direct Image URL</Label>
+                                            <Input
+                                                id="modalPosterUrl"
+                                                value={modalPosterUrl}
+                                                onChange={(e) => setModalPosterUrl(e.target.value)}
+                                                placeholder="https://example.com/poster.jpg"
+                                            />
+                                        </div>
+                                        {modalPosterUrl && (
+                                            <div className="mt-2 flex items-center gap-3 p-2 border rounded-md bg-muted/30">
+                                                <img
+                                                    src={resolveApiUrl(modalPosterUrl)}
+                                                    alt="Poster preview"
+                                                    className="h-20 w-14 object-cover rounded shadow border"
+                                                    onError={(e) => (e.currentTarget.style.display = "none")}
+                                                />
+                                                <span className="text-xs text-muted-foreground">Preview of URL image</span>
+                                            </div>
+                                        )}
+                                    </TabsContent>
+                                    <TabsContent value="file" className="space-y-3 mt-3">
+                                        <div className="space-y-1">
+                                            <Label htmlFor="modalPosterFile" className="text-xs text-muted-foreground">Select Image File (PNG/JPG/WEBP)</Label>
+                                            <Input
+                                                id="modalPosterFile"
+                                                type="file"
+                                                accept="image/*"
+                                                onChange={(e) => {
+                                                    const f = e.target.files?.[0] || null
+                                                    setModalPosterFile(f)
+                                                    if (f) {
+                                                        const url = URL.createObjectURL(f)
+                                                        setModalPosterPreview(url)
+                                                    } else {
+                                                        setModalPosterPreview("")
+                                                    }
+                                                }}
+                                            />
+                                        </div>
+                                        {modalPosterPreview && (
+                                            <div className="mt-2 flex items-center gap-3 p-2 border rounded-md bg-muted/30">
+                                                <img
+                                                    src={modalPosterPreview}
+                                                    alt="Upload preview"
+                                                    className="h-20 w-14 object-cover rounded shadow border"
+                                                />
+                                                <div className="text-xs">
+                                                    <p className="font-medium">{modalPosterFile?.name}</p>
+                                                    <p className="text-muted-foreground">{((modalPosterFile?.size || 0) / 1024).toFixed(1)} KB</p>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </TabsContent>
+                                </Tabs>
+                            </div>
+                        </div>
+                    )}
+
+                    <DialogFooter className="flex flex-row justify-between sm:justify-between pt-2 border-t">
+                        {modalMode === "add" && modalStep === 2 ? (
+                            <Button variant="outline" onClick={() => setModalStep(1)} disabled={savingModalMovie}>
+                                Back to Search
+                            </Button>
+                        ) : (
+                            <div />
+                        )}
+                        <div className="flex gap-2">
+                            <Button variant="outline" onClick={() => setIsMovieModalOpen(false)} disabled={savingModalMovie}>
+                                Cancel
+                            </Button>
+                            {!(modalMode === "add" && modalStep === 1) && (
+                                <Button onClick={handleSaveModalMovie} disabled={savingModalMovie || !modalTitle.trim()}>
+                                    {savingModalMovie ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                                    {modalMode === "add" ? "Submit Movie" : "Save Changes"}
+                                </Button>
+                            )}
+                        </div>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }
