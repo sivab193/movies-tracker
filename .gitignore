@@ -29,3 +29,4 @@ gcs-service-account.json
 
 backend/movies_search_log.json
 **/movies.txt
+backend/scripts/upcoming_movies.json
