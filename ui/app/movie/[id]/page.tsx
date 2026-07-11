@@ -159,7 +159,28 @@ export default function MovieDetailPage({
               <h1 className="text-3xl font-bold tracking-tight text-balance">
                 {movie.title}
               </h1>
-              <div className="mt-3 flex flex-wrap items-center gap-4 text-muted-foreground">
+
+              {/* Highlighting the core value proposition of the site on detail page */}
+              <div className="mt-4">
+                {movie.submissionCount > 0 && movie.averageTimeSeconds && movie.averageTimeSeconds > 0 ? (
+                  <div className="inline-flex items-center gap-3 rounded-xl bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 px-4 py-3 border border-amber-500/40 shadow-sm">
+                    <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-extrabold text-sm uppercase tracking-wider">
+                      <Clock className="h-5 w-5 shrink-0 animate-pulse text-amber-500" />
+                      <span>Title Card Appears At:</span>
+                    </div>
+                    <span className="font-black text-xl sm:text-2xl bg-gradient-to-r from-amber-600 to-rose-600 dark:from-amber-400 dark:to-rose-400 bg-clip-text text-transparent">
+                      {formatTimeDisplay(movie.averageTimeSeconds)}
+                    </span>
+                  </div>
+                ) : (
+                  <div className="inline-flex items-center gap-2 rounded-xl bg-muted px-4 py-2.5 border border-border/60 text-muted-foreground text-sm font-medium">
+                    <Clock className="h-4 w-4 shrink-0 opacity-70" />
+                    <span>Title Card Time: <strong className="font-semibold italic">Not reported yet</strong></span>
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-4 flex flex-wrap items-center gap-4 text-muted-foreground">
                 <div className="flex items-center gap-1.5">
                   <Calendar className="h-4 w-4" />
                   <span>{movie.released || movie.releaseDate || movie.year}</span>

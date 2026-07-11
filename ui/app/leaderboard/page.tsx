@@ -61,7 +61,7 @@ export default function LeaderboardPage() {
                                 <Trophy className="h-8 w-8 text-yellow-500" />
                                 {new Date().getFullYear()} Annual Leaderboard
                             </h1>
-                            <p className="text-muted-foreground text-sm">Next result: December 31, {new Date().getFullYear()} at 9:00 PM IST</p>
+                            <p className="text-muted-foreground text-sm">Winners will be announced every quarter</p>
                         </div>
 
                         <div className="flex items-center gap-2 rounded-lg border px-3 py-1.5 bg-muted/30">

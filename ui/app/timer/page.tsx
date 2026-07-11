@@ -79,6 +79,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
   const [sortBy, setSortBy] = useState<SortOption>("latest")
   const [language, setLanguage] = useState<string>("All")
+  const [titleCardFilter, setTitleCardFilter] = useState<string>("All")
   const [addedMovies, setAddedMovies] = useState<Movie[]>([])
   const [skip, setSkip] = useState(0)
   const [hasMore, setHasMore] = useState(true)
@@ -96,7 +97,7 @@ export default function HomePage() {
       }
 
       const currentSkip = isLoadMore ? skip : 0
-      const data = await getMovies(currentSkip, PAGE_SIZE, language === "All" ? "" : language, "", "", false, "All", sortBy)
+      const data = await getMovies(currentSkip, PAGE_SIZE, language === "All" ? "" : language, "", "", false, titleCardFilter, sortBy)
       const movieList = data.movies || []
       const totalCount = data.total || 0
 
@@ -105,6 +106,12 @@ export default function HomePage() {
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
 
       const filtered = movieList.filter((m: Movie) => {
+        if (titleCardFilter === "has" && (!m.submissionCount || m.submissionCount <= 0 || !m.averageTimeSeconds || m.averageTimeSeconds <= 0)) {
+          return false
+        }
+        if (titleCardFilter === "missing" && (m.submissionCount && m.submissionCount > 0 && m.averageTimeSeconds && m.averageTimeSeconds > 0)) {
+          return false
+        }
         const relDateStr = m.releaseDate || `${m.year || 1970}-01-01`
         const mTime = new Date(relDateStr).getTime()
         if (isNaN(mTime)) return true
@@ -144,16 +151,16 @@ export default function HomePage() {
       setLoading(false)
       setLoadingMore(false)
     }
-  }, [sortBy, skip, language])
+  }, [sortBy, skip, language, titleCardFilter])
 
-  // Initial load and sort/language change
+  // Initial load and sort/language/titleCard change
   useEffect(() => {
     setSkip(0)
     setHasMore(true)
     setMovies([])
     fetchMovies(false)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sortBy, language])
+  }, [sortBy, language, titleCardFilter])
 
   // Infinite scroll with IntersectionObserver
   useEffect(() => {
@@ -216,6 +223,46 @@ export default function HomePage() {
                 ))}
               </select>
             </div>
+            <div className="flex items-center gap-2 border-l pl-3 border-border">
+              <span className="text-sm font-medium text-muted-foreground hidden sm:inline">Title Card:</span>
+              <div className="inline-flex rounded-md shadow-sm border border-input bg-background p-0.5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setTitleCardFilter("All")}
+                  className={`px-2.5 py-1 rounded-sm font-medium transition-colors ${
+                    titleCardFilter === "All"
+                      ? "bg-primary text-primary-foreground shadow"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  All
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTitleCardFilter("has")}
+                  className={`px-2.5 py-1 rounded-sm font-medium transition-colors flex items-center gap-1 ${
+                    titleCardFilter === "has"
+                      ? "bg-primary text-primary-foreground shadow"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Clock className="h-3 w-3 text-amber-500" />
+                  Reported
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTitleCardFilter("missing")}
+                  className={`px-2.5 py-1 rounded-sm font-medium transition-colors ${
+                    titleCardFilter === "missing"
+                      ? "bg-primary text-primary-foreground shadow"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Missing
+                </button>
+              </div>
+            </div>
+
             <div className="flex items-center gap-2 border-l pl-3 border-border">
               <Button
                 variant={sortBy === "latest" ? "default" : "ghost"}

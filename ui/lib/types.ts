@@ -134,5 +134,11 @@ export function formatRuntimeToHHMM(runtime?: string | null | number): string {
   if (isNaN(mins) || mins <= 0) return "? mins"
   const hrs = Math.floor(mins / 60)
   const remMins = mins % 60
-  return `${hrs.toString().padStart(2, "0")}:${remMins.toString().padStart(2, "0")}`
+  if (hrs === 0) {
+    return `${remMins}m`
+  }
+  if (remMins === 0) {
+    return `${hrs}h`
+  }
+  return `${hrs}h ${remMins}m`
 }
