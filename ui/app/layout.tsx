@@ -12,44 +12,40 @@ import "./globals.css"
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 
 export const metadata: Metadata = {
-  title: "Movies Tracker",
+  title: "MediaVerse",
   description:
     "Track your movie watch history, see your stats, and compete on the leaderboard.",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://mt.siv19.dev"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://mv.siv19.dev"),
   icons: {
     icon: [
-      {
-        url: "/icon-light-32x32.png",
-        media: "(prefers-color-scheme: light)",
-      },
-      {
-        url: "/icon-dark-32x32.png",
-        media: "(prefers-color-scheme: dark)",
-      },
-      {
-        url: "/icon.svg",
-        type: "image/svg+xml",
-      },
+      { url: "/favicon-96x96.png", sizes: "96x96", type: "image/png" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
     ],
-    apple: "/apple-icon.png",
+    shortcut: "/favicon.ico",
+    apple: [
+      { url: "/apple-touch-icon.png", sizes: "180x180" },
+    ],
   },
-  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    title: "MediaVerse",
+  },
+  manifest: "/site.webmanifest",
   openGraph: {
-    title: "Movies Tracker",
+    title: "MediaVerse",
     description: "Track your movie watch history, see your stats, and compete on the leaderboard.",
     images: [
       {
         url: "/opengraph-image",
         width: 1200,
         height: 630,
-        alt: "Movies Tracker",
+        alt: "MediaVerse",
       },
     ],
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "Movies Tracker | Log, Analyze & Compete",
+    title: "MediaVerse | Log, Analyze & Compete",
     description: "Keep track of every movie you watch, analyze your statistics, and compete for the top spot on the global leaderboard.",
     images: ["/opengraph-image"],
   },

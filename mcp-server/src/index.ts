@@ -659,7 +659,7 @@ class MoviesTrackerMCPServer {
   async run() {
     const transport = new StdioServerTransport();
     await this.server.connect(transport);
-    console.error("Movies Tracker MCP server running on stdio");
+    console.error("MediaVerse MCP server running on stdio");
   }
 }
 

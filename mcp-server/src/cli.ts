@@ -20,7 +20,7 @@ interface AuthConfig {
 }
 
 // Get API base URL from env or default
-const API_BASE_URL = process.env.API_BASE_URL || "https://mt.siv19.dev/api";
+const API_BASE_URL = process.env.API_BASE_URL || "https://mv.siv19.dev/api";
 
 async function ensureConfigDir() {
   if (!fs.existsSync(CONFIG_DIR)) {
@@ -57,7 +57,7 @@ async function sleep(ms: number) {
 }
 
 async function login() {
-  console.log("🔐 Movies Tracker - Device Authorization\n");
+  console.log("🔐 MediaVerse - Device Authorization\n");
 
   try {
     // Step 1: Request device code
@@ -66,7 +66,7 @@ async function login() {
       codeResponse.data;
 
     console.log(
-      "→ Visit: \x1b[36m\x1b[4mhttps://mt.siv19.dev" +
+      "→ Visit: \x1b[36m\x1b[4mhttps://mv.siv19.dev" +
         verificationUri +
         "\x1b[0m",
     );
@@ -219,7 +219,7 @@ async function testConnection() {
 
 function showHelp() {
   console.log(`
-\x1b[1mMovies Tracker MCP CLI\x1b[0m
+\x1b[1mMediaVerse MCP CLI\x1b[0m
 
 \x1b[1mUSAGE:\x1b[0m
   npx movies-tracker-mcp [command]

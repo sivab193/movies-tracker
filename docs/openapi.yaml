@@ -1,13 +1,13 @@
 openapi: 3.0.3
 info:
-  title: Movies Tracker API
+  title: MediaVerse API
   description: Comprehensive REST API for tracking movie watch history, managing catalogs, and annual leaderboards.
   version: 1.0.0
   contact:
     name: Siva B
     url: https://github.com/sivab193/movies-tracker
 servers:
-  - url: https://mt.siv19.dev/api
+  - url: https://mv.siv19.dev/api
     description: Production Vercel Deployment
   - url: http://localhost:8000/api
     description: Local Development Server

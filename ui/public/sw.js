@@ -1,4 +1,4 @@
-const CACHE_NAME = 'movies-tracker-cache-v2'
+const CACHE_NAME = 'mediaverse-cache-v3'
 
 self.addEventListener('install', (event) => {
   // Force the new service worker to take over right away
@@ -37,7 +37,7 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => {
           return caches.match(event.request).then((cachedResponse) => {
-            return cachedResponse || new Response('Offline - Movies Tracker', { status: 503 })
+            return cachedResponse || new Response('Offline - MediaVerse', { status: 503 })
           })
         })
     )

@@ -1,6 +1,6 @@
 {
-  "name": "Movies Tracker",
-  "short_name": "MoviesTracker",
+  "name": "MediaVerse",
+  "short_name": "MediaVerse",
   "description": "Track your movie watch history, see stats, and compete on the leaderboard.",
   "start_url": "/",
   "display": "standalone",

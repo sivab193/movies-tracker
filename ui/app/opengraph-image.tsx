@@ -2,7 +2,7 @@ import { ImageResponse } from "next/og"
 
 export const runtime = "edge"
 
-export const alt = "Movies Tracker - Track every film, compete on the global leaderboard & time title cards"
+export const alt = "MediaVerse - Track every film, compete on the global leaderboard & time title cards"
 export const size = {
   width: 1200,
   height: 630,
@@ -76,7 +76,7 @@ export default async function Image() {
               letterSpacing: "0.05em",
             }}
           >
-            COMMUNITY MOVIE TRACKER & AI MCP
+            MEDIAVERSE COMMUNITY & AI MCP
           </div>
         </div>
 
@@ -98,7 +98,7 @@ export default async function Image() {
               letterSpacing: "-0.02em",
             }}
           >
-            Your Ultimate Movie Watch Tracker
+            Your Ultimate MediaVerse Tracker
           </div>
           <div
             style={{
@@ -135,7 +135,7 @@ export default async function Image() {
               gap: "12px",
             }}
           >
-            <span>mt.siv19.dev</span>
+            <span>mv.siv19.dev</span>
           </div>
           <div
             style={{

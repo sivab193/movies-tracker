@@ -16,7 +16,7 @@ export default function HomePage() {
           <div className="mx-auto max-w-7xl px-6 lg:px-8">
             <div className="mx-auto max-w-2xl text-center">
               <h1 className="text-4xl font-bold tracking-tight sm:text-6xl text-balance">
-                Your Ultimate Movie Watch Tracker
+                Your Ultimate MediaVerse Tracker
               </h1>
               <p className="mt-6 text-lg leading-8 text-muted-foreground text-pretty">
                 Keep track of every movie you watch, analyze your statistics, and compete for the top spot on the global leaderboard.
@@ -127,7 +127,7 @@ export default function HomePage() {
               Upcoming Features & AI Integration
             </p>
             <p className="mt-4 text-lg text-muted-foreground">
-              We are continuously evolving Movies Tracker. Here is what is actively in development:
+              We are continuously evolving MediaVerse. Here is what is actively in development:
             </p>
           </div>
           <div className="mx-auto mt-12 max-w-2xl sm:mt-16 lg:mt-20 lg:max-w-none">
@@ -263,7 +263,7 @@ export default function HomePage() {
                 <dt className="flex items-center justify-between text-base font-semibold leading-7">
                   <div className="flex items-center gap-x-3">
                     <Sparkles className="h-5 w-5 text-primary animate-pulse" />
-                    MT Wrapped (End of Year)
+                    MediaVerse Wrapped (End of Year)
                   </div>
                   <span className="inline-flex items-center rounded-full bg-primary/20 px-3 py-1 text-xs font-semibold text-primary">
                     Coming Dec 2026
@@ -271,7 +271,7 @@ export default function HomePage() {
                 </dt>
                 <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground group-hover:text-foreground">
                   <p className="flex-auto text-pretty">
-                    Get your personalized **MT Wrapped** every December! Experience a dynamic, shareable visual showcase highlighting your total minutes watched, top movie genres, most visited theaters, ticket cost breakdowns, and cinematic milestones of the year!
+                    Get your personalized **MediaVerse Wrapped** every December! Experience a dynamic, shareable visual showcase highlighting your total minutes watched, top movie genres, most visited theaters, ticket cost breakdowns, and cinematic milestones of the year!
                   </p>
                 </dd>
               </div>

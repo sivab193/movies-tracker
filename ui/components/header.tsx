@@ -23,7 +23,7 @@ export function Header() {
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2">
             <Film className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold tracking-tight">Movies Tracker</span>
+            <span className="text-xl font-bold tracking-tight">MediaVerse</span>
           </Link>
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
             <Link href="/timer" className="text-muted-foreground transition-colors hover:text-foreground">

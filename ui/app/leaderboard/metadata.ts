@@ -1,16 +1,16 @@
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
-  title: "Leaderboard | Movies Tracker",
+  title: "Leaderboard | MediaVerse",
   description: "See who is leading the community in total movie watch runtime.",
   openGraph: {
-    title: "Movies Tracker Leaderboard",
+    title: "MediaVerse Leaderboard",
     description: "See who is leading the community in total movie watch runtime.",
     images: ["/opengraph-image"],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Movies Tracker Leaderboard",
+    title: "MediaVerse Leaderboard",
     description: "See who is leading the community in total movie watch runtime.",
     images: ["/opengraph-image"],
   },

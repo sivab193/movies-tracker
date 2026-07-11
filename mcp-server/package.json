@@ -1,13 +1,13 @@
 {
   "name": "movies-tracker-mcp",
   "version": "1.0.0",
-  "description": "MCP server for Movies Tracker (mt.siv19.dev) - search movies, manage watch history, and view stats with Claude AI",
+  "description": "MCP server for MediaVerse (mv.siv19.dev) - search movies, manage watch history, and view stats with Claude AI",
   "type": "module",
   "repository": {
     "type": "git",
     "url": "https://github.com/sivab/movies-tracker.git"
   },
-  "homepage": "https://mt.siv19.dev",
+  "homepage": "https://mv.siv19.dev",
   "main": "dist/index.js",
   "bin": {
     "movies-tracker-mcp": "dist/cli.js"
