@@ -68,12 +68,6 @@ export function MovieCard({ movie }: MovieCardProps) {
                 <span className="font-medium truncate">
                   {movie.released || movie.releaseDate || movie.year || "N/A"}
                 </span>
-                {movie.imdbRating && (
-                  <div className="flex items-center gap-1 shrink-0 bg-accent/10 px-1.5 py-0.5 rounded text-accent font-semibold">
-                    <Star className="h-3 w-3 fill-accent text-accent" />
-                    <span>{movie.imdbRating}</span>
-                  </div>
-                )}
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
                 {((movie.language || movie.Language) && (movie.language || movie.Language) !== "N/A") && (

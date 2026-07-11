@@ -90,7 +90,7 @@ export default function LeaderboardPage() {
                                     {index + 1 === 1 ? '🥇' : index + 1 === 2 ? '🥈' : index + 1 === 3 ? '🥉' : <span className="text-muted-foreground text-sm">#{index + 1}</span>}
                                 </div>
                                 <div className="col-span-6 md:col-span-8 overflow-hidden">
-                                    <Link href={`/users/${user.userId}`} className="flex items-center gap-3 group truncate">
+                                    <Link href={`/u/${user.userId}`} className="flex items-center gap-3 group truncate">
                                         <div className="h-8 w-8 shrink-0 rounded-full bg-secondary flex items-center justify-center overflow-hidden ring-0 transition-all group-hover:ring-2 group-hover:ring-primary/50">
                                             {user.photoURL ? (
                                                 <img src={user.photoURL} alt={user.displayName} className="h-full w-full object-cover" />

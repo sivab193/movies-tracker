@@ -6,6 +6,7 @@ from firebase_config import auth as firebase_auth
 from mongo_config import db
 from bson import ObjectId, Binary
 import base64
+import secrets
 
 movies_bp = Blueprint('movies', __name__)
 
@@ -824,3 +825,59 @@ def get_submissions():
     except Exception as e:
         print(f"Error fetching submissions: {e}")
         return jsonify({"error": "Failed to fetch submissions"}), 500
+
+def ensure_short_urls_index():
+    try:
+        if db is not None:
+            db.short_urls.create_index("expiresAt", expireAfterSeconds=0)
+    except Exception as e:
+        print(f"Index creation error for short_urls: {e}")
+
+@movies_bp.route('/<movie_id>/shorten', methods=['POST'])
+def shorten_movie_url(movie_id):
+    if db is None:
+        return jsonify({"error": "Database not connected"}), 500
+    try:
+        movie = db.movies.find_one({"_id": ObjectId(movie_id)})
+        if not movie:
+            return jsonify({"error": "Movie not found"}), 404
+    except Exception:
+        return jsonify({"error": "Invalid movie ID"}), 400
+
+    ensure_short_urls_index()
+    
+    # Check if a valid short URL already exists for this movie
+    now = datetime.datetime.now(datetime.timezone.utc)
+    existing = db.short_urls.find_one({"movieId": movie_id, "expiresAt": {"$gt": now}})
+    if existing and existing.get('code'):
+        return jsonify({
+            "code": existing['code'],
+            "shortUrl": f"/s/{existing['code']}"
+        })
+
+    code = secrets.token_urlsafe(4)[:6].replace('-', 'x').replace('_', 'z')
+    # Ensure code uniqueness
+    while db.short_urls.find_one({"code": code}):
+        code = secrets.token_urlsafe(4)[:6].replace('-', 'x').replace('_', 'z')
+
+    expires_at = now + datetime.timedelta(days=30)
+    db.short_urls.insert_one({
+        "code": code,
+        "movieId": movie_id,
+        "createdAt": now,
+        "expiresAt": expires_at
+    })
+
+    return jsonify({
+        "code": code,
+        "shortUrl": f"/s/{code}"
+    })
+
+@movies_bp.route('/s/<code>', methods=['GET'])
+def resolve_short_movie_url(code):
+    if db is None:
+        return jsonify({"error": "Database not connected"}), 500
+    doc = db.short_urls.find_one({"code": code})
+    if not doc or not doc.get('movieId'):
+        return jsonify({"error": "Short URL not found or expired"}), 404
+    return jsonify({"movieId": str(doc['movieId'])})

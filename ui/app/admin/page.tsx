@@ -271,14 +271,6 @@ export default function AdminPage() {
     }
 
     const startEditingMovie = (m: any) => {
-        setEditingMovieId(m.id || m.imdbId)
-        setInlineMovieTitle(m.title || "")
-        setInlineMovieYear(String(m.year || ""))
-        setInlineMovieLanguage(m.language || m.Language || "")
-        setInlineMovieReleaseDate(m.releaseDate ? m.releaseDate.split("T")[0] : "")
-        setInlineMovieRuntime(m.runtime || "")
-        setInlineMoviePosterUrl(m.posterUrl || "")
-
         setModalMode("edit")
         setModalMovieId(m.id || m.imdbId)
         setModalImdbId(m.imdbId || "")
@@ -677,7 +669,7 @@ export default function AdminPage() {
                                                                         size="sm"
                                                                         className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
                                                                         onClick={() => startEditingMovie(movie)}
-                                                                        title="Inline Edit Movie"
+                                                                        title="Edit Movie"
                                                                     >
                                                                         <Pencil className="h-4 w-4" />
                                                                     </Button>
@@ -1122,19 +1114,6 @@ export default function AdminPage() {
                                         value={modalRuntime}
                                         onChange={(e) => setModalRuntime(e.target.value)}
                                         placeholder="148 min"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="modalImdbRating">IMDb Rating (out of 10)</Label>
-                                    <Input
-                                        id="modalImdbRating"
-                                        type="number"
-                                        step="0.1"
-                                        min="0"
-                                        max="10"
-                                        value={modalImdbRating}
-                                        onChange={(e) => setModalImdbRating(e.target.value)}
-                                        placeholder="8.5"
                                     />
                                 </div>
                             </div>

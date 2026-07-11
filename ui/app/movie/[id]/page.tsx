@@ -2,13 +2,14 @@
 
 import { useEffect, useState, use } from "react"
 import Link from "next/link"
-import { ArrowLeft, Clock, Star, Calendar, Timer, MessageSquare } from "lucide-react"
+import { ArrowLeft, Clock, Star, Calendar, Timer, MessageSquare, Share2, Copy, Check, Loader2 } from "lucide-react"
 import { Header } from "@/components/header"
-import { getMovie, getSubmissions } from "@/services/api"
+import { getMovie, getSubmissions, createShortUrl } from "@/services/api"
 import { SubmissionForm } from "@/components/submission-form"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { formatTimeDisplay, formatRuntimeToHHMM, type Movie, type TitleCardSubmission } from "@/lib/types"
 import { useAuth } from "@/contexts/auth-context"
 
@@ -22,6 +23,46 @@ export default function MovieDetailPage({
   const [movie, setMovie] = useState<Movie | null>(null)
   const [submissions, setSubmissions] = useState<TitleCardSubmission[]>([])
   const [loading, setLoading] = useState(true)
+  const [shortUrl, setShortUrl] = useState<string>("")
+  const [shortUrlLoading, setShortUrlLoading] = useState(false)
+  const [shortUrlDialogOpen, setShortUrlDialogOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const handleShare = async () => {
+    if (!movie) return
+    setShortUrlLoading(true)
+    setShortUrlDialogOpen(true)
+    setCopied(false)
+    try {
+      const data = await createShortUrl(movie.id || id)
+      const fullUrl = window.location.origin + data.shortUrl
+      setShortUrl(fullUrl)
+      if (typeof navigator !== "undefined" && navigator.share) {
+        try {
+          await navigator.share({
+            title: movie.title,
+            text: `Check out ${movie.title} on Movies Tracker!`,
+            url: fullUrl
+          })
+          setShortUrlDialogOpen(false)
+          return
+        } catch (e) {
+          // If user canceled native share, fallback to our dialog
+        }
+      }
+    } catch (err) {
+      console.error("Failed to generate short URL:", err)
+      setShortUrl(window.location.href)
+    } finally {
+      setShortUrlLoading(false)
+    }
+  }
+
+  const handleCopyShortUrl = () => {
+    navigator.clipboard.writeText(shortUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
 
   useEffect(() => {
     const fetchData = async () => {
@@ -101,14 +142,25 @@ export default function MovieDetailPage({
       <Header />
 
       <main className="mx-auto max-w-4xl px-4 py-8">
-        {/* Back button */}
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors mb-6"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Back to movies
-        </Link>
+        <div className="flex items-center justify-between mb-6">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to movies
+          </Link>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleShare}
+            disabled={shortUrlLoading}
+            className="rounded-full gap-2 text-xs font-semibold px-4 border-primary/30 hover:border-primary hover:bg-primary/5 transition-all"
+          >
+            {shortUrlLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> : <Share2 className="h-3.5 w-3.5 text-primary" />}
+            Share / Short Link
+          </Button>
+        </div>
 
         <div className="grid gap-8 md:grid-cols-[280px_1fr]">
           {/* Movie Poster */}
@@ -190,12 +242,7 @@ export default function MovieDetailPage({
                     {movie.language || movie.Language}
                   </span>
                 )}
-                {movie.imdbRating && (
-                  <div className="flex items-center gap-1.5">
-                    <Star className="h-4 w-4 fill-accent text-accent" />
-                    <span>{movie.imdbRating}/10</span>
-                  </div>
-                )}
+
                 <div className="flex items-center gap-1.5">
                   <Timer className="h-4 w-4" />
                   <span>{formatRuntimeToHHMM(movie.runtime)}</span>
@@ -257,29 +304,30 @@ export default function MovieDetailPage({
         {/* Submissions List */}
         {submissions.length > 0 && (
           <section className="mt-12">
-            <h2 className="text-xl font-semibold mb-4">
-              All Submissions ({submissions.length})
+            <h2 className="text-xl font-bold tracking-tight mb-4 flex items-center gap-2">
+              <Clock className="h-5 w-5 text-primary" />
+              Recent Community Submissions
             </h2>
-            <div className="space-y-3">
+            <div className="grid gap-4 sm:grid-cols-2">
               {submissions.map((submission) => (
-                <Card key={submission.id}>
-                  <CardContent className="py-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-full bg-secondary">
-                          <Clock className="h-5 w-5 text-secondary-foreground" />
-                        </div>
-                        <div>
-                          <p className="font-medium">
-                            {formatTimeDisplay(submission.timeInSeconds)}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {new Date(submission.createdAt).toLocaleDateString()}
-                          </p>
-                        </div>
+                <Card key={submission.id} className="overflow-hidden border-border/60">
+                  <CardHeader className="bg-muted/40 pb-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-lg font-bold text-primary">
+                        {formatTimeDisplay(submission.timeInSeconds)}
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(submission.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-3 text-sm">
+                    <div className="flex flex-col gap-1.5 text-muted-foreground">
+                      <div>
+                        Input: <span className="font-medium text-foreground">{submission.rawInput}</span>
                       </div>
                       {submission.comment && (
-                        <div className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <div className="flex items-start gap-1.5 text-xs italic bg-muted/30 p-2 rounded">
                           <MessageSquare className="h-4 w-4 mt-0.5 shrink-0" />
                           <span>{submission.comment}</span>
                         </div>
@@ -292,6 +340,46 @@ export default function MovieDetailPage({
           </section>
         )}
       </main>
+
+      {/* Short Link Dialog */}
+      <Dialog open={shortUrlDialogOpen} onOpenChange={setShortUrlDialogOpen}>
+        <DialogContent className="max-w-md rounded-2xl p-6">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <Share2 className="h-5 w-5 text-primary" />
+              Share Movie
+            </DialogTitle>
+            <DialogDescription>
+              Share this movie link publicly. Short URLs automatically clear after 30 days.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 flex items-center gap-2 rounded-xl border bg-muted/40 p-2">
+            <input
+              type="text"
+              readOnly
+              value={shortUrl}
+              className="w-full bg-transparent px-2 text-sm font-mono focus:outline-none"
+            />
+            <Button
+              size="sm"
+              onClick={handleCopyShortUrl}
+              className="rounded-lg shrink-0 gap-1.5"
+            >
+              {copied ? (
+                <>
+                  <Check className="h-3.5 w-3.5 text-green-500" />
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <Copy className="h-3.5 w-3.5" />
+                  Copy Link
+                </>
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

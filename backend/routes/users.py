@@ -522,6 +522,14 @@ def update_settings():
             update_data['joinedLeaderboard'] = False
     if 'displayName' in data:
         update_data['displayName'] = data['displayName']
+    if 'customUrl' in data and data['customUrl']:
+        custom_url = str(data['customUrl']).strip().lower()
+        if not re.match(r'^[a-zA-Z0-9_-]{5,10}$', custom_url):
+            return jsonify({"error": "Custom URL must be 5-10 characters (letters, numbers, hyphens, underscores only)"}), 400
+        existing = db.users.find_one({"customUrl": {"$regex": f"^{re.escape(custom_url)}$", "$options": "i"}})
+        if existing and existing.get('firebaseUid') != firebase_uid:
+            return jsonify({"error": "This custom URL is already claimed by another user"}), 409
+        update_data['customUrl'] = custom_url
     
     if update_data:
         db.users.update_one({"firebaseUid": firebase_uid}, {"$set": update_data})
@@ -584,9 +592,14 @@ def get_public_profile(user_id):
 
     user = None
     try:
-        user = db.users.find_one({"_id": ObjectId(user_id)})
+        user = db.users.find_one({"customUrl": {"$regex": f"^{re.escape(user_id)}$", "$options": "i"}})
     except:
         pass
+    if not user:
+        try:
+            user = db.users.find_one({"_id": ObjectId(user_id)})
+        except:
+            pass
     if not user:
         user = db.users.find_one({"firebaseUid": user_id})
     if not user:
@@ -600,8 +613,9 @@ def get_public_profile(user_id):
 
     public_fields = user.get('publicFields', ['totalRuntime', 'movieCount'])
     profile = {
-        "userId": user.get('firebaseUid') or str(user['_id']),
+        "userId": user.get('customUrl') or user.get('firebaseUid') or str(user['_id']),
         "firebaseUid": user.get('firebaseUid'), # Return UID for admin actions
+        "customUrl": user.get('customUrl'),
         "displayName": user.get('displayName', 'Anonymous'),
         "photoURL": user.get('photoURL'),
         "totalRuntimeSeconds": user.get('totalRuntimeSeconds', 0) if (is_admin or 'totalRuntime' in public_fields) else -1,

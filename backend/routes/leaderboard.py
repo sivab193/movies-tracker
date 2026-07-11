@@ -16,9 +16,10 @@ def get_leaderboard():
         for user in users_cursor:
             public_fields = user.get('publicFields', ['totalRuntime', 'movieCount'])
             movies_watched = user.get('totalMoviesWatched', 0) if 'movieCount' in public_fields else -1
-            user_id = user.get('firebaseUid') or str(user['_id'])
+            user_id = user.get('customUrl') or user.get('firebaseUid') or str(user['_id'])
             leaderboard.append({
                 "userId": user_id,
+                "customUrl": user.get('customUrl'),
                 "displayName": user.get('displayName', 'Anonymous'),
                 "photoURL": user.get('photoURL'),
                 "totalRuntimeSeconds": user.get('totalRuntimeSeconds', 0),

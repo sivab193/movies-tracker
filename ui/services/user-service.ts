@@ -49,7 +49,8 @@ export async function updateUserSettings(settings: {
     publicFields?: string[],
     hiddenMovies?: string[],
     joinedLeaderboard?: boolean,
-    displayName?: string
+    displayName?: string,
+    customUrl?: string
 }) {
     const headers = await getAuthHeader()
     const response = await fetch(`${API_BASE_URL}/users/settings`, {
@@ -57,7 +58,10 @@ export async function updateUserSettings(settings: {
         headers: { ...headers, "Content-Type": "application/json" },
         body: JSON.stringify(settings)
     })
-    if (!response.ok) throw new Error("Failed to update settings")
+    if (!response.ok) {
+        const errData = await response.json().catch(() => ({}))
+        throw new Error(errData.error || "Failed to update settings")
+    }
     return response.json()
 }
 

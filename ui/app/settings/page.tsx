@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Header } from "@/components/header"
-import { Shield, User, Eye, EyeOff, CheckCircle2, Trophy, Lock, Film, AlertCircle, Pencil } from "lucide-react"
+import { Shield, User, Eye, EyeOff, CheckCircle2, Trophy, Lock, Film, AlertCircle, Pencil, Copy, Check, Link as LinkIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
@@ -41,6 +41,10 @@ export default function SettingsPage() {
     const [adminRequestStatus, setAdminRequestStatus] = useState("NONE")
     const [displayName, setDisplayName] = useState("")
     const [editingName, setEditingName] = useState(false)
+    const [customUrl, setCustomUrl] = useState("")
+    const [editingCustomUrl, setEditingCustomUrl] = useState(false)
+    const [customUrlError, setCustomUrlError] = useState<string | null>(null)
+    const [copiedUrl, setCopiedUrl] = useState(false)
     const [showLeaderboardConfirm, setShowLeaderboardConfirm] = useState(false)
 
     useEffect(() => {
@@ -58,17 +62,43 @@ export default function SettingsPage() {
             setJoinedLeaderboard(settings.joinedLeaderboard)
             setPublicFields(settings.publicFields || [])
             setHiddenMovies(settings.hiddenMovies || [])
-            setPublicFields(settings.publicFields || [])
-            setHiddenMovies(settings.hiddenMovies || [])
             setWatchHistory(settings.watchHistory || [])
             setIsAdminState(settings.isAdmin || false)
             setAdminRequestStatus(settings.adminRequestStatus || "NONE")
             setDisplayName(settings.displayName || user?.displayName || "")
+            setCustomUrl(settings.customUrl || "")
         } catch (error) {
             console.error("Error loading settings:", error)
         } finally {
             setLoading(false)
         }
+    }
+
+    async function handleSaveCustomUrl() {
+        setSaving(true)
+        setCustomUrlError(null)
+        setSuccess(false)
+        try {
+            const cleanUrl = customUrl.trim().toLowerCase()
+            await updateUserSettings({ customUrl: cleanUrl })
+            setCustomUrl(cleanUrl)
+            setSuccess(true)
+            setEditingCustomUrl(false)
+            setTimeout(() => setSuccess(false), 3000)
+        } catch (error: any) {
+            setCustomUrlError(error.message || "Failed to save custom URL")
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    const handleCopyProfileUrl = () => {
+        const urlToCopy = customUrl
+            ? `${window.location.origin}/u/${customUrl}`
+            : `${window.location.origin}/u/${user?.uid}`
+        navigator.clipboard.writeText(urlToCopy)
+        setCopiedUrl(true)
+        setTimeout(() => setCopiedUrl(false), 2000)
     }
 
     async function handleSave() {
@@ -196,6 +226,72 @@ export default function SettingsPage() {
                                     <Button size="sm" onClick={() => setEditingName(false)}>Done</Button>
                                 </div>
                             )}
+                        </div>
+                    </section>
+
+                    {/* Custom Profile URL / Username Section */}
+                    <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+                        <div className="flex flex-col gap-4">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <h2 className="text-xl font-semibold flex items-center gap-2">
+                                        <LinkIcon className="h-5 w-5 text-primary" />
+                                        Custom Profile URL (/u/username)
+                                    </h2>
+                                    <p className="text-sm text-muted-foreground">
+                                        Claim a short, clean username (5-10 characters) for your public profile link
+                                    </p>
+                                </div>
+                                {!editingCustomUrl ? (
+                                    <div className="flex items-center gap-3">
+                                        <span className="font-mono font-medium text-primary">
+                                            {customUrl ? `/u/${customUrl}` : `/u/${user?.uid?.slice(0, 8)}...`}
+                                        </span>
+                                        <Button variant="ghost" size="sm" onClick={() => { setEditingCustomUrl(true); setCustomUrlError(null); }}>
+                                            <Pencil className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <div className="flex flex-col gap-2 items-end">
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-sm font-mono text-muted-foreground">/u/</span>
+                                            <Input
+                                                value={customUrl}
+                                                onChange={(e) => setCustomUrl(e.target.value)}
+                                                className="w-44 font-mono text-sm"
+                                                placeholder="myname (5-10 chars)"
+                                                maxLength={10}
+                                            />
+                                            <Button size="sm" onClick={handleSaveCustomUrl} disabled={saving}>
+                                                {saving ? "Saving..." : "Save"}
+                                            </Button>
+                                            <Button variant="outline" size="sm" onClick={() => { setEditingCustomUrl(false); setCustomUrlError(null); }}>
+                                                Cancel
+                                            </Button>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                            {customUrlError && (
+                                <div className="flex items-center gap-2 text-xs text-destructive font-medium bg-destructive/10 p-2.5 rounded-lg border border-destructive/20">
+                                    <AlertCircle className="h-4 w-4 shrink-0" />
+                                    <span>{customUrlError}</span>
+                                </div>
+                            )}
+                            <div className="flex items-center justify-between pt-3 border-t border-border/40 text-xs text-muted-foreground">
+                                <span className="truncate">
+                                    Public Link: <strong className="font-mono text-foreground">{typeof window !== "undefined" ? window.location.origin : ""}/u/{customUrl || user?.uid}</strong>
+                                </span>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleCopyProfileUrl}
+                                    className="h-7 gap-1.5 rounded-lg shrink-0 text-xs"
+                                >
+                                    {copiedUrl ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+                                    {copiedUrl ? "Copied!" : "Copy Link"}
+                                </Button>
+                            </div>
                         </div>
                     </section>
 

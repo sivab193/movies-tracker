@@ -336,3 +336,22 @@ export async function getSubmissions(movieId: string) {
     if (!response.ok) throw new Error(data.error || "Failed to fetch submissions");
     return data;
 }
+
+export async function createShortUrl(movieId: string): Promise<{ code: string; shortUrl: string }> {
+    const response = await fetch(`${API_BASE_URL}/movies/${movieId}/shorten`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        }
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Failed to generate short URL");
+    return data;
+}
+
+export async function resolveShortUrl(code: string): Promise<{ movieId: string }> {
+    const response = await fetch(`${API_BASE_URL}/movies/s/${encodeURIComponent(code)}`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Failed to resolve short URL");
+    return data;
+}
