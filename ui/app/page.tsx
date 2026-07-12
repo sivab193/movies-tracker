@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Film, Trophy, List, Share2, ShieldCheck, MessageSquare, Bot, Map, Tv, Sparkles, CreditCard } from "lucide-react"
+import { Film, Trophy, List, Share2, ShieldCheck, MessageSquare, Bot, Map, Tv, Sparkles, CreditCard, BarChart3 } from "lucide-react"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 
@@ -37,15 +37,22 @@ const mainFeatures = [
     description: "Choose exactly which fields and movies are public. Your data, your rules.",
   },
   {
-    href: "/contact",
-    icon: MessageSquare,
-    title: "Telegram Bot",
-    description: "Track your movies directly from Telegram. Quick logging, stats, and notifications.",
-    badge: "Coming Soon",
+    href: "/stats",
+    icon: BarChart3,
+    title: "Viewing Analytics",
+    description: "Track your cinema habits with genre breakdowns, monthly trends, and personal statistics.",
   },
 ]
 
 const upcomingFeatures = [
+  {
+    icon: MessageSquare,
+    title: "Telegram Bot",
+    status: "Coming Soon",
+    statusClass: "bg-primary/10 text-primary",
+    description:
+      "Track your movies directly from Telegram. Quick logging, stats, and notifications.",
+  },
   {
     icon: Bot,
     title: "Hosted AI MCP Server",
