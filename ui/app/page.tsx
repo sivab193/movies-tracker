@@ -11,36 +11,42 @@ const mainFeatures = [
     icon: List,
     title: "Detailed Watch History",
     description: "Log every movie you watch with dates, ratings, and detailed technical and theater information.",
+    badge: undefined,
   },
   {
     href: "/leaderboard",
     icon: Trophy,
     title: "Global Leaderboard",
     description: "Compete with friends and the world. See who has the most total watch time.",
+    badge: undefined,
   },
   {
     href: "/timer",
     icon: Film,
     title: "TitleCard Timer",
     description: "Know exactly when the title card appears in every movie you watch.",
+    badge: undefined,
   },
   {
     href: "/settings",
     icon: Share2,
     title: "Public Profiles",
     description: "Share your movie taste with the world or keep it private with granular controls.",
+    badge: undefined,
   },
   {
     href: "/settings",
     icon: ShieldCheck,
     title: "Privacy First",
     description: "Choose exactly which fields and movies are public. Your data, your rules.",
+    badge: undefined,
   },
   {
     href: "/stats",
     icon: BarChart3,
     title: "Viewing Analytics",
     description: "Track your cinema habits with genre breakdowns, monthly trends, and personal statistics.",
+    badge: undefined,
   },
 ]
 

@@ -11,13 +11,17 @@ interface MovieCardProps {
 
 export function MovieCard({ movie }: MovieCardProps) {
   return (
-    <Link href={`/movie/${movie.id}`} className="h-full block">
+    <Link
+      href={`/movie/${movie.id}`}
+      className="h-full block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-xl"
+      aria-label={`View details for ${movie.title}`}
+    >
       <Card className="group overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 hover:-translate-y-1 h-full flex flex-col justify-between border-border/60">
-        <div className="relative aspect-[2/3] overflow-hidden bg-muted shrink-0">
+        <div className="relative aspect-[2/3] overflow-hidden bg-muted shrink-0" aria-hidden="true">
           {movie.posterUrl ? (
             <img
               src={movie.posterUrl || "/placeholder.svg"}
-              alt={`${movie.title} poster`}
+              alt=""
               className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
             />
           ) : (
