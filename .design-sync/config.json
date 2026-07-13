@@ -1,0 +1,280 @@
+{
+  "projectId": "64d676fb-5ab7-446c-b272-5b0fac42b66e",
+  "shape": "package",
+  "pkg": "movies-tracker",
+  "globalName": "MoviesTracker",
+  "srcDir": "components",
+  "tsconfig": "tsconfig.json",
+  "cssEntry": ".ds-styles.css",
+  "buildCmd": "node ../.design-sync/build.mjs",
+  "extraEntries": [
+    "../.design-sync/ds-process-shim.mjs",
+    "../.design-sync/ds-providers.tsx"
+  ],
+  "provider": {
+    "component": "DesignSystemProvider"
+  },
+  "overrides": {
+    "AddMovieDialog": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "AddWatchDialog": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "AlertDialog": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "AlertDialogAction": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "AlertDialogCancel": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "AlertDialogContent": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "AlertDialogDescription": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "AlertDialogFooter": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "AlertDialogHeader": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "AlertDialogOverlay": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "AlertDialogPortal": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "AlertDialogTitle": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "AlertDialogTrigger": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "BottomNav": {
+      "cardMode": "column"
+    },
+    "Dialog": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "DialogClose": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "DialogContent": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "DialogDescription": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "DialogFooter": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "DialogHeader": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "DialogOverlay": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "DialogPortal": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "DialogTitle": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "DialogTrigger": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "DropdownMenu": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "DropdownMenuCheckboxItem": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "DropdownMenuContent": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "DropdownMenuGroup": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "DropdownMenuItem": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "DropdownMenuLabel": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "DropdownMenuPortal": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "DropdownMenuRadioGroup": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "DropdownMenuRadioItem": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "DropdownMenuSeparator": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "DropdownMenuShortcut": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "DropdownMenuSub": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "DropdownMenuSubContent": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "DropdownMenuSubTrigger": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "DropdownMenuTrigger": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "Footer": {
+      "cardMode": "column"
+    },
+    "Header": {
+      "cardMode": "column"
+    },
+    "MovieGrid": {
+      "cardMode": "column"
+    },
+    "Popover": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "PopoverContent": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "PopoverTrigger": {
+      "cardMode": "single",
+      "primaryStory": "Open"
+    },
+    "Select": {
+      "cardMode": "column"
+    },
+    "SelectContent": {
+      "cardMode": "column"
+    },
+    "SelectGroup": {
+      "cardMode": "column"
+    },
+    "SelectItem": {
+      "cardMode": "column"
+    },
+    "SelectLabel": {
+      "cardMode": "column"
+    },
+    "SelectScrollDownButton": {
+      "cardMode": "column"
+    },
+    "SelectScrollUpButton": {
+      "cardMode": "column"
+    },
+    "SelectSeparator": {
+      "cardMode": "column"
+    },
+    "SelectTrigger": {
+      "cardMode": "column"
+    },
+    "SelectValue": {
+      "cardMode": "column"
+    },
+    "SubmissionForm": {
+      "cardMode": "column"
+    },
+    "Table": {
+      "cardMode": "column"
+    },
+    "TableBody": {
+      "cardMode": "column"
+    },
+    "TableCaption": {
+      "cardMode": "column"
+    },
+    "TableCell": {
+      "cardMode": "column"
+    },
+    "TableFooter": {
+      "cardMode": "column"
+    },
+    "TableHead": {
+      "cardMode": "column"
+    },
+    "TableHeader": {
+      "cardMode": "column"
+    },
+    "TableRow": {
+      "cardMode": "column"
+    },
+    "Tabs": {
+      "cardMode": "column"
+    },
+    "TabsContent": {
+      "cardMode": "column"
+    },
+    "TabsList": {
+      "cardMode": "column"
+    },
+    "TabsTrigger": {
+      "cardMode": "column"
+    }
+  },
+  "dtsPropsFor": {
+    "MovieCard": "movie: { id: string; imdbId: string; title: string; year: number; posterUrl: string; imdbRating: number | null; runtime: string | null; submissionCount: number; averageTimeSeconds: number | null; language?: string; released?: string; releaseDate?: string };",
+    "MovieGrid": "movies: Array<{ id: string; imdbId: string; title: string; year: number; posterUrl: string; imdbRating: number | null; runtime: string | null; submissionCount: number; averageTimeSeconds: number | null; language?: string; released?: string; releaseDate?: string }>;\n  loading?: boolean;\n  loadingMore?: boolean;\n  sentinelRef?: React.RefObject<HTMLDivElement | null>;",
+    "AddWatchDialog": "uid: string;\n  onWatchAdded: () => void;\n  initialData?: { _id?: string; uid: string; movieId: string; movieTitle: string; moviePosterUrl: string; theaterId?: string | null; theaterName: string | null; theaterLocation: string | null; theaterGmapsLink?: string | null; timestamp: string | null; showTime?: string | null; ticketCost: number; foodCost?: number | null; currency: \"INR\" | \"USD\"; ticketStubUrl?: string | null; createdAt: string };\n  open?: boolean;\n  onOpenChange?: (open: boolean) => void;\n  hideTrigger?: boolean;",
+    "BottomNav": "",
+    "Footer": "",
+    "Header": "",
+    "MovieCardSkeleton": ""
+  },
+  "extraFonts": [
+    "../.design-sync/fonts/inter.css"
+  ],
+  "runtimeFontPrefixes": [
+    "Geist Mono"
+  ],
+  "readmeHeader": ".design-sync/conventions.md"
+}

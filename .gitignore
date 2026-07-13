@@ -30,3 +30,17 @@ gcs-service-account.json
 backend/movies_search_log.json
 **/movies.txt
 backend/scripts/upcoming_movies.json
+
+# design-sync (claude.ai/design)
+# Generated: staged converter scripts, build output, machine state.
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules
+# Build inputs the sync manufactures from the app (see .design-sync/NOTES.md).
+ui/.ds-styles.css
+ui/.ds-entry.css
+ui/index.d.ts
+# Everything else under .design-sync/ is durable and IS committed:
+# config.json, NOTES.md, conventions.md, previews/, fonts/, and the build scripts.

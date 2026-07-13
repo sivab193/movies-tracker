@@ -1,0 +1,31 @@
+// Declaration-only build for the design-system sync.
+//
+// The converter reads each component's prop contract from a .d.ts tree — without one,
+// every <Name>Props comes out as `[key: string]: unknown` and the design agent never
+// learns that Button takes variant/size. movies-tracker is a Next app with no library
+// build, so we emit declarations for the component surface here.
+//
+// Output goes to ui/dist/types because the converter's types-root probe checks
+// dist/types before lib/ (lib/ has no .d.ts and would otherwise win).
+{
+  "extends": "../ui/tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "declarationMap": false,
+    "incremental": false,
+    "skipLibCheck": true,
+    "rootDir": "../ui",
+    "declarationDir": "../ui/dist/types",
+    "plugins": []
+  },
+  "include": [
+    "../ui/components/**/*.ts",
+    "../ui/components/**/*.tsx",
+    "../ui/contexts/**/*.ts",
+    "../ui/contexts/**/*.tsx",
+    "../ui/lib/**/*.ts"
+  ],
+  "exclude": ["../ui/node_modules", "../ui/.next"]
+}
