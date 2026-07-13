@@ -1,3 +1,4 @@
+import re
 from flask import Blueprint, request, jsonify
 from mongo_config import db
 from bson import ObjectId
@@ -189,3 +190,123 @@ def delete_theater(theater_id):
         return jsonify({"message": "Theater deleted successfully"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+def clean_str(s):
+    """Lowercase alphanumerics only. Accepts any type, including None."""
+    if s is None:
+        return ""
+    return re.sub(r'[^a-z0-9]', '', str(s).lower())
+
+def find_theater_duplicate_groups():
+    """Group theaters by normalized name + location.
+
+    Returns [(key, kept_doc, [dup_docs...])] for groups with more than one doc.
+    The doc with a Google Maps link wins.
+    """
+    from collections import defaultdict
+    groups = defaultdict(list)
+    for t in db.theaters.find({}):
+        key = f"{clean_str(t.get('name'))}_{clean_str(t.get('location'))}"
+        if key == "_":
+            # Nothing to match on, so it can never be a duplicate of anything else.
+            key = str(t["_id"])
+        groups[key].append(t)
+
+    result = []
+    for key, docs in groups.items():
+        if len(docs) < 2:
+            continue
+        docs.sort(key=lambda d: len(str(d.get("gmapsLink") or "")), reverse=True)
+        result.append((key, docs[0], docs[1:]))
+    return result
+
+def serialize_theater(t):
+    t = dict(t)
+    t['id'] = str(t.pop('_id'))
+    t.setdefault('gmapsLink', '')
+    return t
+
+@theaters_bp.route('/duplicates', methods=['GET'])
+def get_theater_duplicates():
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({"error": "Unauthorized"}), 401
+    token = auth_header.split(' ')[1]
+    if not is_admin(token):
+        return jsonify({"error": "Forbidden: Admin access required"}), 403
+    if db is None:
+        return jsonify({"error": "Database not connected"}), 500
+
+    duplicate_groups = []
+    total_duplicates = 0
+    for key, kept, dups in find_theater_duplicate_groups():
+        total_duplicates += len(dups)
+        duplicate_groups.append({
+            "key": key,
+            "kept": serialize_theater(kept),
+            "duplicates": [serialize_theater(d) for d in dups]
+        })
+
+    return jsonify({
+        "duplicateGroups": duplicate_groups,
+        "totalDuplicatesCount": total_duplicates
+    })
+
+@theaters_bp.route('/duplicates/merge', methods=['POST'])
+def merge_theater_duplicates():
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({"error": "Unauthorized"}), 401
+    token = auth_header.split(' ')[1]
+    if not is_admin(token):
+        return jsonify({"error": "Forbidden: Admin access required"}), 403
+    if db is None:
+        return jsonify({"error": "Database not connected"}), 500
+
+    total_merged = 0
+    users_updated = set()
+
+    for _key, kept, dups in find_theater_duplicate_groups():
+        kept_id = str(kept["_id"])
+
+        for dup in dups:
+            old_id = str(dup["_id"])
+            users_with_ref = db.users.find({
+                "$or": [
+                    {"watchHistory.theaterId": old_id},
+                    {"watchHistory.theaterId": dup["_id"]},
+                    {"watchHistory.theaterName": dup.get("name")}
+                ]
+            })
+
+            for u in users_with_ref:
+                wh = u.get("watchHistory", [])
+                modified = False
+                for entry in wh:
+                    entry_theater_id = str(entry.get("theaterId"))
+                    if entry_theater_id == kept_id:
+                        continue
+                    # Older entries were denormalized without a theaterId, so fall
+                    # back to matching the name/location the dup was stored under.
+                    matches_by_name = (
+                        entry.get("theaterName") == dup.get("name")
+                        and entry.get("theaterLocation") == dup.get("location")
+                    )
+                    if entry_theater_id == old_id or matches_by_name:
+                        entry["theaterId"] = kept_id
+                        entry["theaterName"] = kept.get("name")
+                        entry["theaterLocation"] = kept.get("location")
+                        if kept.get("gmapsLink"):
+                            entry["theaterGmapsLink"] = kept.get("gmapsLink")
+                        modified = True
+                if modified:
+                    db.users.update_one({"_id": u["_id"]}, {"$set": {"watchHistory": wh}})
+                    users_updated.add(str(u["_id"]))
+
+            db.theaters.delete_one({"_id": dup["_id"]})
+            total_merged += 1
+
+    return jsonify({
+        "message": f"Successfully merged {total_merged} duplicate theaters and re-linked {len(users_updated)} watch histories!",
+        "mergedCount": total_merged
+    })

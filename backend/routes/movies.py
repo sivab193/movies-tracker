@@ -1,5 +1,6 @@
 from flask import Blueprint, request, jsonify, Response
 import os
+import re
 import requests
 import datetime
 from firebase_config import auth as firebase_auth
@@ -385,9 +386,12 @@ def list_movies():
     
     query = {}
     if title_search:
+        # Escaped: this runs on every keystroke of the movie picker, and an
+        # unbalanced "(" from a title like "Alien (1979)" is an invalid regex.
+        safe_search = re.escape(title_search)
         query['$or'] = [
-            {'title': {'$regex': title_search, '$options': 'i'}},
-            {'imdbId': {'$regex': title_search, '$options': 'i'}}
+            {'title': {'$regex': safe_search, '$options': 'i'}},
+            {'imdbId': {'$regex': safe_search, '$options': 'i'}}
         ]
     if year_filter and year_filter.strip() != '' and year_filter != 'All':
         try:
@@ -881,3 +885,151 @@ def resolve_short_movie_url(code):
     if not doc or not doc.get('movieId'):
         return jsonify({"error": "Short URL not found or expired"}), 404
     return jsonify({"movieId": str(doc['movieId'])})
+
+def clean_str(s):
+    """Lowercase alphanumerics only. Accepts any type (year is stored as an int)."""
+    if s is None:
+        return ""
+    return re.sub(r'[^a-z0-9]', '', str(s).lower())
+
+def movie_dedup_key(m):
+    imdb = clean_str(m.get("imdbId"))
+    if imdb and imdb != "na":
+        return f"imdb:{imdb}"
+    return f"title:{clean_str(m.get('title'))}_{clean_str(m.get('year'))}"
+
+def find_movie_duplicate_groups():
+    """Group movies by IMDb id (or title+year when there is no IMDb id).
+
+    Returns [(key, kept_doc, [dup_docs...])] for groups with more than one doc.
+    The doc with the most poster/plot detail wins.
+    """
+    from collections import defaultdict
+    groups = defaultdict(list)
+    for m in db.movies.find({}):
+        key = movie_dedup_key(m)
+        if key == "title:_":
+            # Nothing to match on, so it can never be a duplicate of anything else.
+            key = str(m["_id"])
+        groups[key].append(m)
+
+    result = []
+    for key, docs in groups.items():
+        if len(docs) < 2:
+            continue
+        docs.sort(key=lambda d: (len(str(d.get("posterUrl") or "")), len(str(d.get("plot") or ""))), reverse=True)
+        result.append((key, docs[0], docs[1:]))
+    return result
+
+def serialize_movie(m):
+    m = dict(m)
+    m['id'] = str(m.pop('_id'))
+    if m.get('createdAt') and hasattr(m['createdAt'], 'isoformat'):
+        m['createdAt'] = m['createdAt'].isoformat()
+    return m
+
+def repoint_movie_references(dup_id, kept_id):
+    """Move every reference to dup_id over to kept_id before the dup doc is deleted.
+
+    Mirrors the cleanup in delete_movie, except records are re-linked instead of dropped.
+    """
+    db.titlecards.update_many({"movieId": dup_id}, {"$set": {"movieId": kept_id}})
+    db.titlecard_images.update_many({"movieId": dup_id}, {"$set": {"movieId": kept_id}})
+    db.short_urls.update_many({"movieId": dup_id}, {"$set": {"movieId": kept_id}})
+
+    if db.movie_posters.find_one({"movieId": kept_id}):
+        db.movie_posters.delete_one({"movieId": dup_id})
+    else:
+        db.movie_posters.update_one({"movieId": dup_id}, {"$set": {"movieId": kept_id}})
+
+def recompute_movie_average(movie_id):
+    times = [
+        s['timeInSeconds'] for s in db.titlecards.find({"movieId": movie_id})
+        if isinstance(s.get('timeInSeconds'), (int, float))
+    ]
+    if not times:
+        return
+    db.movies.update_one(
+        {"_id": ObjectId(movie_id)},
+        {"$set": {"averageTimeSeconds": sum(times) / len(times), "submissionCount": len(times)}}
+    )
+
+@movies_bp.route('/duplicates', methods=['GET'])
+def get_movie_duplicates():
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({"error": "Unauthorized"}), 401
+    token = auth_header.split(' ')[1]
+    if not is_admin(token):
+        return jsonify({"error": "Forbidden: Admin access required"}), 403
+    if db is None:
+        return jsonify({"error": "Database not connected"}), 500
+
+    duplicate_groups = []
+    total_duplicates = 0
+    for key, kept, dups in find_movie_duplicate_groups():
+        total_duplicates += len(dups)
+        duplicate_groups.append({
+            "key": key,
+            "kept": serialize_movie(kept),
+            "duplicates": [serialize_movie(d) for d in dups]
+        })
+
+    return jsonify({
+        "duplicateGroups": duplicate_groups,
+        "totalDuplicatesCount": total_duplicates
+    })
+
+@movies_bp.route('/duplicates/merge', methods=['POST'])
+def merge_movie_duplicates():
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({"error": "Unauthorized"}), 401
+    token = auth_header.split(' ')[1]
+    if not is_admin(token):
+        return jsonify({"error": "Forbidden: Admin access required"}), 403
+    if db is None:
+        return jsonify({"error": "Database not connected"}), 500
+
+    total_merged = 0
+    users_updated = set()
+
+    for _key, kept, dups in find_movie_duplicate_groups():
+        kept_id = str(kept["_id"])
+
+        for dup in dups:
+            old_id = str(dup["_id"])
+            users_with_ref = db.users.find({
+                "$or": [
+                    {"watchHistory.movieId": old_id},
+                    {"watchHistory.movieId": dup["_id"]}
+                ]
+            })
+
+            for u in users_with_ref:
+                wh = u.get("watchHistory", [])
+                modified = False
+                for entry in wh:
+                    if str(entry.get("movieId")) == old_id:
+                        # Stored as ObjectId by add_watch_history; delete_watch_history
+                        # looks the movie up by that raw value, so keep the type.
+                        entry["movieId"] = ObjectId(kept_id)
+                        entry["imdbId"] = kept.get("imdbId")
+                        entry["movieTitle"] = kept.get("title")
+                        if kept.get("posterUrl"):
+                            entry["moviePosterUrl"] = kept.get("posterUrl")
+                        modified = True
+                if modified:
+                    db.users.update_one({"_id": u["_id"]}, {"$set": {"watchHistory": wh}})
+                    users_updated.add(str(u["_id"]))
+
+            repoint_movie_references(old_id, kept_id)
+            db.movies.delete_one({"_id": dup["_id"]})
+            total_merged += 1
+
+        recompute_movie_average(kept_id)
+
+    return jsonify({
+        "message": f"Successfully merged {total_merged} duplicate movies and re-linked {len(users_updated)} watch histories!",
+        "mergedCount": total_merged
+    })

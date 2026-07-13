@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Header } from "@/components/header"
 import { getAdminRequests, resolveAdminRequest } from "@/services/user-service"
-import { getMovies, deleteMovie, getTheaters, addTheater, updateTheater, deleteTheater, updateMovie, addMovie, fetchOmdbPreview } from "@/services/api"
+import { getMovies, deleteMovie, getTheaters, addTheater, updateTheater, deleteTheater, updateMovie, addMovie, fetchOmdbPreview, getTheaterDuplicates, mergeTheaterDuplicates, getMovieDuplicates, mergeMovieDuplicates } from "@/services/api"
 import { formatTimeDisplay, resolveApiUrl } from "@/lib/types"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -104,6 +104,15 @@ export default function AdminPage() {
     const [deleteTheaterTarget, setDeleteTheaterTarget] = useState<any | null>(null)
     const [deletingTheater, setDeletingTheater] = useState(false)
 
+    // Deduplication states
+    const [theaterDups, setTheaterDups] = useState<any[]>([])
+    const [theaterDupsCount, setTheaterDupsCount] = useState(0)
+    const [movieDups, setMovieDups] = useState<any[]>([])
+    const [movieDupsCount, setMovieDupsCount] = useState(0)
+    const [scanningDups, setScanningDups] = useState(false)
+    const [mergingTheaterDups, setMergingTheaterDups] = useState(false)
+    const [mergingMovieDups, setMergingMovieDups] = useState(false)
+
     useEffect(() => {
         if (!authLoading) {
             if (!user) {
@@ -133,6 +142,55 @@ export default function AdminPage() {
             console.error("Failed to load admin data", err)
         } finally {
             setLocalLoading(false)
+        }
+    }
+
+    const handleScanDuplicates = async () => {
+        setScanningDups(true)
+        try {
+            const [tRes, mRes] = await Promise.all([
+                getTheaterDuplicates(),
+                getMovieDuplicates()
+            ])
+            setTheaterDups(tRes.duplicateGroups || [])
+            setTheaterDupsCount(tRes.totalDuplicatesCount || 0)
+            setMovieDups(mRes.duplicateGroups || [])
+            setMovieDupsCount(mRes.totalDuplicatesCount || 0)
+        } catch (err) {
+            console.error("Failed to scan duplicates", err)
+            alert(err instanceof Error ? err.message : "Failed to scan duplicates")
+        } finally {
+            setScanningDups(false)
+        }
+    }
+
+    const handleMergeTheaterDups = async () => {
+        if (!confirm(`Are you sure you want to automatically merge all ${theaterDupsCount} duplicate theaters? This will update user watch histories to point to the preserved documents.`)) return
+        setMergingTheaterDups(true)
+        try {
+            const res = await mergeTheaterDuplicates()
+            alert(res.message || "Theaters merged successfully")
+            await Promise.all([loadData(), handleScanDuplicates()])
+        } catch (err) {
+            console.error("Failed to merge theaters", err)
+            alert(err instanceof Error ? err.message : "Failed to merge theaters")
+        } finally {
+            setMergingTheaterDups(false)
+        }
+    }
+
+    const handleMergeMovieDups = async () => {
+        if (!confirm(`Are you sure you want to automatically merge all ${movieDupsCount} duplicate movies? This will update user watch histories to point to the preserved documents.`)) return
+        setMergingMovieDups(true)
+        try {
+            const res = await mergeMovieDuplicates()
+            alert(res.message || "Movies merged successfully")
+            await Promise.all([loadData(), handleScanDuplicates()])
+        } catch (err) {
+            console.error("Failed to merge movies", err)
+            alert(err instanceof Error ? err.message : "Failed to merge movies")
+        } finally {
+            setMergingMovieDups(false)
         }
     }
 
@@ -885,6 +943,104 @@ export default function AdminPage() {
                                 </div>
                             </div>
                         </CardContent>
+                            </Card>
+
+                            {/* Deduplication Card */}
+                            <Card className="border-amber-500/30 bg-amber-500/5 dark:bg-amber-950/10">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                                    <div>
+                                        <CardTitle className="flex items-center gap-2">
+                                            <ShieldAlert className="h-5 w-5 text-amber-500" />
+                                            Database Deduplication & Cleanup
+                                        </CardTitle>
+                                        <CardDescription>
+                                            Scan MongoDB for duplicate theaters and movies, and auto-merge them safely while updating user watch histories.
+                                        </CardDescription>
+                                    </div>
+                                    <Button
+                                        onClick={handleScanDuplicates}
+                                        disabled={scanningDups}
+                                        className="gap-2 bg-amber-600 hover:bg-amber-700 text-white"
+                                    >
+                                        {scanningDups ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                                        Scan For Duplicates
+                                    </Button>
+                                </CardHeader>
+                                <CardContent className="space-y-6">
+                                    <div className="grid md:grid-cols-2 gap-4">
+                                        <div className="p-4 border rounded-lg bg-background flex flex-col justify-between">
+                                            <div>
+                                                <h4 className="font-semibold text-sm flex items-center justify-between mb-1">
+                                                    <span>Duplicate Theaters</span>
+                                                    <span className={`px-2 py-0.5 rounded text-xs font-bold ${theaterDupsCount > 0 ? "bg-red-500/10 text-red-600" : "bg-green-500/10 text-green-600"}`}>
+                                                        {theaterDupsCount} found
+                                                    </span>
+                                                </h4>
+                                                <p className="text-xs text-muted-foreground mb-3">
+                                                    Groups theaters sharing identical/similar names and locations.
+                                                </p>
+                                                {theaterDups.length > 0 && (
+                                                    <div className="max-h-40 overflow-y-auto space-y-2 mb-3 pr-1">
+                                                        {theaterDups.map((g, idx) => (
+                                                            <div key={idx} className="p-2 bg-muted/40 rounded text-xs">
+                                                                <div className="font-medium text-foreground">Keep: {g.kept.name} ({g.kept.location})</div>
+                                                                <div className="text-muted-foreground mt-1">
+                                                                    Merge {g.duplicates.length} copy: {g.duplicates.map((d: any) => d.name).join(", ")}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <Button
+                                                size="sm"
+                                                variant={theaterDupsCount > 0 ? "default" : "outline"}
+                                                disabled={theaterDupsCount === 0 || mergingTheaterDups}
+                                                onClick={handleMergeTheaterDups}
+                                                className="w-full mt-2"
+                                            >
+                                                {mergingTheaterDups ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                                                Auto-Merge {theaterDupsCount} Theaters
+                                            </Button>
+                                        </div>
+
+                                        <div className="p-4 border rounded-lg bg-background flex flex-col justify-between">
+                                            <div>
+                                                <h4 className="font-semibold text-sm flex items-center justify-between mb-1">
+                                                    <span>Duplicate Movies</span>
+                                                    <span className={`px-2 py-0.5 rounded text-xs font-bold ${movieDupsCount > 0 ? "bg-red-500/10 text-red-600" : "bg-green-500/10 text-green-600"}`}>
+                                                        {movieDupsCount} found
+                                                    </span>
+                                                </h4>
+                                                <p className="text-xs text-muted-foreground mb-3">
+                                                    Groups movies by matching IMDb IDs or exact Title & Year.
+                                                </p>
+                                                {movieDups.length > 0 && (
+                                                    <div className="max-h-40 overflow-y-auto space-y-2 mb-3 pr-1">
+                                                        {movieDups.map((g, idx) => (
+                                                            <div key={idx} className="p-2 bg-muted/40 rounded text-xs">
+                                                                <div className="font-medium text-foreground">Keep: {g.kept.title} ({g.kept.year})</div>
+                                                                <div className="text-muted-foreground mt-1">
+                                                                    Merge {g.duplicates.length} copy: {g.duplicates.map((d: any) => d.title).join(", ")}
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <Button
+                                                size="sm"
+                                                variant={movieDupsCount > 0 ? "default" : "outline"}
+                                                disabled={movieDupsCount === 0 || mergingMovieDups}
+                                                onClick={handleMergeMovieDups}
+                                                className="w-full mt-2"
+                                            >
+                                                {mergingMovieDups ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                                                Auto-Merge {movieDupsCount} Movies
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </CardContent>
                             </Card>
                     </div>
                 </div>

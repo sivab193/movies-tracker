@@ -39,7 +39,7 @@ load_dotenv(os.path.join(ROOT_DIR, ".env"))
 
 from mongo_config import db
 
-OMDB_API_KEY = os.environ.get('OMDB_API_KEY', 'd8dd897d')
+OMDB_API_KEY = os.environ.get('OMDB_API_KEY')
 
 def normalize(title):
     if not title:

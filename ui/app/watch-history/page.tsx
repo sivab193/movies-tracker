@@ -24,7 +24,8 @@ import {
     CreditCard,
     Pencil,
     Trash,
-    ExternalLink
+    ExternalLink,
+    RotateCcw
 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { AddWatchDialog } from "@/components/add-watch-dialog"
@@ -52,6 +53,7 @@ export default function WatchHistoryPage() {
     const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc')
     const [loading, setLoading] = useState(false)
     const [editingEntry, setEditingEntry] = useState<WatchHistoryEntry | null>(null)
+    const [rewatchingEntry, setRewatchingEntry] = useState<WatchHistoryEntry | null>(null)
     const [deletingId, setDeletingId] = useState<string | null>(null)
 
     // Keep local profile in sync with context initially, then manage updates
@@ -262,6 +264,19 @@ export default function WatchHistoryPage() {
                                 hideTrigger={true}
                             />
 
+                            {/* Rewatch Dialog - Hidden Trigger */}
+                            <AddWatchDialog
+                                uid={user.uid}
+                                rewatchData={rewatchingEntry || undefined}
+                                open={!!rewatchingEntry}
+                                onOpenChange={(open) => !open && setRewatchingEntry(null)}
+                                onWatchAdded={() => {
+                                    refreshData()
+                                    setRewatchingEntry(null)
+                                }}
+                                hideTrigger={true}
+                            />
+
                             {/* Delete Alert */}
                             <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
                                 <AlertDialogContent>
@@ -391,7 +406,7 @@ export default function WatchHistoryPage() {
                                             <TableHead>Movie</TableHead>
                                             <TableHead>Theater</TableHead>
                                             <TableHead className="text-right">Cost</TableHead>
-                                            <TableHead className="w-[100px]"></TableHead>
+                                            <TableHead className="w-[130px]"></TableHead>
                                         </TableRow>
                                     </TableHeader>
                                     <TableBody>
@@ -455,8 +470,18 @@ export default function WatchHistoryPage() {
                                                     </div>
                                                 </TableCell>
                                                 <TableCell>
-                                                    <div className="flex items-center justify-end gap-2">
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingEntry(entry)}>
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-primary hover:text-primary"
+                                                            title={`Log a rewatch of ${entry.movieTitle}`}
+                                                            aria-label={`Log a rewatch of ${entry.movieTitle}`}
+                                                            onClick={() => setRewatchingEntry(entry)}
+                                                        >
+                                                            <RotateCcw className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit this log" onClick={() => setEditingEntry(entry)}>
                                                             <Pencil className="h-4 w-4" />
                                                         </Button>
                                                         <Button

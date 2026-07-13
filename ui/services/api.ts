@@ -355,3 +355,49 @@ export async function resolveShortUrl(code: string): Promise<{ movieId: string }
     if (!response.ok) throw new Error(data.error || "Failed to resolve short URL");
     return data;
 }
+
+export async function getTheaterDuplicates() {
+    const token = await auth?.currentUser?.getIdToken();
+    if (!token) throw new Error("User not authenticated");
+    const response = await fetch(`${API_BASE_URL}/theaters/duplicates`, {
+        headers: { "Authorization": `Bearer ${token}` }
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Failed to fetch theater duplicates");
+    return data;
+}
+
+export async function mergeTheaterDuplicates() {
+    const token = await auth?.currentUser?.getIdToken();
+    if (!token) throw new Error("User not authenticated");
+    const response = await fetch(`${API_BASE_URL}/theaters/duplicates/merge`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` }
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Failed to merge theater duplicates");
+    return data;
+}
+
+export async function getMovieDuplicates() {
+    const token = await auth?.currentUser?.getIdToken();
+    if (!token) throw new Error("User not authenticated");
+    const response = await fetch(`${API_BASE_URL}/movies/duplicates`, {
+        headers: { "Authorization": `Bearer ${token}` }
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Failed to fetch movie duplicates");
+    return data;
+}
+
+export async function mergeMovieDuplicates() {
+    const token = await auth?.currentUser?.getIdToken();
+    if (!token) throw new Error("User not authenticated");
+    const response = await fetch(`${API_BASE_URL}/movies/duplicates/merge`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` }
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Failed to merge movie duplicates");
+    return data;
+}

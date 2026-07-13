@@ -28,16 +28,26 @@ import { DatePicker } from "@/components/ui/date-picker"
 interface AddWatchDialogProps {
   uid: string
   onWatchAdded: () => void
+  /** Edit an existing log. The movie is fixed and the entry is updated in place. */
   initialData?: WatchHistoryEntry
+  /** Log a *new* watch of a movie already in the history. Only the movie carries over. */
+  rewatchData?: WatchHistoryEntry
   open?: boolean
   onOpenChange?: (open: boolean) => void
   hideTrigger?: boolean
 }
 
+// Movies are searched server-side, so the picker is never limited to a first page.
+const MIN_SEARCH_CHARS = 2
+const RECENT_MOVIE_COUNT = 8
+const SEARCH_RESULT_COUNT = 20
+const SEARCH_DEBOUNCE_MS = 300
+
 export function AddWatchDialog({
   uid,
   onWatchAdded,
   initialData,
+  rewatchData,
   open: controlledOpen,
   onOpenChange: setControlledOpen,
   hideTrigger = false
@@ -53,13 +63,19 @@ export function AddWatchDialog({
     }
   }
 
+  // In edit and rewatch mode the movie is fixed, so the picker is not shown.
+  const isEdit = !!initialData
+  const lockedMovie = initialData || rewatchData
+
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [movies, setMovies] = useState<any[]>([])
+  const [searchingMovies, setSearchingMovies] = useState(false)
   const [theaters, setTheaters] = useState<any[]>([])
 
   // Form State
   const [selectedMovieId, setSelectedMovieId] = useState<string>("")
+  const [selectedMovie, setSelectedMovie] = useState<any | null>(null)
   const [selectedTheaterId, setSelectedTheaterId] = useState<string>("")
   const [theaterName, setTheaterName] = useState("")
   const [theaterLocation, setTheaterLocation] = useState("")
@@ -85,11 +101,6 @@ export function AddWatchDialog({
     }).filter(Boolean)
   )).sort()
 
-  const filteredMovies = movies.filter(m => 
-    (m.title || "").toLowerCase().includes(movieSearch.toLowerCase()) ||
-    (m.year || "").toString().includes(movieSearch)
-  )
-
   const filteredTheaters = theaters.filter(t => {
     const locCity = (t.location?.trim() || "").split(",")[0].replace(/\s+(Indiana|Illinois|IN|IL)$/i, "").trim()
     const matchesCity = cityFilter === "All" || (locCity === cityFilter)
@@ -99,15 +110,53 @@ export function AddWatchDialog({
     return matchesCity && matchesSearch
   })
 
-  // Load movies and theaters when dialog opens
   useEffect(() => {
     if (open) {
-      getMovies().then(res => setMovies(res?.movies || res || [])).catch(() => setMovies([]))
       getTheaters().then(setTheaters).catch(() => setTheaters([]))
     }
   }, [open])
 
-  // Initialize form if initialData provided
+  // Movie options come from the server: the newest few by default, and a global
+  // title search once enough characters are typed.
+  useEffect(() => {
+    if (!open || lockedMovie) return
+
+    const query = movieSearch.trim()
+    const isSearch = query.length >= MIN_SEARCH_CHARS
+
+    // A single character matches nearly everything, so wait for more.
+    if (query.length > 0 && !isSearch) {
+      // Clears the spinner if a longer query was cancelled on its way down to 1 char.
+      setSearchingMovies(false)
+      return
+    }
+
+    let cancelled = false
+    setSearchingMovies(true)
+
+    const timer = setTimeout(async () => {
+      try {
+        const res = await getMovies(
+          0,
+          isSearch ? SEARCH_RESULT_COUNT : RECENT_MOVIE_COUNT,
+          "",
+          isSearch ? query : ""
+        )
+        if (!cancelled) setMovies(res?.movies || [])
+      } catch {
+        if (!cancelled) setMovies([])
+      } finally {
+        if (!cancelled) setSearchingMovies(false)
+      }
+    }, isSearch ? SEARCH_DEBOUNCE_MS : 0)
+
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [open, movieSearch, lockedMovie])
+
+  // Initialize form if editing or rewatching
   useEffect(() => {
     if (open && initialData) {
       setSelectedMovieId(initialData.movieId)
@@ -126,10 +175,13 @@ export function AddWatchDialog({
           setWatchDate(new Date().toISOString().split('T')[0])
         }
       }
+    } else if (open && rewatchData) {
+      // Only the movie carries over; everything else is a fresh visit.
+      setSelectedMovieId(rewatchData.movieId)
     } else if (!open) {
       resetForm()
     }
-  }, [initialData, open])
+  }, [initialData, rewatchData, open])
 
   // Match loaded theaters with initialData.theaterName
   useEffect(() => {
@@ -153,6 +205,7 @@ export function AddWatchDialog({
 
   const resetForm = () => {
     setSelectedMovieId("")
+    setSelectedMovie(null)
     setSelectedTheaterId("")
     setTheaterName("")
     setTheaterLocation("")
@@ -161,6 +214,7 @@ export function AddWatchDialog({
     setTheaterSearch("")
     setIsMovieDropdownOpen(false)
     setIsTheaterDropdownOpen(false)
+    setSearchingMovies(false)
     setWatchDate(new Date().toISOString().split('T')[0])
     setShowTime("")
     setTicketCost("")
@@ -175,7 +229,8 @@ export function AddWatchDialog({
     e.preventDefault()
     setError("")
 
-    if (!selectedMovieId && !initialData) {
+    const movieId = selectedMovieId || lockedMovie?.movieId
+    if (!movieId) {
       setError("Please select a movie")
       return
     }
@@ -189,7 +244,7 @@ export function AddWatchDialog({
 
     try {
       const payload: any = {
-        movieId: selectedMovieId || initialData?.movieId,
+        movieId,
         theaterId: selectedTheaterId || initialData?.theaterId,
         theaterName: theaterName.trim() || undefined,
         theaterLocation: theaterLocation.trim() || undefined,
@@ -212,7 +267,7 @@ export function AddWatchDialog({
         payload.ticketStubImage = base64Image
       }
 
-      if (initialData && initialData._id) {
+      if (isEdit && initialData?._id) {
         await updateWatchHistory(uid, initialData._id, payload)
       } else {
         await addWatchHistory(payload)
@@ -242,10 +297,14 @@ export function AddWatchDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Film className="h-5 w-5" />
-            {initialData ? "Edit Watch Log" : "Log Movie Watch"}
+            {isEdit ? "Edit Watch Log" : rewatchData ? "Log Rewatch" : "Log Movie Watch"}
           </DialogTitle>
           <DialogDescription>
-            {initialData ? "Update details for this movie." : "Record a movie you watched in theaters."}
+            {isEdit
+              ? "Update details for this movie."
+              : rewatchData
+              ? "Log another visit for this movie. Enter the new theater, date and costs."
+              : "Record a movie you watched in theaters."}
           </DialogDescription>
         </DialogHeader>
 
@@ -259,10 +318,10 @@ export function AddWatchDialog({
           {/* Movie Search & Select */}
           <div className="relative space-y-2">
             <Label htmlFor="movie-search">Movie</Label>
-            {initialData ? (
+            {lockedMovie ? (
               <div className="flex items-center gap-3 p-2 border rounded-md bg-muted/50">
-                {initialData.moviePosterUrl && <img src={initialData.moviePosterUrl} alt="Poster" className="h-10 w-auto rounded" />}
-                <span className="font-medium">{initialData.movieTitle}</span>
+                {lockedMovie.moviePosterUrl && <img src={lockedMovie.moviePosterUrl} alt="Poster" className="h-10 w-auto rounded" />}
+                <span className="font-medium">{lockedMovie.movieTitle}</span>
               </div>
             ) : (
               <div className="relative">
@@ -270,7 +329,7 @@ export function AddWatchDialog({
                   <Input
                     id="movie-search"
                     type="text"
-                    placeholder={selectedMovieId ? (movies.find(m => m.id === selectedMovieId)?.title || "Selected movie") : "Type to search movie (title or year)..."}
+                    placeholder={selectedMovie?.title || "Type to search movie (title or IMDb ID)..."}
                     value={movieSearch}
                     onChange={(e) => {
                       setMovieSearch(e.target.value)
@@ -280,11 +339,14 @@ export function AddWatchDialog({
                     onBlur={() => setTimeout(() => setIsMovieDropdownOpen(false), 200)}
                     className="pr-8"
                   />
-                  {(selectedMovieId || movieSearch) && (
+                  {searchingMovies ? (
+                    <Loader2 className="absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 animate-spin text-muted-foreground" />
+                  ) : (selectedMovieId || movieSearch) ? (
                     <button
                       type="button"
                       onClick={() => {
                         setSelectedMovieId("")
+                        setSelectedMovie(null)
                         setMovieSearch("")
                         setIsMovieDropdownOpen(false)
                       }}
@@ -292,40 +354,54 @@ export function AddWatchDialog({
                     >
                       ✕
                     </button>
-                  )}
+                  ) : null}
                 </div>
-                {selectedMovieId && !isMovieDropdownOpen && (
+                {selectedMovie && !isMovieDropdownOpen && (
                   <div className="mt-1.5 flex items-center gap-2 p-2 border rounded-md bg-primary/5 border-primary/20 text-sm">
                     <Film className="h-4 w-4 text-primary shrink-0" />
-                    <span className="font-medium truncate">{movies.find(m => m.id === selectedMovieId)?.title} ({movies.find(m => m.id === selectedMovieId)?.year})</span>
+                    <span className="font-medium truncate">{selectedMovie.title} ({selectedMovie.year})</span>
                   </div>
                 )}
                 {isMovieDropdownOpen && (
                   <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-52 overflow-y-auto rounded-md border bg-popover text-popover-foreground shadow-md p-1 space-y-1">
-                    {filteredMovies.length === 0 ? (
-                      <div className="py-6 text-center text-sm text-muted-foreground">No movies found.</div>
+                    {movieSearch.trim() && movieSearch.trim().length < MIN_SEARCH_CHARS ? (
+                      <div className="py-6 text-center text-sm text-muted-foreground">
+                        Keep typing to search all movies...
+                      </div>
+                    ) : movies.length === 0 ? (
+                      <div className="py-6 text-center text-sm text-muted-foreground">
+                        {searchingMovies ? "Searching..." : "No movies found."}
+                      </div>
                     ) : (
-                      filteredMovies.map((movie) => (
-                        <div
-                          key={movie.id}
-                          onClick={() => {
-                            setSelectedMovieId(movie.id)
-                            setMovieSearch("")
-                            setIsMovieDropdownOpen(false)
-                          }}
-                          className={`flex items-center gap-2 px-2.5 py-2 text-sm rounded-sm cursor-pointer hover:bg-accent hover:text-accent-foreground ${selectedMovieId === movie.id ? "bg-accent font-medium" : ""}`}
-                        >
-                          {movie.posterUrl ? (
-                            <img src={movie.posterUrl} alt="" className="h-8 w-6 object-cover rounded shrink-0" />
-                          ) : (
-                            <div className="h-8 w-6 bg-muted rounded flex items-center justify-center shrink-0"><Film className="h-3 w-3 text-muted-foreground" /></div>
-                          )}
-                          <div className="flex flex-col overflow-hidden">
-                            <span className="truncate">{movie.title}</span>
-                            <span className="text-xs text-muted-foreground">{movie.year}</span>
+                      <>
+                        {!movieSearch.trim() && (
+                          <div className="px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                            Recently added
                           </div>
-                        </div>
-                      ))
+                        )}
+                        {movies.map((movie) => (
+                          <div
+                            key={movie.id}
+                            onClick={() => {
+                              setSelectedMovieId(movie.id)
+                              setSelectedMovie(movie)
+                              setMovieSearch("")
+                              setIsMovieDropdownOpen(false)
+                            }}
+                            className={`flex items-center gap-2 px-2.5 py-2 text-sm rounded-sm cursor-pointer hover:bg-accent hover:text-accent-foreground ${selectedMovieId === movie.id ? "bg-accent font-medium" : ""}`}
+                          >
+                            {movie.posterUrl ? (
+                              <img src={movie.posterUrl} alt="" className="h-8 w-6 object-cover rounded shrink-0" />
+                            ) : (
+                              <div className="h-8 w-6 bg-muted rounded flex items-center justify-center shrink-0"><Film className="h-3 w-3 text-muted-foreground" /></div>
+                            )}
+                            <div className="flex flex-col overflow-hidden">
+                              <span className="truncate">{movie.title}</span>
+                              <span className="text-xs text-muted-foreground">{movie.year}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </>
                     )}
                   </div>
                 )}
