@@ -104,7 +104,7 @@ export default function AdminUserDetailsPage() {
         <div className="mx-auto max-w-7xl w-full px-4 py-8 space-y-6">
             <div className="flex items-center gap-4">
                 <Link href="/admin/users">
-                    <Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button>
+                    <Button variant="ghost" size="icon" aria-label="Back to users" title="Back to users"><ArrowLeft className="h-4 w-4" /></Button>
                 </Link>
                 <div className="flex items-center gap-2">
                     {targetUser.photoURL && <img src={targetUser.photoURL} className="h-10 w-10 rounded-full" />}
@@ -199,10 +199,10 @@ export default function AdminUserDetailsPage() {
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center justify-end gap-2">
-                                                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingEntry(entry)}>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Edit this log" title="Edit this log" onClick={() => setEditingEntry(entry)}>
                                                     <Pencil className="h-4 w-4" />
                                                 </Button>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => entry._id && setDeletingId(entry._id)}>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" aria-label="Delete this log" title="Delete this log" onClick={() => entry._id && setDeletingId(entry._id)}>
                                                     <Trash className="h-4 w-4" />
                                                 </Button>
                                             </div>

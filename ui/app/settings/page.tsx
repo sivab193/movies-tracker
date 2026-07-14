@@ -211,7 +211,7 @@ export default function SettingsPage() {
                             {!editingName ? (
                                 <div className="flex items-center gap-3">
                                     <span className="font-medium">{displayName || "Not set"}</span>
-                                    <Button variant="ghost" size="sm" onClick={() => setEditingName(true)}>
+                                    <Button variant="ghost" size="sm" onClick={() => setEditingName(true)} aria-label="Edit display name" title="Edit display name">
                                         <Pencil className="h-4 w-4" />
                                     </Button>
                                 </div>
@@ -261,7 +261,7 @@ export default function SettingsPage() {
                                         <span className="font-mono font-medium text-primary">
                                             /u/{customUrl}
                                         </span>
-                                        <Button variant="ghost" size="sm" onClick={() => { setEditingCustomUrl(true); setCustomUrlError(null); }}>
+                                        <Button variant="ghost" size="sm" onClick={() => { setEditingCustomUrl(true); setCustomUrlError(null); }} aria-label="Edit custom URL" title="Edit custom URL">
                                             <Pencil className="h-4 w-4" />
                                         </Button>
                                     </div>

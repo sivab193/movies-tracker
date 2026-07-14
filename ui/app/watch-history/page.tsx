@@ -481,13 +481,15 @@ export default function WatchHistoryPage() {
                                                         >
                                                             <RotateCcw className="h-4 w-4" />
                                                         </Button>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit this log" onClick={() => setEditingEntry(entry)}>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8" aria-label="Edit this log" title="Edit this log" onClick={() => setEditingEntry(entry)}>
                                                             <Pencil className="h-4 w-4" />
                                                         </Button>
                                                         <Button
                                                             variant="ghost"
                                                             size="icon"
                                                             className="h-8 w-8 text-destructive hover:text-destructive"
+                                                            aria-label="Delete this log"
+                                                            title="Delete this log"
                                                             onClick={() => {
                                                                 console.log("Delete clicked for entry:", entry)
                                                                 if (!entry._id) {
