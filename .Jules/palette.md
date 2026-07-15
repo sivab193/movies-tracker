@@ -1,0 +1,3 @@
+## 2025-07-15 - Icon-only buttons accessibility pattern
+**Learning:** Icon-only buttons, such as those used for editing, deleting, or navigating back, lack inherent semantic meaning for screen readers. Simply adding an `aria-label` provides programmatic accessibility, but adding a `title` attribute provides visual tooltips on hover, serving both keyboard/screen reader users and mouse users effectively.
+**Action:** When adding or reviewing icon-only buttons across the application (like Trash, Pencil, etc.), always ensure they have both an `aria-label` and a `title` attribute for comprehensive accessibility and UX.

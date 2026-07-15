@@ -132,7 +132,7 @@ export function AddMovieDialog({ onMovieAdded }: AddMovieDialogProps) {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 disabled={searching || loading}
               />
-              <Button type="submit" size="icon" disabled={searching || loading || !searchQuery.trim()}>
+              <Button type="submit" size="icon" disabled={searching || loading || !searchQuery.trim()} aria-label="Search movie" title="Search movie">
                 {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
               </Button>
             </form>

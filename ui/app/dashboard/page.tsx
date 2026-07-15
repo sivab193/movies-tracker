@@ -294,6 +294,8 @@ export default function DashboardPage() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                            aria-label="Delete watch entry"
+                            title="Delete watch entry"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>

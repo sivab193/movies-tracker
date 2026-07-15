@@ -41,6 +41,7 @@ const mainFeatures = [
     icon: BarChart3,
     title: "Viewing Analytics",
     description: "Track your cinema habits with genre breakdowns, monthly trends, and personal statistics.",
+    badge: "",
   },
 ]
 
