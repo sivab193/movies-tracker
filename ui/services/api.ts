@@ -294,6 +294,20 @@ export async function updateMovie(id: string, updateData: any) {
     return data.movie || data;
 }
 
+export async function clearMovieSubmissions(id: string) {
+    const token = await auth?.currentUser?.getIdToken();
+    const response = await fetch(`${API_BASE_URL}/movies/${id}/submissions`, {
+        method: "DELETE",
+        headers: {
+            "Authorization": `Bearer ${token}`
+        }
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Failed to clear submissions");
+    return data;
+}
+
 export async function deleteMovie(id: string) {
     const token = await auth?.currentUser?.getIdToken();
     const response = await fetch(`${API_BASE_URL}/movies/${id}`, {
