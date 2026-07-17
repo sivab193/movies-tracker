@@ -135,10 +135,10 @@ export function formatRuntimeToHHMM(runtime?: string | null | number): string {
   const hrs = Math.floor(mins / 60)
   const remMins = mins % 60
   if (hrs === 0) {
-    return `${remMins}m`
+    return `${remMins}min`
   }
   if (remMins === 0) {
     return `${hrs}h`
   }
-  return `${hrs}h ${remMins}m`
+  return `${hrs}h ${remMins}min`
 }

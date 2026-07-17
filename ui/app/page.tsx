@@ -144,13 +144,13 @@ export default function HomePage() {
                   </dt>
                   <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground group-hover:text-foreground">
                     <p className="flex-auto text-pretty">{feature.description}</p>
-                    {feature.badge && (
+                    {('badge' in feature && feature.badge) ? (
                       <div className="mt-3">
                         <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                          {feature.badge}
+                          {String((feature as any).badge)}
                         </span>
                       </div>
-                    )}
+                    ) : null}
                   </dd>
                 </Link>
               ))}

@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Header } from "@/components/header"
 import { getAdminRequests, resolveAdminRequest } from "@/services/user-service"
-import { getMovies, deleteMovie, getTheaters, addTheater, updateTheater, deleteTheater, updateMovie, addMovie, fetchOmdbPreview, getTheaterDuplicates, mergeTheaterDuplicates, getMovieDuplicates, mergeMovieDuplicates } from "@/services/api"
+import { getMovies, deleteMovie, clearMovieSubmissions, getTheaters, addTheater, updateTheater, deleteTheater, updateMovie, addMovie, fetchOmdbPreview, getTheaterDuplicates, mergeTheaterDuplicates, getMovieDuplicates, mergeMovieDuplicates } from "@/services/api"
 import { formatTimeDisplay, resolveApiUrl } from "@/lib/types"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -87,6 +87,7 @@ export default function AdminPage() {
     const [modalPosterPreview, setModalPosterPreview] = useState<string>("")
     const [modalPosterType, setModalPosterType] = useState<"url" | "file">("url")
     const [savingModalMovie, setSavingModalMovie] = useState(false)
+    const [clearingSubmissions, setClearingSubmissions] = useState(false)
     const [modalError, setModalError] = useState<string | null>(null)
 
     // Theater search & pagination states
@@ -286,6 +287,29 @@ export default function AdminPage() {
             setModalError(err instanceof Error ? err.message : "Failed to fetch OMDB details")
         } finally {
             setFetchingOmdb(false)
+        }
+    }
+
+    const handleClearSubmissions = async () => {
+        if (!modalMovieId) return
+        if (!window.confirm("Are you sure you want to clear all title card submissions for this movie? This action cannot be undone.")) return
+
+        setClearingSubmissions(true)
+        setModalError(null)
+        try {
+            await clearMovieSubmissions(modalMovieId)
+
+            // Update local state
+            const updatedMovie = { submissionCount: 0, averageTimeSeconds: null }
+            setMovies(movies.map(item => (item.id || item.imdbId) === modalMovieId ? { ...item, ...updatedMovie } : item))
+            setFilteredMovies(filteredMovies.map(item => (item.id || item.imdbId) === modalMovieId ? { ...item, ...updatedMovie } : item))
+
+            alert("Submissions cleared successfully.")
+            setIsMovieModalOpen(false)
+        } catch (err) {
+            setModalError(err instanceof Error ? err.message : "Failed to clear submissions")
+        } finally {
+            setClearingSubmissions(false)
         }
     }
 
@@ -1344,18 +1368,23 @@ export default function AdminPage() {
 
                     <DialogFooter className="flex flex-row justify-between sm:justify-between pt-2 border-t">
                         {modalMode === "add" && modalStep === 2 ? (
-                            <Button variant="outline" onClick={() => setModalStep(1)} disabled={savingModalMovie}>
+                            <Button variant="outline" onClick={() => setModalStep(1)} disabled={savingModalMovie || clearingSubmissions}>
                                 Back to Search
+                            </Button>
+                        ) : modalMode === "edit" ? (
+                            <Button variant="destructive" onClick={handleClearSubmissions} disabled={savingModalMovie || clearingSubmissions} type="button">
+                                {clearingSubmissions ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                                Reset Title Cards
                             </Button>
                         ) : (
                             <div />
                         )}
                         <div className="flex gap-2">
-                            <Button variant="outline" onClick={() => setIsMovieModalOpen(false)} disabled={savingModalMovie}>
+                            <Button variant="outline" onClick={() => setIsMovieModalOpen(false)} disabled={savingModalMovie || clearingSubmissions}>
                                 Cancel
                             </Button>
                             {!(modalMode === "add" && modalStep === 1) && (
-                                <Button onClick={handleSaveModalMovie} disabled={savingModalMovie || !modalTitle.trim()}>
+                                <Button onClick={handleSaveModalMovie} disabled={savingModalMovie || clearingSubmissions || !modalTitle.trim()}>
                                     {savingModalMovie ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                                     {modalMode === "add" ? "Submit Movie" : "Save Changes"}
                                 </Button>

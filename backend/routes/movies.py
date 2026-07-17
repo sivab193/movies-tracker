@@ -713,6 +713,43 @@ def delete_movie(movie_id):
         print(f"Error deleting movie: {e}")
         return jsonify({"error": "Failed to delete movie"}), 500
 
+@movies_bp.route('/<movie_id>/submissions', methods=['DELETE'])
+def clear_submissions(movie_id):
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    token = auth_header.split(' ')[1]
+    if not is_admin(token):
+        return jsonify({"error": "Forbidden: Admin access required"}), 403
+
+    if db is None:
+        return jsonify({"error": "Database not connected"}), 500
+
+    try:
+        if not ObjectId.is_valid(movie_id):
+            return jsonify({"error": "Invalid movie ID"}), 400
+
+        # Delete all submissions for this movie
+        db.titlecards.delete_many({"movieId": movie_id})
+
+        # Reset movie submissionCount and averageTimeSeconds
+        result = db.movies.update_one(
+            {"_id": ObjectId(movie_id)},
+            {"$set": {
+                "submissionCount": 0,
+                "averageTimeSeconds": None
+            }}
+        )
+
+        if result.matched_count == 0:
+            return jsonify({"error": "Movie not found"}), 404
+
+        return jsonify({"message": "Submissions cleared successfully"})
+    except Exception as e:
+        print(f"Error clearing submissions: {e}")
+        return jsonify({"error": "Failed to clear submissions"}), 500
+
 @movies_bp.route('/submissions', methods=['POST'])
 def add_submission():
     # Verify User (or allow guest)
