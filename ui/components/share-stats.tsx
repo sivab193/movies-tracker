@@ -1,8 +1,18 @@
 "use client"
 
-import { useState } from "react"
-import { Share2, Loader2, Download } from "lucide-react"
+import { useState, useMemo } from "react"
+import { Share2, Loader2, Download, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Label } from "@/components/ui/label"
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter
+} from "@/components/ui/dialog"
 
 export interface WrappedStats {
     displayName: string
@@ -40,7 +50,18 @@ function roundRect(
     ctx.closePath()
 }
 
-function drawWrappedImage(stats: WrappedStats): HTMLCanvasElement {
+export type StatSelection = {
+    totalRuntime: boolean;
+    totalHours: boolean;
+    totalSpent: boolean;
+    theatersVisited: boolean;
+    citiesExplored: boolean;
+    watchedThisYear: boolean;
+    mostWatched: boolean;
+    favoriteTheater: boolean;
+}
+
+function drawWrappedImage(stats: WrappedStats, selection: StatSelection): HTMLCanvasElement {
     const W = 1080
     const H = 1920
     const canvas = document.createElement("canvas")
@@ -48,15 +69,15 @@ function drawWrappedImage(stats: WrappedStats): HTMLCanvasElement {
     canvas.height = H
     const ctx = canvas.getContext("2d")!
 
-    // --- Background gradient (cinematic dark → amber/rose) ---
+    // --- Background gradient (red/black theme) ---
     const bg = ctx.createLinearGradient(0, 0, W, H)
-    bg.addColorStop(0, "#1a1030")
-    bg.addColorStop(0.45, "#2a1338")
-    bg.addColorStop(1, "#3d1526")
+    bg.addColorStop(0, "#050505")
+    bg.addColorStop(0.5, "#150000")
+    bg.addColorStop(1, "#3a0000")
     ctx.fillStyle = bg
     ctx.fillRect(0, 0, W, H)
 
-    // Soft glow blobs
+    // Soft glow blobs (red tones)
     const glow = (cx: number, cy: number, rad: number, color: string) => {
         const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, rad)
         g.addColorStop(0, color)
@@ -64,8 +85,21 @@ function drawWrappedImage(stats: WrappedStats): HTMLCanvasElement {
         ctx.fillStyle = g
         ctx.fillRect(0, 0, W, H)
     }
-    glow(180, 260, 520, "rgba(245, 158, 11, 0.22)")
-    glow(920, 1500, 620, "rgba(244, 63, 94, 0.22)")
+    glow(180, 260, 520, "rgba(255, 0, 0, 0.15)")
+    glow(920, 1500, 620, "rgba(220, 38, 38, 0.2)")
+
+    // Faint repeated watermark in background
+    ctx.save()
+    ctx.fillStyle = "rgba(255, 255, 255, 0.03)"
+    ctx.font = "700 80px system-ui, -apple-system, 'Segoe UI', sans-serif"
+    ctx.translate(W / 2, H / 2)
+    ctx.rotate(-Math.PI / 4)
+    for (let i = -3; i <= 3; i++) {
+        for (let j = -3; j <= 3; j++) {
+            ctx.fillText(SITE, i * 400, j * 300)
+        }
+    }
+    ctx.restore()
 
     ctx.textBaseline = "alphabetic"
 
@@ -77,8 +111,8 @@ function drawWrappedImage(stats: WrappedStats): HTMLCanvasElement {
 
     // --- Title ---
     const titleGrad = ctx.createLinearGradient(0, 150, W, 150)
-    titleGrad.addColorStop(0, "#fbbf24")
-    titleGrad.addColorStop(1, "#fb7185")
+    titleGrad.addColorStop(0, "#ff4b4b")
+    titleGrad.addColorStop(1, "#ff0000")
     ctx.fillStyle = titleGrad
     ctx.font = "800 96px system-ui, -apple-system, 'Segoe UI', sans-serif"
     ctx.fillText("My Cinema", W / 2, 270)
@@ -100,25 +134,36 @@ function drawWrappedImage(stats: WrappedStats): HTMLCanvasElement {
     ctx.fillText("MOVIES WATCHED", W / 2, heroY + 235)
 
     // --- Stat tiles grid (2 columns) ---
-    const tiles: { value: string; label: string }[] = [
-        { value: stats.totalRuntimeLabel, label: "Total Runtime" },
-        { value: `${stats.totalHours}h`, label: "Hours in Cinema" },
-        { value: stats.spentLabel, label: "Total Spent" },
-        { value: String(stats.theatersVisited), label: "Theaters Visited" },
-        { value: String(stats.citiesExplored), label: "Cities Explored" },
-        { value: String(stats.thisYearCount), label: `Watched in ${stats.year}` },
-    ]
+    const tiles: { value: string; label: string }[] = []
+
+    if (selection.totalRuntime) tiles.push({ value: stats.totalRuntimeLabel, label: "Total Runtime" })
+    if (selection.totalHours) tiles.push({ value: `${stats.totalHours}h`, label: "Hours in Cinema" })
+    if (selection.totalSpent) tiles.push({ value: stats.spentLabel, label: "Total Spent" })
+    if (selection.theatersVisited) tiles.push({ value: String(stats.theatersVisited), label: "Theaters Visited" })
+    if (selection.citiesExplored) tiles.push({ value: String(stats.citiesExplored), label: "Cities Explored" })
+    if (selection.watchedThisYear) tiles.push({ value: String(stats.thisYearCount), label: `Watched in ${stats.year}` })
 
     const gridTop = 860
     const pad = 70
     const gap = 30
-    const colW = (W - pad * 2 - gap) / 2
-    const tileH = 190
-    const rowGap = 26
+
+    // Default config when all 6 stats are selected
+    let colW = (W - pad * 2 - gap) / 2
+    let tileH = 190
+    let rowGap = 26
+
+    // Adjust layout for 1-4 tiles to fill the space more nicely, though default grid is fine too.
+    let cols = 2;
+    if (tiles.length <= 3 && tiles.length > 0) {
+        cols = 1;
+        colW = W - pad * 2;
+        tileH = 220;
+        rowGap = 40;
+    }
 
     tiles.forEach((t, i) => {
-        const col = i % 2
-        const row = Math.floor(i / 2)
+        const col = i % cols
+        const row = Math.floor(i / cols)
         const x = pad + col * (colW + gap)
         const y = gridTop + row * (tileH + rowGap)
 
@@ -140,7 +185,7 @@ function drawWrappedImage(stats: WrappedStats): HTMLCanvasElement {
             vFont -= 4
             ctx.font = `800 ${vFont}px system-ui, -apple-system, 'Segoe UI', sans-serif`
         }
-        ctx.fillStyle = "#fbbf24"
+        ctx.fillStyle = "#ff4b4b"
         ctx.fillText(t.value, cx, y + tileH / 2 + 8)
 
         ctx.fillStyle = "rgba(255,255,255,0.65)"
@@ -149,15 +194,18 @@ function drawWrappedImage(stats: WrappedStats): HTMLCanvasElement {
     })
 
     // --- Highlights (top movie / theater) ---
-    let hy = gridTop + 3 * (tileH + rowGap) + 20
+    const rowsUsed = Math.ceil(tiles.length / cols)
+    let hy = gridTop + rowsUsed * (tileH + rowGap) + 20
+    if (tiles.length === 0) hy = gridTop
+
     const drawHighlight = (icon: string, label: string, value: string) => {
         const x = pad
         const w = W - pad * 2
         const h = 130
-        ctx.fillStyle = "rgba(251, 113, 133, 0.14)"
+        ctx.fillStyle = "rgba(220, 38, 38, 0.15)"
         roundRect(ctx, x, hy, w, h, 26)
         ctx.fill()
-        ctx.strokeStyle = "rgba(251, 113, 133, 0.3)"
+        ctx.strokeStyle = "rgba(220, 38, 38, 0.35)"
         ctx.lineWidth = 2
         roundRect(ctx, x, hy, w, h, 26)
         ctx.stroke()
@@ -184,26 +232,26 @@ function drawWrappedImage(stats: WrappedStats): HTMLCanvasElement {
         hy += h + 24
     }
 
-    if (stats.topMovie) {
+    if (selection.mostWatched && stats.topMovie) {
         drawHighlight("🍿", "Most Watched", `${stats.topMovie.title} (${stats.topMovie.count}×)`)
     }
-    if (stats.topTheater) {
+    if (selection.favoriteTheater && stats.topTheater) {
         drawHighlight("📍", "Favorite Theater", `${stats.topTheater.name} (${stats.topTheater.count}×)`)
     }
 
     // --- Footer / branding ---
-    ctx.textAlign = "center"
-    const footY = H - 130
-    const brandGrad = ctx.createLinearGradient(0, footY, W, footY)
-    brandGrad.addColorStop(0, "#fbbf24")
-    brandGrad.addColorStop(1, "#fb7185")
+    ctx.textAlign = "left"
+    const footY = H - 100
+    const brandGrad = ctx.createLinearGradient(pad, footY, W, footY)
+    brandGrad.addColorStop(0, "#ff4b4b")
+    brandGrad.addColorStop(1, "#ff0000")
     ctx.fillStyle = brandGrad
     ctx.font = "800 52px system-ui, -apple-system, 'Segoe UI', sans-serif"
-    ctx.fillText(SITE, W / 2, footY)
+    ctx.fillText(SITE, pad, footY)
 
     ctx.fillStyle = "rgba(255,255,255,0.7)"
     ctx.font = "600 36px system-ui, -apple-system, 'Segoe UI', sans-serif"
-    ctx.fillText(`Track yours · ${INSTA}`, W / 2, footY + 56)
+    ctx.fillText(`Track yours · ${INSTA}`, pad, footY + 56)
 
     return canvas
 }
@@ -225,11 +273,39 @@ export function ShareStats({ stats }: ShareStatsProps) {
     const [busy, setBusy] = useState(false)
     const [preview, setPreview] = useState<string | null>(null)
     const [blob, setBlob] = useState<Blob | null>(null)
+    const [customizeOpen, setCustomizeOpen] = useState(false)
+
+    // Stat selection state
+    const [selection, setSelection] = useState<StatSelection>({
+        totalRuntime: true,
+        totalHours: true,
+        totalSpent: true,
+        theatersVisited: true,
+        citiesExplored: true,
+        watchedThisYear: true,
+        mostWatched: true,
+        favoriteTheater: true
+    })
+
+    const allSelected = Object.values(selection).every(Boolean)
+
+    const toggleAll = (checked: boolean) => {
+        setSelection({
+            totalRuntime: checked,
+            totalHours: checked,
+            totalSpent: checked,
+            theatersVisited: checked,
+            citiesExplored: checked,
+            watchedThisYear: checked,
+            mostWatched: checked,
+            favoriteTheater: checked
+        })
+    }
 
     const generate = async () => {
         setBusy(true)
         try {
-            const canvas = drawWrappedImage(stats)
+            const canvas = drawWrappedImage(stats, selection)
             const b = await canvasToBlob(canvas)
             setBlob(b)
             setPreview(URL.createObjectURL(b))
@@ -285,13 +361,118 @@ export function ShareStats({ stats }: ShareStatsProps) {
                 variant="outline"
                 size="sm"
                 className="gap-1.5"
-                onClick={generate}
+                onClick={() => setCustomizeOpen(true)}
                 disabled={busy || stats.totalMovies === 0}
-                title="Create a shareable stats image"
+                title="Customize & Share Wrapped"
             >
                 {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />}
                 Share Wrapped
             </Button>
+
+            <Dialog open={customizeOpen} onOpenChange={setCustomizeOpen}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>Customize Your Wrapped</DialogTitle>
+                        <DialogDescription>
+                            Select the stats you want to include in your generated image.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="py-4 flex flex-col gap-4">
+                        <div className="flex items-center space-x-2 pb-2 border-b">
+                            <Checkbox
+                                id="select-all"
+                                checked={allSelected}
+                                onCheckedChange={(c) => toggleAll(c as boolean)}
+                            />
+                            <Label htmlFor="select-all" className="font-semibold">Select All</Label>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="s-runtime"
+                                    checked={selection.totalRuntime}
+                                    onCheckedChange={(c) => setSelection(s => ({...s, totalRuntime: c as boolean}))}
+                                />
+                                <Label htmlFor="s-runtime">Total Runtime</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="s-hours"
+                                    checked={selection.totalHours}
+                                    onCheckedChange={(c) => setSelection(s => ({...s, totalHours: c as boolean}))}
+                                />
+                                <Label htmlFor="s-hours">Hours in Cinema</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="s-spent"
+                                    checked={selection.totalSpent}
+                                    onCheckedChange={(c) => setSelection(s => ({...s, totalSpent: c as boolean}))}
+                                />
+                                <Label htmlFor="s-spent">Total Spent</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="s-theaters"
+                                    checked={selection.theatersVisited}
+                                    onCheckedChange={(c) => setSelection(s => ({...s, theatersVisited: c as boolean}))}
+                                />
+                                <Label htmlFor="s-theaters">Theaters Visited</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="s-cities"
+                                    checked={selection.citiesExplored}
+                                    onCheckedChange={(c) => setSelection(s => ({...s, citiesExplored: c as boolean}))}
+                                />
+                                <Label htmlFor="s-cities">Cities Explored</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="s-year"
+                                    checked={selection.watchedThisYear}
+                                    onCheckedChange={(c) => setSelection(s => ({...s, watchedThisYear: c as boolean}))}
+                                />
+                                <Label htmlFor="s-year">Watched this Year</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="s-mostwatched"
+                                    checked={selection.mostWatched}
+                                    onCheckedChange={(c) => setSelection(s => ({...s, mostWatched: c as boolean}))}
+                                    disabled={!stats.topMovie}
+                                />
+                                <Label htmlFor="s-mostwatched" className={!stats.topMovie ? "opacity-50" : ""}>Most Watched</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="s-favtheater"
+                                    checked={selection.favoriteTheater}
+                                    onCheckedChange={(c) => setSelection(s => ({...s, favoriteTheater: c as boolean}))}
+                                    disabled={!stats.topTheater}
+                                />
+                                <Label htmlFor="s-favtheater" className={!stats.topTheater ? "opacity-50" : ""}>Favorite Theater</Label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <DialogFooter className="sm:justify-between">
+                        <Button variant="ghost" onClick={() => setCustomizeOpen(false)}>Cancel</Button>
+                        <Button
+                            onClick={() => {
+                                setCustomizeOpen(false)
+                                generate()
+                            }}
+                            disabled={busy || !Object.values(selection).some(Boolean)}
+                        >
+                            {busy ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                            Generate Image
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {preview && (
                 <div
