@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { Clock, Star, Timer } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
-import { formatTimeDisplay, formatRuntimeToHHMM, type Movie } from "@/lib/types"
+import { formatTitleCardTime, formatRuntimeToHHMM, type Movie } from "@/lib/types"
 
 interface MovieCardProps {
   movie: Movie
@@ -43,7 +43,7 @@ export function MovieCard({ movie }: MovieCardProps) {
                   <span>Title at:</span>
                 </div>
                 <span className="font-extrabold text-sm bg-gradient-to-r from-amber-600 to-rose-600 dark:from-amber-400 dark:to-rose-400 bg-clip-text text-transparent">
-                  {formatTimeDisplay(movie.averageTimeSeconds)}
+                  {formatTitleCardTime(movie.averageTimeSeconds)}
                 </span>
               </div>
             ) : (

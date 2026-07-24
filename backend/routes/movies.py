@@ -487,6 +487,7 @@ def list_movies():
            m['releaseDate'] = parse_release_date_to_iso(rel_str, m.get('year'))
         if not m.get('released'):
            m['released'] = m.get('releaseDate') or str(m.get('year', ''))
+        m['verified'] = bool(m.get('verified', False))
         movies.append(m)
         
     return jsonify({"movies": movies, "total": total})
@@ -1069,4 +1070,112 @@ def merge_movie_duplicates():
     return jsonify({
         "message": f"Successfully merged {total_merged} duplicate movies and re-linked {len(users_updated)} watch histories!",
         "mergedCount": total_merged
+    })
+
+@movies_bp.route('/<movie_id>/verify', methods=['POST'])
+def verify_movie(movie_id):
+    """Mark a movie as verified (all metadata confirmed correct) or toggle it off.
+
+    Body may contain {"verified": true|false}. When omitted, the current flag is toggled.
+    """
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    token = auth_header.split(' ')[1]
+    if not is_admin(token):
+        return jsonify({"error": "Forbidden: Admin access required"}), 403
+
+    if db is None:
+        return jsonify({"error": "Database not connected"}), 500
+
+    if not ObjectId.is_valid(movie_id):
+        return jsonify({"error": "Invalid movie ID"}), 400
+
+    try:
+        movie = db.movies.find_one({"_id": ObjectId(movie_id)})
+        if not movie:
+            return jsonify({"error": "Movie not found"}), 404
+
+        data = request.get_json(silent=True) or {}
+        if 'verified' in data:
+            new_val = bool(data.get('verified'))
+        else:
+            new_val = not bool(movie.get('verified', False))
+
+        db.movies.update_one({"_id": ObjectId(movie_id)}, {"$set": {"verified": new_val}})
+        return jsonify({
+            "message": "Movie verified" if new_val else "Movie marked unverified",
+            "verified": new_val,
+            "id": movie_id
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+def _missing_runtime(m):
+    rt = m.get('runtime')
+    if rt is None:
+        return True
+    rt_str = str(rt).strip()
+    if rt_str in ('', 'N/A', 'null', '0'):
+        return True
+    match = re.search(r'(\d+)', rt_str)
+    return not match or int(match.group(1)) <= 0
+
+def _missing_poster(m):
+    p = m.get('posterUrl')
+    return p is None or str(p).strip() in ('', 'N/A', 'null')
+
+def _missing_titlecard(m):
+    avg = m.get('averageTimeSeconds')
+    subs = m.get('submissionCount')
+    return not avg or avg <= 0 or not subs or subs <= 0
+
+@movies_bp.route('/data-quality', methods=['GET'])
+def movie_data_quality():
+    """Report movies that are missing key data: runtime, poster, or title-card time.
+
+    Used by the admin Data Quality panel so gaps can be found and fixed.
+    """
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({"error": "Unauthorized"}), 401
+    token = auth_header.split(' ')[1]
+    if not is_admin(token):
+        return jsonify({"error": "Forbidden: Admin access required"}), 403
+    if db is None:
+        return jsonify({"error": "Database not connected"}), 500
+
+    limit = request.args.get('limit', 100, type=int)
+    limit = min(max(limit, 1), 500)
+
+    no_runtime, no_poster, no_titlecard = [], [], []
+
+    def brief(m):
+        return {
+            "id": str(m["_id"]),
+            "title": m.get("title") or "Untitled",
+            "year": m.get("year"),
+            "posterUrl": m.get("posterUrl"),
+            "runtime": m.get("runtime"),
+            "verified": bool(m.get("verified", False)),
+        }
+
+    for m in db.movies.find({}):
+        if len(no_runtime) < limit and _missing_runtime(m):
+            no_runtime.append(brief(m))
+        if len(no_poster) < limit and _missing_poster(m):
+            no_poster.append(brief(m))
+        if len(no_titlecard) < limit and _missing_titlecard(m):
+            no_titlecard.append(brief(m))
+
+    return jsonify({
+        "noRuntime": no_runtime,
+        "noPoster": no_poster,
+        "noTitleCard": no_titlecard,
+        "counts": {
+            "noRuntime": len(no_runtime),
+            "noPoster": len(no_poster),
+            "noTitleCard": len(no_titlecard),
+        }
     })

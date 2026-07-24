@@ -79,7 +79,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
   const [sortBy, setSortBy] = useState<SortOption>("latest")
   const [language, setLanguage] = useState<string>("All")
-  const [titleCardFilter, setTitleCardFilter] = useState<string>("All")
+  const [titleCardFilter, setTitleCardFilter] = useState<string>("has")
   const [addedMovies, setAddedMovies] = useState<Movie[]>([])
   const [skip, setSkip] = useState(0)
   const [hasMore, setHasMore] = useState(true)

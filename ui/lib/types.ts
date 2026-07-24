@@ -78,6 +78,20 @@ export function formatTimeDisplay(seconds: number): string {
   return `${mins} min ${secs} sec`
 }
 
+// Like formatTimeDisplay, but when the total is over 60 minutes it also
+// appends an hour/minute breakdown, e.g. "85 min (1hr 25min)".
+export function formatTitleCardTime(seconds: number): string {
+  const base = formatTimeDisplay(seconds)
+  const totalMins = Math.floor(seconds / 60)
+  if (totalMins <= 60) {
+    return base
+  }
+  const hrs = Math.floor(totalMins / 60)
+  const remMins = totalMins % 60
+  const hm = remMins === 0 ? `${hrs}hr` : `${hrs}hr ${remMins}min`
+  return `${base} (${hm})`
+}
+
 // Helper to parse time input (e.g., "12" or "12:35") to seconds
 export function parseTimeInput(input: string): number | null {
   const trimmed = input.trim()

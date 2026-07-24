@@ -69,6 +69,7 @@ def list_theaters():
             normalize_theater_location(t)
             t['id'] = str(t.pop('_id'))
             t.setdefault('gmapsLink', '')
+            t['verified'] = bool(t.get('verified', False))
         return jsonify({"theaters": theaters})
     except Exception as e:
         print(f"Error fetching theaters: {e}")
@@ -164,6 +165,46 @@ def update_theater(theater_id):
             "gmapsLink": gmaps_link
         }
         return jsonify({"message": "Theater updated successfully", "theater": updated_theater})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@theaters_bp.route('/<theater_id>/verify', methods=['POST'])
+def verify_theater(theater_id):
+    """Mark a theater as verified (name + maps link confirmed correct) or toggle it off.
+
+    Body may contain {"verified": true|false}. When omitted, the current flag is toggled.
+    """
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    token = auth_header.split(' ')[1]
+    if not is_admin(token):
+        return jsonify({"error": "Forbidden: Admin access required"}), 403
+
+    if db is None:
+        return jsonify({"error": "Database not connected"}), 500
+
+    if not ObjectId.is_valid(theater_id):
+        return jsonify({"error": "Invalid theater ID"}), 400
+
+    try:
+        theater = db.theaters.find_one({"_id": ObjectId(theater_id)})
+        if not theater:
+            return jsonify({"error": "Theater not found"}), 404
+
+        data = request.get_json(silent=True) or {}
+        if 'verified' in data:
+            new_val = bool(data.get('verified'))
+        else:
+            new_val = not bool(theater.get('verified', False))
+
+        db.theaters.update_one({"_id": ObjectId(theater_id)}, {"$set": {"verified": new_val}})
+        return jsonify({
+            "message": "Theater verified" if new_val else "Theater marked unverified",
+            "verified": new_val,
+            "id": theater_id
+        })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
