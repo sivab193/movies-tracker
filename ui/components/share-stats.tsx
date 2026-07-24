@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState } from "react"
 import { Share2, Loader2, Download, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -24,7 +24,9 @@ export interface WrappedStats {
     citiesExplored: number
     topMovie: { title: string; count: number } | null
     topTheater: { name: string; count: number } | null
+    lastWatched: { title: string; date: string } | null
     thisYearCount: number
+    totalRewatches: number
     year: number
 }
 
@@ -57,8 +59,78 @@ export type StatSelection = {
     theatersVisited: boolean;
     citiesExplored: boolean;
     watchedThisYear: boolean;
+    rewatches: boolean;
     mostWatched: boolean;
     favoriteTheater: boolean;
+    lastWatched: boolean;
+}
+
+// Draw a location pin icon (replaces emoji for better visibility)
+function drawLocationPin(ctx: CanvasRenderingContext2D, cx: number, cy: number, size: number) {
+    ctx.save()
+    const s = size / 24 // scale factor from 24px base
+    ctx.translate(cx - 12 * s, cy - 24 * s)
+    ctx.scale(s, s)
+
+    // Pin body
+    ctx.beginPath()
+    ctx.arc(12, 10, 8, Math.PI, 0, false)
+    ctx.quadraticCurveTo(20, 18, 12, 28)
+    ctx.quadraticCurveTo(4, 18, 4, 10)
+    ctx.closePath()
+    ctx.fillStyle = "#ff4b4b"
+    ctx.fill()
+    ctx.strokeStyle = "rgba(255,255,255,0.5)"
+    ctx.lineWidth = 1.5
+    ctx.stroke()
+
+    // Inner dot
+    ctx.beginPath()
+    ctx.arc(12, 10, 3.5, 0, Math.PI * 2)
+    ctx.fillStyle = "#ffffff"
+    ctx.fill()
+
+    ctx.restore()
+}
+
+// Draw a popcorn icon (replaces emoji for consistency)
+function drawPopcornIcon(ctx: CanvasRenderingContext2D, cx: number, cy: number, size: number) {
+    ctx.save()
+    const s = size / 24
+    ctx.translate(cx - 12 * s, cy - 12 * s)
+    ctx.scale(s, s)
+
+    // Bucket
+    ctx.beginPath()
+    ctx.moveTo(5, 10)
+    ctx.lineTo(7, 22)
+    ctx.lineTo(17, 22)
+    ctx.lineTo(19, 10)
+    ctx.closePath()
+    ctx.fillStyle = "#ff4b4b"
+    ctx.fill()
+    ctx.strokeStyle = "rgba(255,255,255,0.4)"
+    ctx.lineWidth = 1
+    ctx.stroke()
+
+    // Popcorn kernels (circles on top)
+    ctx.fillStyle = "#ffe066"
+    const kernels = [[8, 7], [12, 5], [16, 7], [10, 4], [14, 4]]
+    for (const [kx, ky] of kernels) {
+        ctx.beginPath()
+        ctx.arc(kx, ky, 3, 0, Math.PI * 2)
+        ctx.fill()
+    }
+
+    // Stripe on bucket
+    ctx.strokeStyle = "rgba(255,255,255,0.3)"
+    ctx.lineWidth = 1.5
+    ctx.beginPath()
+    ctx.moveTo(6, 14)
+    ctx.lineTo(18, 14)
+    ctx.stroke()
+
+    ctx.restore()
 }
 
 function drawWrappedImage(stats: WrappedStats, selection: StatSelection): HTMLCanvasElement {
@@ -69,11 +141,12 @@ function drawWrappedImage(stats: WrappedStats, selection: StatSelection): HTMLCa
     canvas.height = H
     const ctx = canvas.getContext("2d")!
 
-    // --- Background gradient (red/black theme) ---
-    const bg = ctx.createLinearGradient(0, 0, W, H)
-    bg.addColorStop(0, "#050505")
-    bg.addColorStop(0.5, "#150000")
-    bg.addColorStop(1, "#3a0000")
+    // --- Background gradient (deep red/black theme) ---
+    const bg = ctx.createLinearGradient(0, 0, W * 0.3, H)
+    bg.addColorStop(0, "#0a0a0a")
+    bg.addColorStop(0.4, "#0d0000")
+    bg.addColorStop(0.7, "#1a0000")
+    bg.addColorStop(1, "#2a0000")
     ctx.fillStyle = bg
     ctx.fillRect(0, 0, W, H)
 
@@ -85,23 +158,91 @@ function drawWrappedImage(stats: WrappedStats, selection: StatSelection): HTMLCa
         ctx.fillStyle = g
         ctx.fillRect(0, 0, W, H)
     }
-    glow(180, 260, 520, "rgba(255, 0, 0, 0.15)")
-    glow(920, 1500, 620, "rgba(220, 38, 38, 0.2)")
+    glow(120, 200, 500, "rgba(200, 0, 0, 0.12)")
+    glow(960, 1600, 600, "rgba(180, 20, 20, 0.18)")
+    glow(W / 2, H / 2, 800, "rgba(100, 0, 0, 0.06)")
 
-    // Faint repeated watermark in background
+    // Subtle dot-grid watermark pattern (replaces ugly diagonal text)
     ctx.save()
-    ctx.fillStyle = "rgba(255, 255, 255, 0.03)"
-    ctx.font = "700 80px system-ui, -apple-system, 'Segoe UI', sans-serif"
-    ctx.translate(W / 2, H / 2)
-    ctx.rotate(-Math.PI / 4)
-    for (let i = -3; i <= 3; i++) {
-        for (let j = -3; j <= 3; j++) {
-            ctx.fillText(SITE, i * 400, j * 300)
+    ctx.fillStyle = "rgba(255, 255, 255, 0.015)"
+    const dotSpacing = 60
+    const dotRadius = 2
+    for (let dx = 0; dx < W; dx += dotSpacing) {
+        for (let dy = 0; dy < H; dy += dotSpacing) {
+            ctx.beginPath()
+            ctx.arc(dx, dy, dotRadius, 0, Math.PI * 2)
+            ctx.fill()
         }
     }
     ctx.restore()
 
+    // Thin subtle horizontal scan-lines for texture
+    ctx.save()
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.008)"
+    ctx.lineWidth = 1
+    for (let sy = 0; sy < H; sy += 4) {
+        ctx.beginPath()
+        ctx.moveTo(0, sy)
+        ctx.lineTo(W, sy)
+        ctx.stroke()
+    }
+    ctx.restore()
+
     ctx.textBaseline = "alphabetic"
+
+    // --- Determine content sections to calculate dynamic vertical positions ---
+
+
+    const activeTiles: { value: string; label: string }[] = []
+    if (selection.totalRuntime) activeTiles.push({ value: stats.totalRuntimeLabel, label: "Total Runtime" })
+    if (selection.totalHours) activeTiles.push({ value: String(stats.totalHours), label: "Hours in Cinema" })
+    if (selection.totalSpent) activeTiles.push({ value: stats.spentLabel, label: "Total Spent" })
+    if (selection.theatersVisited) activeTiles.push({ value: String(stats.theatersVisited), label: "Theaters Visited" })
+    if (selection.citiesExplored) activeTiles.push({ value: String(stats.citiesExplored), label: "Cities Explored" })
+    if (selection.watchedThisYear) activeTiles.push({ value: String(stats.thisYearCount), label: `Watched in ${stats.year}` })
+    if (selection.rewatches) activeTiles.push({ value: String(stats.totalRewatches), label: "Rewatches" })
+
+    // Calculate how many highlight cards we have
+    let highlightCount = 0
+    if (selection.mostWatched && stats.topMovie) highlightCount++
+    if (selection.favoriteTheater && stats.topTheater) highlightCount++
+    if (selection.lastWatched && stats.lastWatched) highlightCount++
+
+    // --- Dynamic vertical layout calculation ---
+    // Fixed zones: header (0-460), footer (H-180 to H), hero stat area
+    const headerEnd = 460
+    const footerStart = H - 180
+    const pad = 70
+    const gap = 30
+
+    // Hero stat sizing (can shrink if needed)
+    const heroFontSize = 200
+    const heroBlockH = 280 // space for number + label
+    const heroTop = headerEnd + 20
+    const heroBottom = heroTop + heroBlockH
+
+    // Remaining vertical space for tiles + highlights
+    const contentTop = heroBottom + 40
+    const contentBottom = footerStart - 30
+    const contentH = contentBottom - contentTop
+
+    // Calculate tile grid dimensions
+    let cols = 2
+    if (activeTiles.length <= 3 && activeTiles.length > 0) {
+        cols = 1
+    }
+    const tileRows = Math.ceil(activeTiles.length / cols)
+
+    // Highlight card height
+    const highlightCardH = 130
+    const highlightGap = 24
+    const totalHighlightH = highlightCount > 0 ? highlightCount * highlightCardH + (highlightCount - 1) * highlightGap + 40 : 0
+
+    // Calculate tile height to fill available space
+    const tileAreaH = contentH - totalHighlightH
+    const rowGap = 26
+    let tileH = tileRows > 0 ? Math.min(220, Math.max(140, (tileAreaH - (tileRows - 1) * rowGap) / tileRows)) : 0
+    let colW = cols === 1 ? (W - pad * 2) : (W - pad * 2 - gap) / 2
 
     // --- Header brand ---
     ctx.textAlign = "center"
@@ -118,59 +259,34 @@ function drawWrappedImage(stats: WrappedStats, selection: StatSelection): HTMLCa
     ctx.fillText("My Cinema", W / 2, 270)
     ctx.fillText("Wrapped", W / 2, 375)
 
-    // Subtitle - name + year
+    // Subtitle — name + year
     ctx.fillStyle = "rgba(255,255,255,0.7)"
     ctx.font = "500 40px system-ui, -apple-system, 'Segoe UI', sans-serif"
     const who = stats.displayName ? `${stats.displayName} · ${stats.year}` : `${stats.year}`
     ctx.fillText(who, W / 2, 445)
 
     // --- Hero stat: movies watched ---
-    const heroY = 520
     ctx.fillStyle = "#ffffff"
-    ctx.font = "800 200px system-ui, -apple-system, 'Segoe UI', sans-serif"
-    ctx.fillText(String(stats.totalMovies), W / 2, heroY + 170)
+    ctx.font = `800 ${heroFontSize}px system-ui, -apple-system, 'Segoe UI', sans-serif`
+    ctx.fillText(String(stats.totalMovies), W / 2, heroTop + 180)
     ctx.fillStyle = "rgba(255,255,255,0.75)"
     ctx.font = "600 44px system-ui, -apple-system, 'Segoe UI', sans-serif"
-    ctx.fillText("MOVIES WATCHED", W / 2, heroY + 235)
+    ctx.fillText("MOVIES WATCHED", W / 2, heroTop + 245)
 
-    // --- Stat tiles grid (2 columns) ---
-    const tiles: { value: string; label: string }[] = []
+    // --- Stat tiles grid ---
+    const gridTop = contentTop
 
-    if (selection.totalRuntime) tiles.push({ value: stats.totalRuntimeLabel, label: "Total Runtime" })
-    if (selection.totalHours) tiles.push({ value: `${stats.totalHours}h`, label: "Hours in Cinema" })
-    if (selection.totalSpent) tiles.push({ value: stats.spentLabel, label: "Total Spent" })
-    if (selection.theatersVisited) tiles.push({ value: String(stats.theatersVisited), label: "Theaters Visited" })
-    if (selection.citiesExplored) tiles.push({ value: String(stats.citiesExplored), label: "Cities Explored" })
-    if (selection.watchedThisYear) tiles.push({ value: String(stats.thisYearCount), label: `Watched in ${stats.year}` })
-
-    const gridTop = 860
-    const pad = 70
-    const gap = 30
-
-    // Default config when all 6 stats are selected
-    let colW = (W - pad * 2 - gap) / 2
-    let tileH = 190
-    let rowGap = 26
-
-    // Adjust layout for 1-4 tiles to fill the space more nicely, though default grid is fine too.
-    let cols = 2;
-    if (tiles.length <= 3 && tiles.length > 0) {
-        cols = 1;
-        colW = W - pad * 2;
-        tileH = 220;
-        rowGap = 40;
-    }
-
-    tiles.forEach((t, i) => {
+    activeTiles.forEach((t, i) => {
         const col = i % cols
         const row = Math.floor(i / cols)
         const x = pad + col * (colW + gap)
         const y = gridTop + row * (tileH + rowGap)
 
-        ctx.fillStyle = "rgba(255,255,255,0.07)"
+        // Tile background with subtle red tint
+        ctx.fillStyle = "rgba(255, 30, 30, 0.06)"
         roundRect(ctx, x, y, colW, tileH, 28)
         ctx.fill()
-        ctx.strokeStyle = "rgba(255,255,255,0.12)"
+        ctx.strokeStyle = "rgba(255, 60, 60, 0.15)"
         ctx.lineWidth = 2
         roundRect(ctx, x, y, colW, tileH, 28)
         ctx.stroke()
@@ -179,7 +295,7 @@ function drawWrappedImage(stats: WrappedStats, selection: StatSelection): HTMLCa
         const cx = x + colW / 2
 
         // Auto-shrink value font to fit
-        let vFont = 68
+        let vFont = Math.min(68, tileH * 0.35)
         ctx.font = `800 ${vFont}px system-ui, -apple-system, 'Segoe UI', sans-serif`
         while (ctx.measureText(t.value).width > colW - 50 && vFont > 34) {
             vFont -= 4
@@ -194,25 +310,32 @@ function drawWrappedImage(stats: WrappedStats, selection: StatSelection): HTMLCa
     })
 
     // --- Highlights (top movie / theater) ---
-    const rowsUsed = Math.ceil(tiles.length / cols)
-    let hy = gridTop + rowsUsed * (tileH + rowGap) + 20
-    if (tiles.length === 0) hy = gridTop
+    const tilesBottomEdge = tileRows > 0 ? gridTop + tileRows * (tileH + rowGap) : gridTop
+    let hy = tilesBottomEdge + 20
+    if (activeTiles.length === 0 && highlightCount > 0) hy = contentTop
 
-    const drawHighlight = (icon: string, label: string, value: string) => {
+    const drawHighlight = (iconType: "popcorn" | "pin", label: string, value: string) => {
         const x = pad
         const w = W - pad * 2
-        const h = 130
-        ctx.fillStyle = "rgba(220, 38, 38, 0.15)"
+        const h = highlightCardH
+
+        // Red-tinted card background
+        ctx.fillStyle = "rgba(220, 38, 38, 0.12)"
         roundRect(ctx, x, hy, w, h, 26)
         ctx.fill()
-        ctx.strokeStyle = "rgba(220, 38, 38, 0.35)"
+        ctx.strokeStyle = "rgba(255, 60, 60, 0.3)"
         ctx.lineWidth = 2
         roundRect(ctx, x, hy, w, h, 26)
         ctx.stroke()
 
+        // Draw icon instead of emoji
+        if (iconType === "pin") {
+            drawLocationPin(ctx, x + 66, hy + h / 2 + 6, 48)
+        } else {
+            drawPopcornIcon(ctx, x + 66, hy + h / 2, 48)
+        }
+
         ctx.textAlign = "left"
-        ctx.font = "600 60px system-ui, -apple-system, 'Segoe UI', sans-serif"
-        ctx.fillText(icon, x + 36, hy + 84)
 
         ctx.fillStyle = "rgba(255,255,255,0.6)"
         ctx.font = "600 26px system-ui, -apple-system, 'Segoe UI', sans-serif"
@@ -229,27 +352,38 @@ function drawWrappedImage(stats: WrappedStats, selection: StatSelection): HTMLCa
         if (text !== value) text = text.trimEnd() + "…"
         ctx.fillText(text, x + 130, hy + 98)
 
-        hy += h + 24
+        hy += h + highlightGap
     }
 
     if (selection.mostWatched && stats.topMovie) {
-        drawHighlight("🍿", "Most Watched", `${stats.topMovie.title} (${stats.topMovie.count}×)`)
+        drawHighlight("popcorn", "Most Watched", `${stats.topMovie.title} (${stats.topMovie.count}×)`)
     }
     if (selection.favoriteTheater && stats.topTheater) {
-        drawHighlight("📍", "Favorite Theater", `${stats.topTheater.name} (${stats.topTheater.count}×)`)
+        drawHighlight("pin", "Favorite Theater", `${stats.topTheater.name} (${stats.topTheater.count}×)`)
+    }
+    if (selection.lastWatched && stats.lastWatched) {
+        drawHighlight("popcorn", "Last Watched", `${stats.lastWatched.title} · ${stats.lastWatched.date}`)
     }
 
     // --- Footer / branding ---
+    // Subtle separator line
+    ctx.strokeStyle = "rgba(255, 75, 75, 0.3)"
+    ctx.lineWidth = 1
+    ctx.beginPath()
+    ctx.moveTo(pad, footerStart)
+    ctx.lineTo(W - pad, footerStart)
+    ctx.stroke()
+
     ctx.textAlign = "left"
-    const footY = H - 100
-    const brandGrad = ctx.createLinearGradient(pad, footY, W, footY)
+    const footY = footerStart + 50
+    const brandGrad = ctx.createLinearGradient(pad, footY, W * 0.6, footY)
     brandGrad.addColorStop(0, "#ff4b4b")
     brandGrad.addColorStop(1, "#ff0000")
     ctx.fillStyle = brandGrad
     ctx.font = "800 52px system-ui, -apple-system, 'Segoe UI', sans-serif"
     ctx.fillText(SITE, pad, footY)
 
-    ctx.fillStyle = "rgba(255,255,255,0.7)"
+    ctx.fillStyle = "rgba(255,255,255,0.8)"
     ctx.font = "600 36px system-ui, -apple-system, 'Segoe UI', sans-serif"
     ctx.fillText(`Track yours · ${INSTA}`, pad, footY + 56)
 
@@ -282,9 +416,11 @@ export function ShareStats({ stats }: ShareStatsProps) {
         totalSpent: true,
         theatersVisited: true,
         citiesExplored: true,
-        watchedThisYear: true,
+        watchedThisYear: false,
+        rewatches: true,
         mostWatched: true,
-        favoriteTheater: true
+        favoriteTheater: true,
+        lastWatched: true
     })
 
     const allSelected = Object.values(selection).every(Boolean)
@@ -297,8 +433,10 @@ export function ShareStats({ stats }: ShareStatsProps) {
             theatersVisited: checked,
             citiesExplored: checked,
             watchedThisYear: checked,
+            rewatches: checked,
             mostWatched: checked,
-            favoriteTheater: checked
+            favoriteTheater: checked,
+            lastWatched: checked
         })
     }
 
@@ -439,6 +577,14 @@ export function ShareStats({ stats }: ShareStatsProps) {
                             </div>
                             <div className="flex items-center space-x-2">
                                 <Checkbox
+                                    id="s-rewatches"
+                                    checked={selection.rewatches}
+                                    onCheckedChange={(c) => setSelection(s => ({...s, rewatches: c as boolean}))}
+                                />
+                                <Label htmlFor="s-rewatches">Rewatches</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
                                     id="s-mostwatched"
                                     checked={selection.mostWatched}
                                     onCheckedChange={(c) => setSelection(s => ({...s, mostWatched: c as boolean}))}
@@ -453,7 +599,18 @@ export function ShareStats({ stats }: ShareStatsProps) {
                                     onCheckedChange={(c) => setSelection(s => ({...s, favoriteTheater: c as boolean}))}
                                     disabled={!stats.topTheater}
                                 />
-                                <Label htmlFor="s-favtheater" className={!stats.topTheater ? "opacity-50" : ""}>Favorite Theater</Label>
+                                <Label htmlFor="s-favtheater" className={!stats.topTheater ? "opacity-50" : ""}>
+                                    Favorite Theater</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="s-lastwatched"
+                                    checked={selection.lastWatched}
+                                    onCheckedChange={(c) => setSelection(s => ({...s, lastWatched: c as boolean}))}
+                                    disabled={!stats.lastWatched}
+                                />
+                                <Label htmlFor="s-lastwatched" className={!stats.lastWatched ? "opacity-50" : ""}>
+                                    Last Watched</Label>
                             </div>
                         </div>
                     </div>

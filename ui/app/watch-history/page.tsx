@@ -192,6 +192,7 @@ export default function WatchHistoryPage() {
         const theaterCounts = new Map<string, number>()
         const cityset = new Set<string>()
         const movieCounts = new Map<string, number>()
+        const movieLatestDate = new Map<string, number>() // track most recent watch timestamp per movie
         const monthCounts = new Array(12).fill(0)
 
         profile?.watchHistory?.forEach(h => {
@@ -223,6 +224,12 @@ export default function WatchHistoryPage() {
             const title = (h.movieTitle || "").trim()
             if (title) {
                 movieCounts.set(title, (movieCounts.get(title) || 0) + 1)
+                // Track the latest watch date for tie-breaking
+                const watchDate = new Date(h.timestamp || h.createdAt).getTime()
+                if (!isNaN(watchDate)) {
+                    const prev = movieLatestDate.get(title) || 0
+                    if (watchDate > prev) movieLatestDate.set(title, watchDate)
+                }
             }
         })
 
@@ -239,7 +246,29 @@ export default function WatchHistoryPage() {
         }
 
         const topTheaterEntry = topEntry(theaterCounts)
-        const topMovieEntry = topEntry(movieCounts)
+
+        // For movies, break ties by most recently watched
+        let topMovieEntry: { key: string; count: number } | null = null
+        {
+            let bestKey: string | null = null
+            let bestCount = 0
+            let bestDate = 0
+            movieCounts.forEach((count, key) => {
+                const latestDate = movieLatestDate.get(key) || 0
+                if (bestKey === null || count > bestCount || (count === bestCount && latestDate > bestDate)) {
+                    bestKey = key
+                    bestCount = count
+                    bestDate = latestDate
+                }
+            })
+            topMovieEntry = bestKey === null ? null : { key: bestKey, count: bestCount }
+        }
+
+        // Calculate total rewatches (extra viewings beyond the first)
+        let totalRewatches = 0
+        movieCounts.forEach((count) => {
+            if (count > 1) totalRewatches += count - 1
+        })
 
         const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
         let busiestMonthIdx = -1
@@ -249,6 +278,23 @@ export default function WatchHistoryPage() {
         const busiestMonth = busiestMonthIdx >= 0 && monthCounts[busiestMonthIdx] > 0 ? monthNames[busiestMonthIdx] : null
 
         const totalHours = Math.round(totalRuntime / 3600)
+
+        // Find most recently watched movie
+        let lastWatched: { title: string; date: string } | null = null
+        let latestTimestamp = 0
+        profile?.watchHistory?.forEach(h => {
+            const title = (h.movieTitle || "").trim()
+            if (!title) return
+            const d = new Date(h.timestamp || h.createdAt)
+            const t = d.getTime()
+            if (!isNaN(t) && t > latestTimestamp) {
+                latestTimestamp = t
+                lastWatched = {
+                    title,
+                    date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                }
+            }
+        })
 
         return {
             totalRuntime,
@@ -265,6 +311,8 @@ export default function WatchHistoryPage() {
             topMovie: topMovieEntry ? { title: topMovieEntry.key as string, count: topMovieEntry.count } : null,
             busiestMonth,
             currentYear,
+            totalRewatches,
+            lastWatched,
         }
     }, [profile])
 
@@ -288,7 +336,9 @@ export default function WatchHistoryPage() {
         citiesExplored: stats.citiesExplored,
         topMovie: stats.topMovie,
         topTheater: stats.topTheater,
+        lastWatched: stats.lastWatched,
         thisYearCount: stats.thisYearCount,
+        totalRewatches: stats.totalRewatches,
         year: stats.currentYear,
     }), [profile, user, stats, spentLabel])
 
@@ -467,6 +517,17 @@ export default function WatchHistoryPage() {
 
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Rewatches</CardTitle>
+                            <RotateCcw className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{stats.totalRewatches}</div>
+                            <p className="text-xs text-muted-foreground">Movies seen again</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Watched in {stats.currentYear}</CardTitle>
                             <CalendarDays className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
@@ -480,7 +541,7 @@ export default function WatchHistoryPage() {
                 </div>
 
                 {/* Highlights */}
-                {(stats.topMovie || stats.topTheater) && (
+                {(stats.topMovie || stats.topTheater || stats.lastWatched) && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
                         {stats.topMovie && (
                             <Card className="bg-gradient-to-r from-amber-500/10 to-rose-500/10 border-amber-500/20">
@@ -507,6 +568,18 @@ export default function WatchHistoryPage() {
                                     <p className="text-xs text-muted-foreground">
                                         {stats.topTheater.count} {stats.topTheater.count === 1 ? "visit" : "visits"}
                                     </p>
+                                </CardContent>
+                            </Card>
+                        )}
+                        {stats.lastWatched && (
+                            <Card className="bg-gradient-to-r from-blue-500/10 to-violet-500/10 border-blue-500/20">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Last Watched</CardTitle>
+                                    <Film className="h-4 w-4 text-blue-500" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-xl font-bold truncate">{stats.lastWatched.title}</div>
+                                    <p className="text-xs text-muted-foreground">{stats.lastWatched.date}</p>
                                 </CardContent>
                             </Card>
                         )}
