@@ -254,6 +254,53 @@ export async function deleteTheater(id: string) {
     return data;
 }
 
+export async function verifyTheater(id: string, verified?: boolean) {
+    const token = await auth?.currentUser?.getIdToken();
+    if (!token) throw new Error("User not authenticated");
+
+    const response = await fetch(`${API_BASE_URL}/theaters/${id}/verify`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(verified === undefined ? {} : { verified })
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Failed to verify theater");
+    return data;
+}
+
+export async function verifyMovie(id: string, verified?: boolean) {
+    const token = await auth?.currentUser?.getIdToken();
+    if (!token) throw new Error("User not authenticated");
+
+    const response = await fetch(`${API_BASE_URL}/movies/${id}/verify`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify(verified === undefined ? {} : { verified })
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Failed to verify movie");
+    return data;
+}
+
+export async function getMovieDataQuality() {
+    const token = await auth?.currentUser?.getIdToken();
+    if (!token) throw new Error("User not authenticated");
+    const response = await fetch(`${API_BASE_URL}/movies/data-quality`, {
+        headers: { "Authorization": `Bearer ${token}` }
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Failed to fetch data quality report");
+    return data;
+}
+
 export async function getLeaderboard() {
     const response = await fetch(`${API_BASE_URL}/leaderboard/`);
     const data = await response.json();

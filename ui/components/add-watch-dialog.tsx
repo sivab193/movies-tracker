@@ -140,7 +140,13 @@ export function AddWatchDialog({
           0,
           isSearch ? SEARCH_RESULT_COUNT : RECENT_MOVIE_COUNT,
           "",
-          isSearch ? query : ""
+          isSearch ? query : "",
+          "",
+          false,
+          "",
+          // Default list shows recently released titles first (and undated ones
+          // after); a title search stays unrestricted so any movie is findable.
+          isSearch ? "" : "latest"
         )
         if (!cancelled) setMovies(res?.movies || [])
       } catch {

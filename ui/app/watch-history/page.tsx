@@ -25,10 +25,16 @@ import {
     Pencil,
     Trash,
     ExternalLink,
-    RotateCcw
+    RotateCcw,
+    Building2,
+    Map as MapIcon,
+    Trophy,
+    CalendarDays,
+    Popcorn
 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { AddWatchDialog } from "@/components/add-watch-dialog"
+import { ShareStats, type WrappedStats } from "@/components/share-stats"
 import { formatTimeDisplay, type WatchHistoryEntry, resolveApiUrl } from "@/lib/types"
 import { getMySettings } from "@/services/user-service"
 import { deleteWatchHistory } from "@/services/api"
@@ -179,6 +185,15 @@ export default function WatchHistoryPage() {
         let foodINR = 0
         let foodUSD = 0
 
+        const now = new Date()
+        const currentYear = now.getFullYear()
+        let thisYearCount = 0
+
+        const theaterCounts = new Map<string, number>()
+        const cityset = new Set<string>()
+        const movieCounts = new Map<string, number>()
+        const monthCounts = new Array(12).fill(0)
+
         profile?.watchHistory?.forEach(h => {
             if (h.currency === 'INR') {
                 costINR += h.ticketCost
@@ -187,10 +202,95 @@ export default function WatchHistoryPage() {
                 costUSD += h.ticketCost
                 foodUSD += h.foodCost || 0
             }
+
+            const d = new Date(h.timestamp || h.createdAt)
+            if (!isNaN(d.getTime())) {
+                if (d.getFullYear() === currentYear) thisYearCount++
+                monthCounts[d.getMonth()]++
+            }
+
+            const theater = (h.theaterName || "").trim()
+            if (theater && theater !== "N/A") {
+                theaterCounts.set(theater, (theaterCounts.get(theater) || 0) + 1)
+            }
+
+            const loc = (h.theaterLocation || "").trim()
+            if (loc && !loc.startsWith("http")) {
+                const city = loc.split(",")[0].replace(/\s+(Indiana|Illinois|IN|IL)$/i, "").trim()
+                if (city) cityset.add(city)
+            }
+
+            const title = (h.movieTitle || "").trim()
+            if (title) {
+                movieCounts.set(title, (movieCounts.get(title) || 0) + 1)
+            }
         })
 
-        return { totalRuntime, totalMovies, costINR, costUSD, foodINR, foodUSD }
+        function topEntry<T>(map: Map<T, number>): { key: T; count: number } | null {
+            let bestKey: T | null = null
+            let bestCount = 0
+            map.forEach((count, key) => {
+                if (bestKey === null || count > bestCount) {
+                    bestKey = key
+                    bestCount = count
+                }
+            })
+            return bestKey === null ? null : { key: bestKey, count: bestCount }
+        }
+
+        const topTheaterEntry = topEntry(theaterCounts)
+        const topMovieEntry = topEntry(movieCounts)
+
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        let busiestMonthIdx = -1
+        monthCounts.forEach((c, i) => {
+            if (busiestMonthIdx === -1 || c > monthCounts[busiestMonthIdx]) busiestMonthIdx = i
+        })
+        const busiestMonth = busiestMonthIdx >= 0 && monthCounts[busiestMonthIdx] > 0 ? monthNames[busiestMonthIdx] : null
+
+        const totalHours = Math.round(totalRuntime / 3600)
+
+        return {
+            totalRuntime,
+            totalMovies,
+            totalHours,
+            costINR,
+            costUSD,
+            foodINR,
+            foodUSD,
+            thisYearCount,
+            theatersVisited: theaterCounts.size,
+            citiesExplored: cityset.size,
+            topTheater: topTheaterEntry ? { name: topTheaterEntry.key as string, count: topTheaterEntry.count } : null,
+            topMovie: topMovieEntry ? { title: topMovieEntry.key as string, count: topMovieEntry.count } : null,
+            busiestMonth,
+            currentYear,
+        }
     }, [profile])
+
+    // Compact spent label for the share image (single line)
+    const spentLabel = useMemo(() => {
+        const inr = stats.costINR + stats.foodINR
+        const usd = stats.costUSD + stats.foodUSD
+        const parts: string[] = []
+        if (inr > 0) parts.push(`₹${Math.round(inr).toLocaleString('en-IN')}`)
+        if (usd > 0) parts.push(`$${Math.round(usd).toLocaleString('en-US')}`)
+        return parts.length ? parts.join(" + ") : "—"
+    }, [stats])
+
+    const wrappedStats: WrappedStats = useMemo(() => ({
+        displayName: profile?.displayName || user?.displayName || "",
+        totalMovies: stats.totalMovies,
+        totalHours: stats.totalHours,
+        totalRuntimeLabel: formatTimeDisplay(stats.totalRuntime),
+        spentLabel,
+        theatersVisited: stats.theatersVisited,
+        citiesExplored: stats.citiesExplored,
+        topMovie: stats.topMovie,
+        topTheater: stats.topTheater,
+        thisYearCount: stats.thisYearCount,
+        year: stats.currentYear,
+    }), [profile, user, stats, spentLabel])
 
 
     const formatCurrency = (amount: number, currency: string) => {
@@ -246,10 +346,13 @@ export default function WatchHistoryPage() {
 
                     {user && (
                         <>
-                            <AddWatchDialog
-                                uid={user.uid}
-                                onWatchAdded={refreshData}
-                            />
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <ShareStats stats={wrappedStats} />
+                                <AddWatchDialog
+                                    uid={user.uid}
+                                    onWatchAdded={refreshData}
+                                />
+                            </div>
 
                             {/* Edit Dialog - Hidden Trigger */}
                             <AddWatchDialog
@@ -299,7 +402,7 @@ export default function WatchHistoryPage() {
                 </div>
 
                 {/* Stats Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Movies Watched</CardTitle>
@@ -318,7 +421,7 @@ export default function WatchHistoryPage() {
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">{formatTimeDisplay(stats.totalRuntime)}</div>
-                            <p className="text-xs text-muted-foreground">Time spent watching</p>
+                            <p className="text-xs text-muted-foreground">≈ {stats.totalHours} hrs in cinema</p>
                         </CardContent>
                     </Card>
 
@@ -337,7 +440,78 @@ export default function WatchHistoryPage() {
                             <p className="text-xs text-muted-foreground">Tickets + Food</p>
                         </CardContent>
                     </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Theaters Visited</CardTitle>
+                            <Building2 className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{stats.theatersVisited}</div>
+                            <p className="text-xs text-muted-foreground truncate">
+                                {stats.topTheater ? `Top: ${stats.topTheater.name}` : "Unique venues"}
+                            </p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Cities Explored</CardTitle>
+                            <MapIcon className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{stats.citiesExplored}</div>
+                            <p className="text-xs text-muted-foreground">Across your journey</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Watched in {stats.currentYear}</CardTitle>
+                            <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{stats.thisYearCount}</div>
+                            <p className="text-xs text-muted-foreground">
+                                {stats.busiestMonth ? `Busiest: ${stats.busiestMonth}` : "This year"}
+                            </p>
+                        </CardContent>
+                    </Card>
                 </div>
+
+                {/* Highlights */}
+                {(stats.topMovie || stats.topTheater) && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+                        {stats.topMovie && (
+                            <Card className="bg-gradient-to-r from-amber-500/10 to-rose-500/10 border-amber-500/20">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Most Watched</CardTitle>
+                                    <Popcorn className="h-4 w-4 text-amber-500" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-xl font-bold truncate">{stats.topMovie.title}</div>
+                                    <p className="text-xs text-muted-foreground">
+                                        Watched {stats.topMovie.count} {stats.topMovie.count === 1 ? "time" : "times"}
+                                    </p>
+                                </CardContent>
+                            </Card>
+                        )}
+                        {stats.topTheater && (
+                            <Card className="bg-gradient-to-r from-rose-500/10 to-amber-500/10 border-rose-500/20">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Favorite Theater</CardTitle>
+                                    <Trophy className="h-4 w-4 text-rose-500" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-xl font-bold truncate">{stats.topTheater.name}</div>
+                                    <p className="text-xs text-muted-foreground">
+                                        {stats.topTheater.count} {stats.topTheater.count === 1 ? "visit" : "visits"}
+                                    </p>
+                                </CardContent>
+                            </Card>
+                        )}
+                    </div>
+                )}
 
                 {/* Filters & Table */}
                 <Card>

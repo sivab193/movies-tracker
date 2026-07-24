@@ -3,14 +3,14 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
-import { Loader2, Plus, ShieldAlert, Trash2, Search, Users, MapPin, ExternalLink, Pencil, Check, X, ChevronLeft, ChevronRight } from "lucide-react"
+import { Loader2, Plus, ShieldAlert, Trash2, Search, Users, MapPin, ExternalLink, Pencil, Check, X, ChevronLeft, ChevronRight, BadgeCheck, ClipboardList } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Header } from "@/components/header"
 import { getAdminRequests, resolveAdminRequest } from "@/services/user-service"
-import { getMovies, deleteMovie, clearMovieSubmissions, getTheaters, addTheater, updateTheater, deleteTheater, updateMovie, addMovie, fetchOmdbPreview, getTheaterDuplicates, mergeTheaterDuplicates, getMovieDuplicates, mergeMovieDuplicates } from "@/services/api"
+import { getMovies, deleteMovie, clearMovieSubmissions, getTheaters, addTheater, updateTheater, deleteTheater, updateMovie, addMovie, fetchOmdbPreview, getTheaterDuplicates, mergeTheaterDuplicates, getMovieDuplicates, mergeMovieDuplicates, verifyTheater, verifyMovie, getMovieDataQuality } from "@/services/api"
 import { formatTimeDisplay, resolveApiUrl } from "@/lib/types"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -114,6 +114,13 @@ export default function AdminPage() {
     const [mergingTheaterDups, setMergingTheaterDups] = useState(false)
     const [mergingMovieDups, setMergingMovieDups] = useState(false)
 
+    // Verification + data quality states
+    const [verifyingTheaterId, setVerifyingTheaterId] = useState<string | null>(null)
+    const [verifyingMovieId, setVerifyingMovieId] = useState<string | null>(null)
+    const [showUnverifiedTheatersOnly, setShowUnverifiedTheatersOnly] = useState(false)
+    const [dataQuality, setDataQuality] = useState<any | null>(null)
+    const [scanningDataQuality, setScanningDataQuality] = useState(false)
+
     useEffect(() => {
         if (!authLoading) {
             if (!user) {
@@ -192,6 +199,47 @@ export default function AdminPage() {
             alert(err instanceof Error ? err.message : "Failed to merge movies")
         } finally {
             setMergingMovieDups(false)
+        }
+    }
+
+    const handleVerifyTheater = async (t: any) => {
+        setVerifyingTheaterId(t.id)
+        try {
+            const res = await verifyTheater(t.id, !t.verified)
+            setTheaters(prev => prev.map(item => item.id === t.id ? { ...item, verified: res.verified } : item))
+        } catch (err) {
+            console.error("Failed to verify theater", err)
+            alert(err instanceof Error ? err.message : "Failed to verify theater")
+        } finally {
+            setVerifyingTheaterId(null)
+        }
+    }
+
+    const handleVerifyMovie = async (m: any) => {
+        const id = m.id || m.imdbId
+        setVerifyingMovieId(id)
+        try {
+            const res = await verifyMovie(id, !m.verified)
+            setMovies(prev => prev.map(item => (item.id || item.imdbId) === id ? { ...item, verified: res.verified } : item))
+            setFilteredMovies(prev => prev.map(item => (item.id || item.imdbId) === id ? { ...item, verified: res.verified } : item))
+        } catch (err) {
+            console.error("Failed to verify movie", err)
+            alert(err instanceof Error ? err.message : "Failed to verify movie")
+        } finally {
+            setVerifyingMovieId(null)
+        }
+    }
+
+    const handleScanDataQuality = async () => {
+        setScanningDataQuality(true)
+        try {
+            const res = await getMovieDataQuality()
+            setDataQuality(res)
+        } catch (err) {
+            console.error("Failed to scan data quality", err)
+            alert(err instanceof Error ? err.message : "Failed to scan data quality")
+        } finally {
+            setScanningDataQuality(false)
         }
     }
 
@@ -395,12 +443,14 @@ export default function AdminPage() {
     }
 
     const filteredTheaters = theaters.filter(t => {
-        const matchesSearch = !theaterSearch || 
-            t.name?.toLowerCase().includes(theaterSearch.toLowerCase()) || 
+        const matchesSearch = !theaterSearch ||
+            t.name?.toLowerCase().includes(theaterSearch.toLowerCase()) ||
             t.location?.toLowerCase().includes(theaterSearch.toLowerCase())
         const matchesCity = theaterCityFilter === "All" || t.location === theaterCityFilter
-        return matchesSearch && matchesCity
+        const matchesVerified = !showUnverifiedTheatersOnly || !t.verified
+        return matchesSearch && matchesCity && matchesVerified
     })
+    const unverifiedTheaterCount = theaters.filter(t => !t.verified).length
 
     const paginatedTheaters = filteredTheaters.slice(theaterSkip, theaterSkip + 20)
     const uniqueTheaterCities = Array.from(new Set(theaters.map(t => t.location).filter(Boolean))) as string[]
@@ -726,6 +776,12 @@ export default function AdminPage() {
                                                                     {movie.title}
                                                                     <ExternalLink className="h-3 w-3 opacity-70 shrink-0" />
                                                                 </a>
+                                                                {movie.verified && (
+                                                                    <span className="ml-1.5 inline-flex items-center gap-0.5 rounded-full bg-green-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-green-600 align-middle" title="Verified">
+                                                                        <BadgeCheck className="h-3 w-3" />
+                                                                        Verified
+                                                                    </span>
+                                                                )}
                                                             </td>
                                                             <td className="py-3 px-2 text-muted-foreground">{movie.year || "N/A"}</td>
                                                             <td className="py-3 px-2">
@@ -746,6 +802,16 @@ export default function AdminPage() {
                                                             </td>
                                                             <td className="py-3 px-2 text-center">
                                                                 <div className="flex items-center justify-center gap-1">
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        disabled={verifyingMovieId === (movie.id || movie.imdbId)}
+                                                                        className={`h-8 w-8 p-0 hover:bg-green-500/10 ${movie.verified ? "text-green-600 hover:text-green-700" : "text-muted-foreground hover:text-green-600"}`}
+                                                                        onClick={() => handleVerifyMovie(movie)}
+                                                                        title={movie.verified ? "Verified — click to unverify" : "Mark as verified (all details correct)"}
+                                                                    >
+                                                                        {verifyingMovieId === (movie.id || movie.imdbId) ? <Loader2 className="h-4 w-4 animate-spin" /> : <BadgeCheck className="h-4 w-4" />}
+                                                                    </Button>
                                                                     <Button
                                                                         variant="ghost"
                                                                         size="sm"
@@ -876,6 +942,20 @@ export default function AdminPage() {
                                         <option key={city} value={city}>{city}</option>
                                     ))}
                                 </select>
+                                <Button
+                                    type="button"
+                                    variant={showUnverifiedTheatersOnly ? "default" : "outline"}
+                                    size="sm"
+                                    className="h-9 gap-1.5 shrink-0"
+                                    onClick={() => {
+                                        setShowUnverifiedTheatersOnly(v => !v)
+                                        setTheaterSkip(0)
+                                    }}
+                                    title="Show only theaters that still need verifying"
+                                >
+                                    <BadgeCheck className="h-4 w-4" />
+                                    Unverified ({unverifiedTheaterCount})
+                                </Button>
                             </div>
 
                             {/* Theaters List */}
@@ -886,6 +966,7 @@ export default function AdminPage() {
                                             <th className="text-left py-3 px-2 font-medium">Name</th>
                                             <th className="text-left py-3 px-2 font-medium">Location</th>
                                             <th className="text-left py-3 px-2 font-medium">Maps Link</th>
+                                            <th className="text-center py-3 px-2 font-medium w-24">Status</th>
                                             <th className="text-center py-3 px-2 font-medium w-16">Action</th>
                                         </tr>
                                     </thead>
@@ -908,6 +989,23 @@ export default function AdminPage() {
                                                     ) : (
                                                         <span className="text-muted-foreground text-xs">N/A</span>
                                                     )}
+                                                </td>
+                                                <td className="py-3 px-2 text-center">
+                                                    <Button
+                                                        variant={t.verified ? "ghost" : "outline"}
+                                                        size="sm"
+                                                        disabled={verifyingTheaterId === t.id}
+                                                        onClick={() => handleVerifyTheater(t)}
+                                                        title={t.verified ? "Verified — click to unverify" : "Mark as verified (name & maps link correct)"}
+                                                        className={`h-7 gap-1 text-xs ${t.verified ? "text-green-600 hover:text-green-700" : "text-muted-foreground"}`}
+                                                    >
+                                                        {verifyingTheaterId === t.id ? (
+                                                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                                        ) : (
+                                                            <BadgeCheck className={`h-3.5 w-3.5 ${t.verified ? "text-green-600" : ""}`} />
+                                                        )}
+                                                        {t.verified ? "Verified" : "Verify"}
+                                                    </Button>
                                                 </td>
                                                 <td className="py-3 px-2 text-center">
                                                     <div className="flex items-center justify-center gap-1">
@@ -935,7 +1033,7 @@ export default function AdminPage() {
                                         ))}
                                         {filteredTheaters.length === 0 && (
                                             <tr>
-                                                <td colSpan={4} className="text-center py-8 text-muted-foreground">
+                                                <td colSpan={5} className="text-center py-8 text-muted-foreground">
                                                     No theaters found matching your filters.
                                                 </td>
                                             </tr>
@@ -1065,6 +1163,66 @@ export default function AdminPage() {
                                         </div>
                                     </div>
                                 </CardContent>
+                            </Card>
+
+                            {/* Data Quality Card */}
+                            <Card className="border-sky-500/30 bg-sky-500/5 dark:bg-sky-950/10">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                                    <div>
+                                        <CardTitle className="flex items-center gap-2">
+                                            <ClipboardList className="h-5 w-5 text-sky-500" />
+                                            Data Quality
+                                        </CardTitle>
+                                        <CardDescription>
+                                            Find movies missing key data — runtime, cover art, or a reported title-card time — so they can be fixed.
+                                        </CardDescription>
+                                    </div>
+                                    <Button
+                                        onClick={handleScanDataQuality}
+                                        disabled={scanningDataQuality}
+                                        className="gap-2 bg-sky-600 hover:bg-sky-700 text-white"
+                                    >
+                                        {scanningDataQuality ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                                        Scan Data Quality
+                                    </Button>
+                                </CardHeader>
+                                {dataQuality && (
+                                    <CardContent className="grid md:grid-cols-3 gap-4">
+                                        {([
+                                            { key: "noRuntime", label: "No Runtime", items: dataQuality.noRuntime || [] },
+                                            { key: "noPoster", label: "No Cover Art", items: dataQuality.noPoster || [] },
+                                            { key: "noTitleCard", label: "No Title-Card Time", items: dataQuality.noTitleCard || [] },
+                                        ] as { key: string; label: string; items: any[] }[]).map(col => (
+                                            <div key={col.key} className="p-4 border rounded-lg bg-background">
+                                                <h4 className="font-semibold text-sm flex items-center justify-between mb-2">
+                                                    <span>{col.label}</span>
+                                                    <span className={`px-2 py-0.5 rounded text-xs font-bold ${col.items.length > 0 ? "bg-amber-500/10 text-amber-600" : "bg-green-500/10 text-green-600"}`}>
+                                                        {col.items.length}
+                                                    </span>
+                                                </h4>
+                                                {col.items.length === 0 ? (
+                                                    <p className="text-xs text-muted-foreground">All good here. 🎉</p>
+                                                ) : (
+                                                    <div className="max-h-64 overflow-y-auto space-y-1 pr-1">
+                                                        {col.items.map((m: any) => (
+                                                            <Link
+                                                                key={m.id}
+                                                                href={`/movie/${m.id}`}
+                                                                target="_blank"
+                                                                className="flex items-center justify-between gap-2 px-2 py-1.5 rounded text-xs hover:bg-muted transition-colors"
+                                                            >
+                                                                <span className="truncate">
+                                                                    {m.title} {m.year ? <span className="text-muted-foreground">({m.year})</span> : null}
+                                                                </span>
+                                                                <ExternalLink className="h-3 w-3 shrink-0 text-muted-foreground" />
+                                                            </Link>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </CardContent>
+                                )}
                             </Card>
                     </div>
                 </div>
