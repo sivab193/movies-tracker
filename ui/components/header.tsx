@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Film, Moon, Sun, User, Eye, LogOut, LayoutDashboard, Settings, LogIn, BarChart3 } from "lucide-react"
+import { Film, Moon, Sun, User, Eye, LogOut, LayoutDashboard, Settings, LogIn, BarChart3, CreditCard } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -35,6 +35,12 @@ export function Header() {
             {user && (
               <Link href="/watch-history" className="text-muted-foreground transition-colors hover:text-foreground">
                 Watch History
+              </Link>
+            )}
+            {user && (
+              <Link href="/cards" className="text-muted-foreground transition-colors hover:text-foreground flex items-center gap-1.5">
+                <CreditCard className="h-4 w-4" />
+                Cards
               </Link>
             )}
             <Link href="/stats" className="text-muted-foreground transition-colors hover:text-foreground flex items-center gap-1.5">

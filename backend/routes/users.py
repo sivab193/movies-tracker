@@ -23,6 +23,7 @@ def resolve_movie_details(movie_id, fallback_title=None, fallback_poster=None):
         return {
             "movieTitle": fallback_title,
             "moviePosterUrl": fallback_poster,
+            "movieLanguage": None,
         }
 
     try:
@@ -31,6 +32,7 @@ def resolve_movie_details(movie_id, fallback_title=None, fallback_poster=None):
             return {
                 "movieTitle": movie.get('title', fallback_title),
                 "moviePosterUrl": movie.get('posterUrl', fallback_poster),
+                "movieLanguage": movie.get('language') or movie.get('Language')
             }
     except Exception:
         pass
@@ -38,6 +40,7 @@ def resolve_movie_details(movie_id, fallback_title=None, fallback_poster=None):
     return {
         "movieTitle": fallback_title,
         "moviePosterUrl": fallback_poster,
+        "movieLanguage": None,
     }
 
 
@@ -92,6 +95,7 @@ def enrich_watch_history(history):
         movie_details = resolve_movie_details(entry.get('movieId'), entry.get('movieTitle'), entry.get('moviePosterUrl'))
         entry['movieTitle'] = movie_details.get('movieTitle')
         entry['moviePosterUrl'] = movie_details.get('moviePosterUrl')
+        entry['movieLanguage'] = movie_details.get('movieLanguage')
 
         theater_details = resolve_theater_details(entry.get('theaterId'), entry.get('theaterName'), entry.get('theaterLocation'), entry.get('theaterGmapsLink'))
         entry['theaterName'] = theater_details.get('theaterName')

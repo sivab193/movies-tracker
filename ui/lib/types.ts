@@ -48,6 +48,7 @@ export interface WatchHistoryEntry {
   movieId: string
   movieTitle: string
   moviePosterUrl: string
+  movieLanguage?: string | null
   theaterId?: string | null
   theaterName: string | null
   theaterLocation: string | null
@@ -66,6 +67,73 @@ export interface Theater {
   name: string
   location?: string
   gmapsLink?: string
+}
+
+// Card offer details
+export interface CardOffer {
+  _id: string
+  id: string // alias for _id
+  platform: "BookMyShow" | "District"
+  offerType: "BOGO" | "discount" | "cashback"
+  description: string
+  maxDiscount: number
+  usesPerMonth: number
+  minTickets: number
+  couponCode: string | null
+  perDayLimit: number | null
+  notes: string | null
+  isActive: boolean
+  remainingUses?: number // Computed by backend for user's cards
+}
+
+// Bank card with movie ticket offers
+export interface CardInfo {
+  _id: string
+  id: string // alias for _id
+  name: string
+  bank: string
+  bankName: string // alias for bank
+  type: "debit" | "credit"
+  network: string
+  offers: CardOffer[]
+  reportCount: number
+  lastVerifiedAt: string | null
+  createdAt: string
+  updatedAt: string
+}
+
+// Card usage log entry
+export interface CardUsageEntry {
+  _id: string
+  id: string // alias for _id
+  date: string
+  platform: string
+  offerId: string
+  movieTitle: string
+  ticketsSaved: number
+  notes: string
+  createdAt: string
+}
+
+// User's card with usage data
+export interface UserCard {
+  cardId: string
+  addedAt: string
+  usageLog: CardUsageEntry[]
+  cardInfo: CardInfo  // Populated from join
+}
+
+// Card report
+export interface CardReport {
+  id: string
+  cardId: string
+  cardName?: string
+  userId: string
+  reason: string
+  status: "pending" | "resolved" | "dismissed"
+  adminNote: string | null
+  createdAt: string
+  resolvedAt: string | null
 }
 
 // Helper to format seconds to display string

@@ -176,7 +176,7 @@ export default function WatchHistoryPage() {
     }, [profile?.watchHistory, searchQuery, yearFilter, monthFilter, cityFilter, sortOrder])
 
     // Stats
-    const stats = useMemo(() => {
+    const stats: any = useMemo(() => {
         const totalRuntime = profile?.totalRuntimeSeconds || 0
         const totalMovies = profile?.totalMoviesWatched || 0
 
@@ -194,6 +194,10 @@ export default function WatchHistoryPage() {
         const movieCounts = new Map<string, number>()
         const movieLatestDate = new Map<string, number>() // track most recent watch timestamp per movie
         const monthCounts = new Array(12).fill(0)
+        
+        const languageSet = new Set<string>()
+        const monthYearCounts = new Map<string, number>()
+        const dayCounts = new Map<string, number>()
 
         profile?.watchHistory?.forEach(h => {
             if (h.currency === 'INR') {
@@ -208,6 +212,17 @@ export default function WatchHistoryPage() {
             if (!isNaN(d.getTime())) {
                 if (d.getFullYear() === currentYear) thisYearCount++
                 monthCounts[d.getMonth()]++
+                
+                const monthYearKey = `${d.getFullYear()}-${d.getMonth()}`
+                monthYearCounts.set(monthYearKey, (monthYearCounts.get(monthYearKey) || 0) + 1)
+                
+                const dateKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+                dayCounts.set(dateKey, (dayCounts.get(dateKey) || 0) + 1)
+            }
+
+            if (h.movieLanguage && h.movieLanguage !== "N/A") {
+                const langs = h.movieLanguage.split(',').map(l => l.trim()).filter(Boolean)
+                langs.forEach(l => languageSet.add(l))
             }
 
             const theater = (h.theaterName || "").trim()
@@ -270,6 +285,16 @@ export default function WatchHistoryPage() {
             if (count > 1) totalRewatches += count - 1
         })
 
+        let maxWatchesInMonth = 0
+        monthYearCounts.forEach(count => {
+            if (count > maxWatchesInMonth) maxWatchesInMonth = count
+        })
+
+        let maxWatchesInDay = 0
+        dayCounts.forEach(count => {
+            if (count > maxWatchesInDay) maxWatchesInDay = count
+        })
+
         const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
         let busiestMonthIdx = -1
         monthCounts.forEach((c, i) => {
@@ -313,6 +338,9 @@ export default function WatchHistoryPage() {
             currentYear,
             totalRewatches,
             lastWatched,
+            languagesCount: languageSet.size,
+            maxWatchesInMonth,
+            maxWatchesInDay,
         }
     }, [profile])
 
@@ -340,6 +368,9 @@ export default function WatchHistoryPage() {
         thisYearCount: stats.thisYearCount,
         totalRewatches: stats.totalRewatches,
         year: stats.currentYear,
+        languagesCount: stats.languagesCount,
+        maxWatchesInMonth: stats.maxWatchesInMonth,
+        maxWatchesInDay: stats.maxWatchesInDay,
     }), [profile, user, stats, spentLabel])
 
 

@@ -28,6 +28,9 @@ export interface WrappedStats {
     thisYearCount: number
     totalRewatches: number
     year: number
+    languagesCount: number
+    maxWatchesInMonth: number
+    maxWatchesInDay: number
 }
 
 const SITE = "mv.siv19.dev"
@@ -63,6 +66,9 @@ export type StatSelection = {
     mostWatched: boolean;
     favoriteTheater: boolean;
     lastWatched: boolean;
+    languagesCount: boolean;
+    maxWatchesInMonth: boolean;
+    maxWatchesInDay: boolean;
 }
 
 // Draw a location pin icon (replaces emoji for better visibility)
@@ -201,6 +207,9 @@ function drawWrappedImage(stats: WrappedStats, selection: StatSelection): HTMLCa
     if (selection.citiesExplored) activeTiles.push({ value: String(stats.citiesExplored), label: "Cities Explored" })
     if (selection.watchedThisYear) activeTiles.push({ value: String(stats.thisYearCount), label: `Watched in ${stats.year}` })
     if (selection.rewatches) activeTiles.push({ value: String(stats.totalRewatches), label: "Rewatches" })
+    if (selection.languagesCount) activeTiles.push({ value: String(stats.languagesCount), label: "Languages" })
+    if (selection.maxWatchesInMonth) activeTiles.push({ value: String(stats.maxWatchesInMonth), label: "Most Watches / Month" })
+    if (selection.maxWatchesInDay) activeTiles.push({ value: String(stats.maxWatchesInDay), label: "Most Watches / Day" })
 
     // Calculate how many highlight cards we have
     let highlightCount = 0
@@ -420,7 +429,10 @@ export function ShareStats({ stats }: ShareStatsProps) {
         rewatches: true,
         mostWatched: true,
         favoriteTheater: true,
-        lastWatched: true
+        lastWatched: true,
+        languagesCount: true,
+        maxWatchesInMonth: true,
+        maxWatchesInDay: true
     })
 
     const allSelected = Object.values(selection).every(Boolean)
@@ -436,7 +448,10 @@ export function ShareStats({ stats }: ShareStatsProps) {
             rewatches: checked,
             mostWatched: checked,
             favoriteTheater: checked,
-            lastWatched: checked
+            lastWatched: checked,
+            languagesCount: checked,
+            maxWatchesInMonth: checked,
+            maxWatchesInDay: checked
         })
     }
 
@@ -611,6 +626,30 @@ export function ShareStats({ stats }: ShareStatsProps) {
                                 />
                                 <Label htmlFor="s-lastwatched" className={!stats.lastWatched ? "opacity-50" : ""}>
                                     Last Watched</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="s-languages"
+                                    checked={selection.languagesCount}
+                                    onCheckedChange={(c) => setSelection(s => ({...s, languagesCount: c as boolean}))}
+                                />
+                                <Label htmlFor="s-languages">Languages</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="s-maxmonth"
+                                    checked={selection.maxWatchesInMonth}
+                                    onCheckedChange={(c) => setSelection(s => ({...s, maxWatchesInMonth: c as boolean}))}
+                                />
+                                <Label htmlFor="s-maxmonth">Max Watches / Month</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="s-maxday"
+                                    checked={selection.maxWatchesInDay}
+                                    onCheckedChange={(c) => setSelection(s => ({...s, maxWatchesInDay: c as boolean}))}
+                                />
+                                <Label htmlFor="s-maxday">Max Watches / Day</Label>
                             </div>
                         </div>
                     </div>
