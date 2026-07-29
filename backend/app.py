@@ -25,6 +25,7 @@ from routes.theaters import theaters_bp
 from routes.stats import stats_bp
 from routes.device_auth import device_auth_bp
 from routes.cards import cards_bp
+from routes.watch_orders import watch_orders_bp
 
 app.register_blueprint(movies_bp, url_prefix='/api/movies')
 app.register_blueprint(leaderboard_bp, url_prefix='/api/leaderboard')
@@ -33,6 +34,7 @@ app.register_blueprint(theaters_bp, url_prefix='/api/theaters')
 app.register_blueprint(stats_bp, url_prefix='/api/stats')
 app.register_blueprint(device_auth_bp, url_prefix='/api/auth')
 app.register_blueprint(cards_bp, url_prefix='/api/cards')
+app.register_blueprint(watch_orders_bp, url_prefix='/api/watch-orders')
 
 
 if __name__ == '__main__':

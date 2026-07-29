@@ -136,6 +136,29 @@ export interface CardReport {
   resolvedAt: string | null
 }
 
+// Watch order item (movie or series)
+export interface WatchOrderItem {
+  _id: string
+  id: string // alias for _id
+  type: "movie" | "series"
+  itemId: string // IMDB ID or custom ID
+  title: string
+  year: number
+  notes: string | null
+  orderIndex: number
+}
+
+// Watch order franchise/universe
+export interface WatchOrder {
+  _id: string
+  id: string // alias for _id
+  name: string
+  description: string | null
+  items: WatchOrderItem[]
+  createdAt: string
+  updatedAt: string
+}
+
 // Helper to format seconds to display string
 export function formatTimeDisplay(seconds: number): string {
   const mins = Math.floor(seconds / 60)

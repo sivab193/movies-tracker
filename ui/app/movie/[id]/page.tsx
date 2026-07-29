@@ -2,9 +2,10 @@
 
 import { useEffect, useState, use } from "react"
 import Link from "next/link"
-import { ArrowLeft, Clock, Star, Calendar, Timer, MessageSquare, Share2, Copy, Check, Loader2 } from "lucide-react"
+import { ArrowLeft, Clock, Star, Calendar, Timer, MessageSquare, Share2, Copy, Check, Loader2, ListOrdered, ArrowRight } from "lucide-react"
 import { Header } from "@/components/header"
 import { getMovie, getSubmissions, createShortUrl } from "@/services/api"
+import { getWatchOrdersForMovie } from "@/services/watch-order-service"
 import { SubmissionForm } from "@/components/submission-form"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -27,6 +28,7 @@ export default function MovieDetailPage({
   const [shortUrlLoading, setShortUrlLoading] = useState(false)
   const [shortUrlDialogOpen, setShortUrlDialogOpen] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [movieWatchOrders, setMovieWatchOrders] = useState<any[]>([])
 
   const handleShare = async () => {
     if (!movie) return
@@ -81,6 +83,13 @@ export default function MovieDetailPage({
 
         if (submissionsData.submissions) {
           setSubmissions(submissionsData.submissions)
+        }
+        
+        try {
+          const orders = await getWatchOrdersForMovie(id)
+          setMovieWatchOrders(orders)
+        } catch (e) {
+          console.error("Error fetching watch orders:", e)
         }
       } catch (error) {
         console.error("Error fetching movie data:", error)
@@ -161,6 +170,24 @@ export default function MovieDetailPage({
             Share / Short Link
           </Button>
         </div>
+
+        {movieWatchOrders.length > 0 && (
+          <div className="flex flex-col gap-2 mb-6">
+            {movieWatchOrders.map((order) => (
+              <Link href={`/watch-orders#${order.id}`} key={order.id}>
+                <div className="bg-gradient-to-r from-amber-500/10 to-rose-500/10 border border-amber-500/20 text-amber-500 hover:text-amber-400 hover:border-amber-500/40 rounded-lg p-4 flex items-center justify-between transition-colors shadow-sm">
+                  <div className="flex items-center gap-3">
+                    <ListOrdered className="w-5 h-5" />
+                    <span className="font-semibold text-sm md:text-base">Part of: {order.name}</span>
+                  </div>
+                  <div className="flex items-center gap-1 text-sm font-medium">
+                    View Timeline <ArrowRight className="w-4 h-4 ml-1" />
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
 
         <div className="grid gap-8 md:grid-cols-[280px_1fr]">
           {/* Movie Poster */}
