@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { useAuth } from "@/contexts/auth-context"
 import { getAllUsers, toggleLeaderboardBan } from "@/services/api"
 import { Loader2, Shield, Eye, Ban, CheckCircle } from "lucide-react"
@@ -21,6 +21,10 @@ export default function AdminUsersPage() {
     const [users, setUsers] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState("")
+
+    const [sortOrder, setSortOrder] = useState<string>("default")
+    const [statusFilter, setStatusFilter] = useState<string>("all")
+    const [adminFilter, setAdminFilter] = useState<string>("all")
 
     const fetchUsers = async () => {
         try {
@@ -55,6 +59,30 @@ export default function AdminUsersPage() {
             alert("Failed to update ban status")
         }
     }
+
+    const filteredAndSortedUsers = useMemo(() => {
+        let result = [...users]
+        
+        if (statusFilter === "active") {
+            result = result.filter(u => !u.isBannedFromLeaderboard)
+        } else if (statusFilter === "banned") {
+            result = result.filter(u => u.isBannedFromLeaderboard)
+        }
+        
+        if (adminFilter === "admin") {
+            result = result.filter(u => u.isAdmin)
+        } else if (adminFilter === "user") {
+            result = result.filter(u => !u.isAdmin)
+        }
+        
+        if (sortOrder === "stats-desc") {
+            result.sort((a, b) => (b.totalMoviesWatched || 0) - (a.totalMoviesWatched || 0))
+        } else if (sortOrder === "stats-asc") {
+            result.sort((a, b) => (a.totalMoviesWatched || 0) - (b.totalMoviesWatched || 0))
+        }
+        
+        return result
+    }, [users, sortOrder, statusFilter, adminFilter])
 
     if (authLoading || loading) {
         return (
@@ -96,6 +124,47 @@ export default function AdminUsersPage() {
                     </div>
                 )}
 
+                <div className="flex flex-wrap items-center gap-3 p-4 border rounded-md bg-muted/20">
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-medium text-muted-foreground">Sort By Stats</label>
+                        <select
+                            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            value={sortOrder}
+                            onChange={(e) => setSortOrder(e.target.value)}
+                        >
+                            <option value="default">Default</option>
+                            <option value="stats-desc">Most Movies Watched</option>
+                            <option value="stats-asc">Least Movies Watched</option>
+                        </select>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-medium text-muted-foreground">Account Status</label>
+                        <select
+                            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                        >
+                            <option value="all">All</option>
+                            <option value="active">Active Only</option>
+                            <option value="banned">Banned Only</option>
+                        </select>
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                        <label className="text-xs font-medium text-muted-foreground">Role</label>
+                        <select
+                            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                            value={adminFilter}
+                            onChange={(e) => setAdminFilter(e.target.value)}
+                        >
+                            <option value="all">All Roles</option>
+                            <option value="user">Users Only</option>
+                            <option value="admin">Admins Only</option>
+                        </select>
+                    </div>
+                </div>
+
                 <div className="rounded-md border">
                     <Table>
                         <TableHeader>
@@ -108,14 +177,14 @@ export default function AdminUsersPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {users.length === 0 ? (
+                            {filteredAndSortedUsers.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                                         No users found
                                     </TableCell>
                                 </TableRow>
                             ) : (
-                                users.map((u) => (
+                                filteredAndSortedUsers.map((u) => (
                                     <TableRow key={u._id || u.firebaseUid}>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
