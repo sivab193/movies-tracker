@@ -124,55 +124,53 @@ export default function AdminUsersPage() {
                     </div>
                 )}
 
-                <div className="flex flex-wrap items-center gap-3 p-4 border rounded-md bg-muted/20">
-                    <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-medium text-muted-foreground">Sort By Stats</label>
-                        <select
-                            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                            value={sortOrder}
-                            onChange={(e) => setSortOrder(e.target.value)}
-                        >
-                            <option value="default">Default</option>
-                            <option value="stats-desc">Most Movies Watched</option>
-                            <option value="stats-asc">Least Movies Watched</option>
-                        </select>
-                    </div>
-
-                    <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-medium text-muted-foreground">Account Status</label>
-                        <select
-                            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                            value={statusFilter}
-                            onChange={(e) => setStatusFilter(e.target.value)}
-                        >
-                            <option value="all">All</option>
-                            <option value="active">Active Only</option>
-                            <option value="banned">Banned Only</option>
-                        </select>
-                    </div>
-
-                    <div className="flex flex-col gap-1.5">
-                        <label className="text-xs font-medium text-muted-foreground">Role</label>
-                        <select
-                            className="h-9 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                            value={adminFilter}
-                            onChange={(e) => setAdminFilter(e.target.value)}
-                        >
-                            <option value="all">All Roles</option>
-                            <option value="user">Users Only</option>
-                            <option value="admin">Admins Only</option>
-                        </select>
-                    </div>
-                </div>
-
                 <div className="rounded-md border">
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead>User</TableHead>
+                                <TableHead>
+                                    <div className="flex items-center gap-2">
+                                        User
+                                        <select
+                                            className="h-6 rounded border-none bg-muted/50 px-1 py-0 text-xs text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                            value={adminFilter}
+                                            onChange={(e) => setAdminFilter(e.target.value)}
+                                        >
+                                            <option value="all">All Roles</option>
+                                            <option value="user">Users</option>
+                                            <option value="admin">Admins</option>
+                                        </select>
+                                    </div>
+                                </TableHead>
                                 <TableHead>Email</TableHead>
-                                <TableHead>Stats</TableHead>
-                                <TableHead>Status</TableHead>
+                                <TableHead>
+                                    <div className="flex items-center gap-2">
+                                        Stats
+                                        <select
+                                            className="h-6 rounded border-none bg-muted/50 px-1 py-0 text-xs text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                            value={sortOrder}
+                                            onChange={(e) => setSortOrder(e.target.value)}
+                                        >
+                                            <option value="default">Sort</option>
+                                            <option value="stats-desc">Most Watched</option>
+                                            <option value="stats-asc">Least Watched</option>
+                                        </select>
+                                    </div>
+                                </TableHead>
+                                <TableHead>
+                                    <div className="flex items-center gap-2">
+                                        Status
+                                        <select
+                                            className="h-6 rounded border-none bg-muted/50 px-1 py-0 text-xs text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                            value={statusFilter}
+                                            onChange={(e) => setStatusFilter(e.target.value)}
+                                        >
+                                            <option value="all">All</option>
+                                            <option value="active">Active</option>
+                                            <option value="banned">Banned</option>
+                                        </select>
+                                    </div>
+                                </TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
