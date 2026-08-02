@@ -9,6 +9,17 @@ from bson import ObjectId, Binary
 
 users_bp = Blueprint('users', __name__)
 
+def serialize_mongo_doc(doc):
+    if isinstance(doc, dict):
+        return {k: serialize_mongo_doc(v) for k, v in doc.items()}
+    elif isinstance(doc, list):
+        return [serialize_mongo_doc(item) for item in doc]
+    elif isinstance(doc, ObjectId):
+        return str(doc)
+    elif isinstance(doc, datetime.datetime):
+        return doc.isoformat()
+    return doc
+
 def get_user_from_token(token):
     try:
         decoded_token = firebase_auth.verify_id_token(token)
@@ -159,6 +170,7 @@ def get_my_settings():
     if 'watchHistory' in user:
         user['watchHistory'] = enrich_watch_history(user['watchHistory'])
 
+    user = serialize_mongo_doc(user)
     return jsonify(user)
 
 @users_bp.route('/request-admin', methods=['POST'])
@@ -552,8 +564,7 @@ def list_all_users():
         return jsonify({"error": "Forbidden"}), 403
         
     users = list(db.users.find({}, {"watchHistory": 0}))
-    for u in users:
-        u['_id'] = str(u['_id'])
+    users = serialize_mongo_doc(users)
         
     return jsonify(users)
 
