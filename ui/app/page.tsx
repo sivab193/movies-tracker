@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Film, Trophy, List, Share2, ShieldCheck, MessageSquare, Bot, Map, Tv, Sparkles, CreditCard, BarChart3 } from "lucide-react"
+import { Film, Trophy, List, Share2, ShieldCheck, MessageSquare, Bot, Map, Tv, Sparkles, CreditCard, BarChart3, ListOrdered, LayoutDashboard, Link2 } from "lucide-react"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 
@@ -10,49 +10,74 @@ const mainFeatures = [
     href: "/watch-history",
     icon: List,
     title: "Detailed Watch History",
-    description: "Log every movie you watch with dates and detailed technical and theater information.",
+    description: "Log every movie you watch with dates, theaters, ticket costs, currencies, and optional ticket stub photos.",
   },
   {
     href: "/leaderboard",
     icon: Trophy,
     title: "Global Leaderboard",
-    description: "Compete with friends and the world. See who has the most total watch time.",
+    description: "Compete with friends and the world. Real-time rankings calculated from exact runtime seconds.",
   },
   {
     href: "/timer",
     icon: Film,
     title: "TitleCard Timer",
-    description: "Know exactly when the title card appears in every movie you watch.",
+    description: "Know exactly when the title card appears in every movie. Community-submitted precision timing.",
+  },
+  {
+    href: "/series",
+    icon: Tv,
+    title: "Series Tracking",
+    badge: "New",
+    description: "Track TV series across streaming platforms. Monitor season progress, episode counts, and total watch time.",
+  },
+  {
+    href: "/watch-orders",
+    icon: ListOrdered,
+    title: "Curated Watch Orders",
+    badge: "New",
+    description: "Discover community-curated watch orders that combine movies and series into the perfect viewing sequence.",
+  },
+  {
+    href: "/cards",
+    icon: CreditCard,
+    title: "Cards & Offers Hub",
+    badge: "New",
+    description: "Track your credit and debit card cinema offers, log card usage at theaters, and see how much you have saved.",
+  },
+  {
+    href: "/stats",
+    icon: BarChart3,
+    title: "Community Analytics",
+    description: "Explore community-wide cinema habits — total movies tracked, theaters visited, cities explored, and more.",
+  },
+  {
+    href: "/dashboard",
+    icon: LayoutDashboard,
+    title: "Personal Dashboard",
+    description: "Your central hub to manage watch history entries, add new watches, and track your cinematic journey.",
   },
   {
     href: "/settings",
     icon: Share2,
-    title: "Public Profiles",
-    description: "Share your movie taste with the world or keep it private with granular controls.",
+    title: "Public Profiles & Sharing",
+    description: "Claim a custom username, share your stats as a beautiful wrapped card, and control your privacy settings.",
   },
   {
     href: "/settings",
     icon: ShieldCheck,
     title: "Privacy First",
-    description: "Choose exactly which fields and movies are public. Your data, your rules.",
+    description: "Choose exactly which fields and movies are public. Granular controls for every aspect of your profile.",
   },
   {
-    href: "/stats",
-    icon: BarChart3,
-    title: "Viewing Analytics",
-    description: "Track your cinema habits with genre breakdowns, monthly trends, and personal statistics.",
+    href: "/m/example",
+    icon: Link2,
+    title: "Instant Short Links",
+    description: "Generate and share 6-character short URLs for any movie. Perfect for quick sharing across social platforms.",
   },
 ]
 
 const upcomingFeatures = [
-  {
-    icon: MessageSquare,
-    title: "Telegram Bot",
-    status: "Coming Soon",
-    statusClass: "bg-primary/10 text-primary",
-    description:
-      "Track your movies directly from Telegram. Quick logging, stats, and notifications.",
-  },
   {
     icon: Bot,
     title: "Hosted AI MCP Server",
@@ -62,20 +87,12 @@ const upcomingFeatures = [
       "Connect seamlessly with ChatGPT, Claude, and Gemini via Model Context Protocol (MCP). Search movies, log watches, and query your personal stats using natural language directly from your AI assistant.",
   },
   {
-    icon: Tv,
-    title: "OTT & Series Watch History",
-    status: "In Development",
+    icon: MessageSquare,
+    title: "Telegram Bot",
+    status: "Coming Soon",
     statusClass: "bg-primary/10 text-primary",
     description:
-      "Log and track your streaming watches across platforms (Netflix, Prime Video, Disney+, Apple TV+). Track full TV series, season progress, individual episodes, and binge-watching streaks right alongside your theater history!",
-  },
-  {
-    icon: Map,
-    title: "Movie Marathon Planner",
-    status: "Planned",
-    statusClass: "bg-muted text-muted-foreground",
-    description:
-      "Plan back-to-back movie sessions effortlessly based on real-time showtimes, runtimes, and driving/transit distances between local cinemas.",
+      "Track your movies directly from Telegram. Quick logging, stats, and notifications without leaving your chat app.",
   },
   {
     icon: Sparkles,
@@ -84,15 +101,15 @@ const upcomingFeatures = [
     statusClass: "bg-primary/20 text-primary font-semibold",
     special: true,
     description:
-      "Get your personalized MediaVerse Wrapped every December! A dynamic, shareable visual showcase highlighting your total minutes watched, top genres, most visited theaters, ticket cost breakdowns, and cinematic milestones of the year!",
+      "Get your personalized MediaVerse Wrapped every December! A dynamic, shareable visual showcase highlighting your total minutes watched, top genres, most visited theaters, and cinematic milestones of the year!",
   },
   {
-    icon: CreditCard,
-    title: "Card Offers & Savings Hub",
+    icon: Map,
+    title: "Movie Marathon Planner",
     status: "Planned",
     statusClass: "bg-muted text-muted-foreground",
     description:
-      "Discover and share community-verified ticket hacks, credit/debit card 1+1 offers, loyalty reward codes, and discount tips for major cinema chains (BookMyShow, PVR INOX, AMC, Regal) so everyone saves on their theater outings!",
+      "Plan back-to-back movie sessions effortlessly based on real-time showtimes, runtimes, and driving/transit distances between local cinemas.",
   },
 ]
 
@@ -106,11 +123,15 @@ export default function HomePage() {
         <section className="relative overflow-hidden py-20 sm:py-28 animate-fade-in">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-2xl text-center">
+              <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
+                <Sparkles className="h-4 w-4" />
+                Now with Series Tracking, Watch Orders & AI Integration
+              </div>
               <h1 className="text-4xl font-bold tracking-tight sm:text-6xl text-balance">
                 Your Ultimate MediaVerse Tracker
               </h1>
               <p className="mt-6 text-lg leading-8 text-muted-foreground text-pretty">
-                Keep track of every movie you watch, analyze your statistics, and compete for the top spot on the global leaderboard.
+                Track every movie and series you watch, analyze your statistics, compete on the global leaderboard, and connect with AI assistants — all in one place.
               </p>
               <div className="mt-10 flex items-center justify-center gap-x-6">
                 <Link href="/auth">
@@ -133,6 +154,9 @@ export default function HomePage() {
             <p className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl text-balance">
               Everything you need to track your cinematic journey
             </p>
+            <p className="mt-4 text-lg text-muted-foreground">
+              From detailed watch logging to AI-powered integrations — 12 features and counting.
+            </p>
           </div>
           <div className="mx-auto mt-12 max-w-2xl sm:mt-16 lg:mt-20 lg:max-w-none">
             <dl className="grid max-w-xl grid-cols-1 gap-x-6 gap-y-10 lg:gap-x-8 lg:gap-y-12 lg:max-w-none lg:grid-cols-3">
@@ -141,16 +165,14 @@ export default function HomePage() {
                   <dt className="flex items-center gap-x-3 text-base font-semibold leading-7">
                     <feature.icon className="h-5 w-5 text-primary group-hover:text-foreground" />
                     {feature.title}
+                    {('badge' in feature && feature.badge) && (
+                      <span className="inline-flex items-center rounded-full bg-primary/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-primary">
+                        {String(feature.badge)}
+                      </span>
+                    )}
                   </dt>
                   <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground group-hover:text-foreground">
                     <p className="flex-auto text-pretty">{feature.description}</p>
-                    {('badge' in feature && feature.badge) ? (
-                      <div className="mt-3">
-                        <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">
-                          {String((feature as any).badge)}
-                        </span>
-                      </div>
-                    ) : null}
                   </dd>
                 </Link>
               ))}
@@ -163,7 +185,7 @@ export default function HomePage() {
           <div className="mx-auto max-w-2xl lg:text-center">
             <h2 className="text-base font-semibold leading-7 text-primary">Roadmap</h2>
             <p className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl text-balance">
-              Upcoming Features & AI Integration
+              What&apos;s Coming Next
             </p>
             <p className="mt-4 text-lg text-muted-foreground">
               We are continuously evolving MediaVerse. Here is what is actively in development:

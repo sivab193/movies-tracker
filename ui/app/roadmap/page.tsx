@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Bot, Map, Users, Bell, Tv, Volume2, Sparkles, CreditCard, MessageSquare } from "lucide-react"
+import { Bot, Map, Users, Bell, Tv, Volume2, Sparkles, CreditCard, MessageSquare, ListOrdered, Check } from "lucide-react"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 
@@ -12,9 +12,43 @@ type RoadmapFeature = {
   statusClass: string
   description: string
   special?: boolean
+  href?: string
 }
 
 const roadmapSections: { title: string; subtitle: string; features: RoadmapFeature[] }[] = [
+  {
+    title: "Recently Shipped",
+    subtitle: "Live and available now",
+    features: [
+      {
+        icon: Tv,
+        title: "Series Tracking",
+        status: "Shipped ✓",
+        statusClass: "bg-green-500/10 text-green-600 dark:text-green-400",
+        href: "/series",
+        description:
+          "Track TV series across streaming platforms (Netflix, Prime Video, Disney+, Apple TV+). Monitor season progress, episode counts, and total watch time right alongside your theater history!",
+      },
+      {
+        icon: ListOrdered,
+        title: "Curated Watch Orders",
+        status: "Shipped ✓",
+        statusClass: "bg-green-500/10 text-green-600 dark:text-green-400",
+        href: "/watch-orders",
+        description:
+          "Discover community-curated watch orders that combine movies and series into the perfect viewing sequence for franchises, universes, and themed marathons.",
+      },
+      {
+        icon: CreditCard,
+        title: "Cards & Offers Hub",
+        status: "Shipped ✓",
+        statusClass: "bg-green-500/10 text-green-600 dark:text-green-400",
+        href: "/cards",
+        description:
+          "Track your credit and debit card cinema offers, log card usage at theaters, and see how much you have saved with detailed savings analytics.",
+      },
+    ],
+  },
   {
     title: "In Development",
     subtitle: "Actively being built right now",
@@ -26,14 +60,6 @@ const roadmapSections: { title: string; subtitle: string; features: RoadmapFeatu
         statusClass: "bg-primary/10 text-primary",
         description:
           "Connect seamlessly with ChatGPT, Claude, and Gemini via Model Context Protocol (MCP). Search movies, log watches, and query your personal stats using natural language directly from your AI assistant.",
-      },
-      {
-        icon: Tv,
-        title: "OTT & Series Watch History",
-        status: "In Development",
-        statusClass: "bg-primary/10 text-primary",
-        description:
-          "Log and track your streaming watches across platforms (Netflix, Prime Video, Disney+, Apple TV+). Track full TV series, season progress, individual episodes, and binge-watching streaks right alongside your theater history!",
       },
       {
         icon: MessageSquare,
@@ -71,14 +97,6 @@ const roadmapSections: { title: string; subtitle: string; features: RoadmapFeatu
         statusClass: "bg-muted text-muted-foreground",
         description:
           "Plan back-to-back movie sessions effortlessly based on real-time showtimes, runtimes, and driving/transit distances between local cinemas.",
-      },
-      {
-        icon: CreditCard,
-        title: "Card Offers & Savings Hub",
-        status: "Planned",
-        statusClass: "bg-muted text-muted-foreground",
-        description:
-          "Discover and share community-verified ticket hacks, credit/debit card 1+1 offers, loyalty reward codes, and discount tips for major cinema chains (BookMyShow, PVR INOX, AMC, Regal) so everyone saves on their theater outings!",
       },
       {
         icon: Users,
@@ -149,31 +167,42 @@ export default function RoadmapPage() {
             </div>
             <div className="mx-auto mt-10 max-w-2xl sm:mt-12 lg:max-w-none">
               <dl className="grid max-w-xl grid-cols-1 gap-x-6 gap-y-10 lg:gap-x-8 lg:gap-y-12 lg:max-w-none lg:grid-cols-3">
-                {section.features.map((feature) => (
-                  <div
-                    key={feature.title}
-                    className={`group flex flex-col feature-card transition rounded-2xl p-6 ${
-                      feature.special
-                        ? "bg-primary/5 border border-primary/30 hover:bg-primary/10"
-                        : "bg-card/80 border border-border/60 hover:bg-card/90"
-                    }`}
-                  >
-                    <dt className="flex flex-col items-start gap-y-2 text-base font-semibold leading-7">
-                      <span className="self-end">
-                        <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${feature.statusClass}`}>
-                          {feature.status}
+                {section.features.map((feature) => {
+                  const content = (
+                    <div
+                      className={`group flex flex-col feature-card transition rounded-2xl p-6 ${
+                        feature.special
+                          ? "bg-primary/5 border border-primary/30 hover:bg-primary/10"
+                          : feature.href
+                          ? "bg-card/80 border border-border/60 hover:bg-muted/50 cursor-pointer"
+                          : "bg-card/80 border border-border/60 hover:bg-card/90"
+                      }`}
+                    >
+                      <dt className="flex flex-col items-start gap-y-2 text-base font-semibold leading-7">
+                        <span className="self-end">
+                          <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-medium ${feature.statusClass}`}>
+                            {feature.status}
+                          </span>
                         </span>
-                      </span>
-                      <span className="flex items-start gap-x-3">
-                        <feature.icon className={`h-5 w-5 shrink-0 mt-1 text-primary ${feature.special ? "animate-pulse" : "group-hover:text-foreground"}`} />
-                        {feature.title}
-                      </span>
-                    </dt>
-                    <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground group-hover:text-foreground">
-                      <p className="flex-auto text-pretty">{feature.description}</p>
-                    </dd>
-                  </div>
-                ))}
+                        <span className="flex items-start gap-x-3">
+                          <feature.icon className={`h-5 w-5 shrink-0 mt-1 text-primary ${feature.special ? "animate-pulse" : "group-hover:text-foreground"}`} />
+                          {feature.title}
+                        </span>
+                      </dt>
+                      <dd className="mt-4 flex flex-auto flex-col text-base leading-7 text-muted-foreground group-hover:text-foreground">
+                        <p className="flex-auto text-pretty">{feature.description}</p>
+                      </dd>
+                    </div>
+                  )
+
+                  return feature.href ? (
+                    <Link key={feature.title} href={feature.href}>
+                      {content}
+                    </Link>
+                  ) : (
+                    <div key={feature.title}>{content}</div>
+                  )
+                })}
               </dl>
             </div>
           </section>
