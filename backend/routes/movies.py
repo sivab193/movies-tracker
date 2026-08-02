@@ -1179,3 +1179,29 @@ def movie_data_quality():
             "noTitleCard": len(no_titlecard),
         }
     })
+
+@movies_bp.route('/lookup', methods=['GET'])
+def lookup_movie():
+    """Public: Lightweight movie lookup by IMDB ID for watch order enrichment."""
+    imdb_id = request.args.get('imdbId')
+    if not imdb_id:
+        return jsonify({"error": "imdbId query parameter is required"}), 400
+    
+    try:
+        movie = db.movies.find_one({"imdbId": imdb_id})
+        if not movie:
+            return jsonify({"error": "Movie not found"}), 404
+        
+        return jsonify({
+            "id": str(movie['_id']),
+            "imdbId": movie.get('imdbId'),
+            "title": movie.get('title'),
+            "year": movie.get('year'),
+            "posterUrl": movie.get('posterUrl'),
+            "runtime": movie.get('runtime'),
+            "imdbRating": movie.get('imdbRating'),
+            "averageTimeSeconds": movie.get('averageTimeSeconds'),
+            "language": movie.get('language') or movie.get('Language')
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

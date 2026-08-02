@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Film, Moon, Sun, User, Eye, LogOut, LayoutDashboard, Settings, LogIn, BarChart3, CreditCard, ListOrdered } from "lucide-react"
+import { Film, Moon, Sun, User, Eye, LogOut, LayoutDashboard, Settings, LogIn, BarChart3, CreditCard, ListOrdered, Tv } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -28,6 +28,10 @@ export function Header() {
           <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
             <Link href="/timer" className="text-muted-foreground transition-colors hover:text-foreground">
               TitleCard Timer
+            </Link>
+            <Link href="/series" className="text-muted-foreground transition-colors hover:text-foreground flex items-center gap-1.5">
+              <Tv className="h-4 w-4" />
+              Series
             </Link>
             <Link href="/watch-orders" className="text-muted-foreground transition-colors hover:text-foreground flex items-center gap-1.5">
               <ListOrdered className="h-4 w-4" />

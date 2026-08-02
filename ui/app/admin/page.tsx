@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
-import { Loader2, Plus, ShieldAlert, Trash2, Search, Users, MapPin, ExternalLink, Pencil, Check, X, ChevronLeft, ChevronRight, BadgeCheck, ClipboardList } from "lucide-react"
+import { Loader2, Plus, ShieldAlert, Trash2, Search, Users, MapPin, ExternalLink, Pencil, Check, X, ChevronLeft, ChevronRight, BadgeCheck, ClipboardList, Tv, RefreshCw } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -11,7 +11,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Header } from "@/components/header"
 import { getAdminRequests, resolveAdminRequest } from "@/services/user-service"
 import { getMovies, deleteMovie, clearMovieSubmissions, getTheaters, addTheater, updateTheater, deleteTheater, updateMovie, addMovie, fetchOmdbPreview, getTheaterDuplicates, mergeTheaterDuplicates, getMovieDuplicates, mergeMovieDuplicates, verifyTheater, verifyMovie, getMovieDataQuality } from "@/services/api"
-import { formatTimeDisplay, resolveApiUrl } from "@/lib/types"
+import { addSeriesFromOmdb, deleteSeries, refreshSeriesFromOmdb, getAllSeries } from "@/services/series-service"
+import { formatTimeDisplay, resolveApiUrl, formatRuntimeMinutes } from "@/lib/types"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
@@ -40,6 +41,14 @@ export default function AdminPage() {
     const [movies, setMovies] = useState<any[]>([])
     const [filteredMovies, setFilteredMovies] = useState<any[]>([])
     const [theaters, setTheaters] = useState<any[]>([])
+
+    // Series states
+    const [seriesList, setSeriesList] = useState<any[]>([])
+    const [addingSeriesImdbId, setAddingSeriesImdbId] = useState("")
+    const [addingSeriesLoading, setAddingSeriesLoading] = useState(false)
+    const [deletingSeriesId, setDeletingSeriesId] = useState<string | null>(null)
+    const [refreshingSeriesId, setRefreshingSeriesId] = useState<string | null>(null)
+
     const [newTheaterName, setNewTheaterName] = useState("")
     const [newTheaterLoc, setNewTheaterLoc] = useState("")
     const [newTheaterGmapsLink, setNewTheaterGmapsLink] = useState("")
@@ -135,10 +144,11 @@ export default function AdminPage() {
 
     const loadData = async () => {
         try {
-            const [reqs, moviesRes, theatersData] = await Promise.all([
+            const [reqs, moviesRes, theatersData, seriesData] = await Promise.all([
                 getAdminRequests(),
                 getMovies(0, 20),
-                getTheaters()
+                getTheaters(),
+                getAllSeries()
             ])
             const moviesList = moviesRes?.movies || moviesRes || []
             setRequests(reqs || [])
@@ -146,6 +156,7 @@ export default function AdminPage() {
             setFilteredMovies(moviesList)
             setMovieTotal(moviesRes?.total || moviesList.length)
             setTheaters(theatersData || [])
+            setSeriesList(seriesData || [])
         } catch (err) {
             console.error("Failed to load admin data", err)
         } finally {
@@ -548,6 +559,51 @@ export default function AdminPage() {
         }
     }
 
+    const handleAddSeries = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!addingSeriesImdbId.trim()) return
+        setAddingSeriesLoading(true)
+        try {
+            await addSeriesFromOmdb(addingSeriesImdbId.trim())
+            setAddingSeriesImdbId("")
+            const newSeriesList = await getAllSeries()
+            setSeriesList(newSeriesList)
+        } catch (err) {
+            console.error("Failed to add series", err)
+            alert(err instanceof Error ? err.message : "Failed to add series")
+        } finally {
+            setAddingSeriesLoading(false)
+        }
+    }
+
+    const handleRefreshSeries = async (id: string) => {
+        setRefreshingSeriesId(id)
+        try {
+            await refreshSeriesFromOmdb(id)
+            const newSeriesList = await getAllSeries()
+            setSeriesList(newSeriesList)
+        } catch (err) {
+            console.error("Failed to refresh series", err)
+            alert(err instanceof Error ? err.message : "Failed to refresh series")
+        } finally {
+            setRefreshingSeriesId(null)
+        }
+    }
+
+    const handleDeleteSeries = async (id: string) => {
+        if (!window.confirm("Are you sure you want to delete this series?")) return
+        setDeletingSeriesId(id)
+        try {
+            await deleteSeries(id)
+            setSeriesList(seriesList.filter(s => s.id !== id))
+        } catch (err) {
+            console.error("Failed to delete series", err)
+            alert(err instanceof Error ? err.message : "Failed to delete series")
+        } finally {
+            setDeletingSeriesId(null)
+        }
+    }
+
     if (authLoading || localLoading) {
         return (
             <div className="flex h-screen items-center justify-center">
@@ -873,7 +929,121 @@ export default function AdminPage() {
                         </CardContent>
                     </Card>
 
-                            {/* Theaters Card */}
+                    {/* Series Card */}
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                            <div>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Tv className="h-5 w-5 text-primary" />
+                                    Series ({seriesList.length})
+                                </CardTitle>
+                                <CardDescription>Manage TV Series in the database</CardDescription>
+                            </div>
+                            <form onSubmit={handleAddSeries} className="flex items-center gap-2">
+                                <Input
+                                    placeholder="IMDb ID (e.g. tt0903747)"
+                                    value={addingSeriesImdbId}
+                                    onChange={(e) => setAddingSeriesImdbId(e.target.value)}
+                                    className="w-48 h-9 text-sm"
+                                    disabled={addingSeriesLoading}
+                                />
+                                <Button
+                                    type="submit"
+                                    disabled={addingSeriesLoading || !addingSeriesImdbId.trim()}
+                                    className="h-9 flex items-center gap-2 bg-primary text-primary-foreground shadow hover:bg-primary/90"
+                                >
+                                    {addingSeriesLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                                    Add Series
+                                </Button>
+                            </form>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm">
+                                    <thead>
+                                        <tr className="border-b">
+                                            <th className="text-left py-3 px-2 font-medium">Title</th>
+                                            <th className="text-left py-3 px-2 font-medium w-32">Years</th>
+                                            <th className="text-left py-3 px-2 font-medium w-24">Seasons</th>
+                                            <th className="text-left py-3 px-2 font-medium w-24">Episodes</th>
+                                            <th className="text-left py-3 px-2 font-medium w-24">Runtime</th>
+                                            <th className="text-right py-3 px-2 font-medium w-24">Rating</th>
+                                            <th className="text-center py-3 px-2 font-medium w-24">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {seriesList.map((series) => (
+                                            <tr key={series.id} className="border-b hover:bg-muted/50">
+                                                <td className="py-3 px-2 font-medium">
+                                                    <div className="flex items-center gap-2">
+                                                        {series.posterUrl && (
+                                                            <img src={series.posterUrl} alt={series.title} className="w-8 h-12 object-cover rounded" />
+                                                        )}
+                                                        <a
+                                                            href={`https://www.imdb.com/title/${series.imdbId}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-primary hover:underline flex items-center gap-1.5"
+                                                            title="Open IMDb Page"
+                                                        >
+                                                            {series.title}
+                                                            <ExternalLink className="h-3 w-3 opacity-70 shrink-0" />
+                                                        </a>
+                                                    </div>
+                                                </td>
+                                                <td className="py-3 px-2 text-muted-foreground">
+                                                    {series.year} - {series.endYear || "Present"}
+                                                </td>
+                                                <td className="py-3 px-2">{series.totalSeasons}</td>
+                                                <td className="py-3 px-2">{series.totalEpisodes}</td>
+                                                <td className="py-3 px-2 text-muted-foreground">{formatRuntimeMinutes(series.totalRuntimeMinutes)}</td>
+                                                <td className="py-3 px-2 text-right">
+                                                    {series.imdbRating ? (
+                                                        <span className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
+                                                            ★ {series.imdbRating}
+                                                        </span>
+                                                    ) : "N/A"}
+                                                </td>
+                                                <td className="py-3 px-2 text-center">
+                                                    <div className="flex items-center justify-center gap-1">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                                            onClick={() => handleRefreshSeries(series.id)}
+                                                            disabled={refreshingSeriesId === series.id}
+                                                            title="Refresh from OMDB"
+                                                        >
+                                                            {refreshingSeriesId === series.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                            onClick={() => handleDeleteSeries(series.id)}
+                                                            disabled={deletingSeriesId === series.id}
+                                                            title="Delete Series"
+                                                        >
+                                                            {deletingSeriesId === series.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                                                        </Button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {seriesList.length === 0 && (
+                                            <tr>
+                                                <td colSpan={7} className="text-center py-10 text-muted-foreground">
+                                                    No series in the database. Add one using its IMDb ID.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    {/* Theaters Card */}
                             <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">

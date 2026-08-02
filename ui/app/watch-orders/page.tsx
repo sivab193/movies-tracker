@@ -2,7 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/contexts/auth-context";
-import { getAllWatchOrders } from "@/services/watch-order-service";
+import { getAllWatchOrders, enrichWatchOrderItems } from "@/services/watch-order-service";
+import { getSeriesProgress } from "@/services/series-service";
+import { formatRuntimeMinutes, resolveApiUrl } from "@/lib/types";
+import type { EnrichedWatchOrderItem, SeriesProgress } from "@/lib/types";
+import Link from "next/link";
 import { Header } from "@/components/header";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +18,7 @@ export default function WatchOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [seriesProgressList, setSeriesProgressList] = useState<SeriesProgress[]>([]);
 
   useEffect(() => {
     async function loadData() {
@@ -21,7 +26,15 @@ export default function WatchOrdersPage() {
         setLoading(true);
         // Pass auth token if required by your API setup
         const data = await getAllWatchOrders();
-        setWatchOrders(data);
+        
+        // Enrich all items with live data
+        const enrichedOrders = await Promise.all(
+          data.map(async (order: any) => ({
+            ...order,
+            items: await enrichWatchOrderItems(order.items || [])
+          }))
+        );
+        setWatchOrders(enrichedOrders);
       } catch (err) {
         setError("Failed to load watch orders. Please try again later.");
         console.error(err);
@@ -32,8 +45,16 @@ export default function WatchOrdersPage() {
     
     if (!authLoading) {
       loadData();
+      if (user) {
+        getSeriesProgress(user.uid).then(progress => {
+          setSeriesProgressList(progress || []);
+        }).catch(err => {
+          console.error("Failed to load series progress", err);
+          setSeriesProgressList([]);
+        });
+      }
     }
-  }, [authLoading]);
+  }, [authLoading, user]);
 
   // Check if a movie has been watched by the logged-in user
   const hasWatched = (imdbId: string) => {
@@ -100,9 +121,14 @@ export default function WatchOrdersPage() {
                   {isExpanded && (
                     <CardContent className="pt-6 border-t bg-card/50">
                       <div className="relative border-l-2 border-primary/20 ml-3 md:ml-4 space-y-8 pb-4">
-                        {order.items?.sort((a: any, b: any) => a.orderIndex - b.orderIndex).map((item: any, index: number) => {
+                        {order.items?.sort((a: any, b: any) => a.orderIndex - b.orderIndex).map((item: EnrichedWatchOrderItem, index: number) => {
                           const isMovie = item.type?.toLowerCase() === 'movie';
                           const watched = isMovie && item.itemId ? hasWatched(item.itemId) : false;
+                          
+                          const seriesProgress = !isMovie ? seriesProgressList.find(p => p.imdbId === item.itemId) : null;
+                          const watchedSeasonsCount = seriesProgress?.watchedSeasons?.length || 0;
+                          const totalSeasonsCount = item.totalSeasons || 0;
+                          const seriesFullyWatched = totalSeasonsCount > 0 && watchedSeasonsCount >= totalSeasonsCount;
                           
                           return (
                             <div key={item.id || index} className="relative pl-6 md:pl-8">
@@ -110,28 +136,76 @@ export default function WatchOrdersPage() {
                               <div className="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-background border-2 border-primary ring-4 ring-background" />
                               
                               <div className="bg-background rounded-lg border p-4 shadow-sm hover:shadow-md transition-shadow">
-                                <div className="flex flex-wrap justify-between items-start gap-2 mb-2">
-                                  <h4 className="font-semibold text-lg flex items-center gap-2">
-                                    {item.title}
-                                    {user && watched && (
-                                      <span title="Watched"><CheckCircle className="w-4 h-4 text-green-500" /></span>
+                                <div className="flex gap-4">
+                                  {item.posterUrl && (
+                                    <div className="flex-shrink-0">
+                                      <img 
+                                        src={resolveApiUrl(item.posterUrl)} 
+                                        alt={item.title || 'Poster'} 
+                                        className="w-10 h-16 object-cover rounded shadow-sm bg-muted"
+                                        loading="lazy"
+                                      />
+                                    </div>
+                                  )}
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex flex-wrap justify-between items-start gap-2 mb-2">
+                                      <h4 className="font-semibold text-lg flex items-center gap-2">
+                                        <Link href={isMovie ? `/movie/${item.itemId}` : `/series/${item.itemId}`} className="hover:underline hover:text-primary transition-colors">
+                                          {item.title || 'Unknown'}
+                                        </Link>
+                                        {user && isMovie && watched && (
+                                          <span title="Watched"><CheckCircle className="w-4 h-4 text-green-500" /></span>
+                                        )}
+                                        {user && !isMovie && seriesFullyWatched && (
+                                          <span title="Fully Watched"><CheckCircle className="w-4 h-4 text-green-500" /></span>
+                                        )}
+                                      </h4>
+                                      <div className="flex gap-2 items-center flex-wrap justify-end">
+                                        <span className="text-sm font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                                          {isMovie ? item.year : `${item.year}${item.endYear ? `–${item.endYear}` : (item.isOngoing ? '–present' : '')}`}
+                                        </span>
+                                        {isMovie && item.runtime && (
+                                          <span className="text-sm text-muted-foreground border-l border-muted pl-2">
+                                            {item.runtime}
+                                          </span>
+                                        )}
+                                        {!isMovie && item.totalSeasons ? (
+                                          <span className="text-sm text-muted-foreground border-l border-muted pl-2">
+                                            {item.totalSeasons} Season{item.totalSeasons !== 1 ? 's' : ''}
+                                          </span>
+                                        ) : null}
+                                        {!isMovie && item.totalRuntimeMinutes ? (
+                                          <span className="text-sm text-muted-foreground border-l border-muted pl-2">
+                                            {formatRuntimeMinutes(item.totalRuntimeMinutes)}
+                                          </span>
+                                        ) : null}
+                                        
+                                        <Badge variant="outline" className={isMovie ? "bg-blue-500/10 text-blue-500 border-blue-500/20 ml-2" : "bg-purple-500/10 text-purple-500 border-purple-500/20 ml-2"}>
+                                          {isMovie ? <Film className="w-3 h-3 mr-1" /> : <Tv className="w-3 h-3 mr-1" />}
+                                          {isMovie ? 'Movie' : 'Series'}
+                                        </Badge>
+                                      </div>
+                                    </div>
+                                    
+                                    {user && !isMovie && totalSeasonsCount > 0 && (
+                                      <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
+                                        <div className="flex-1 max-w-[100px] h-1.5 bg-muted rounded-full overflow-hidden">
+                                          <div 
+                                            className="h-full bg-primary transition-all" 
+                                            style={{ width: `${Math.min(100, (watchedSeasonsCount / totalSeasonsCount) * 100)}%` }}
+                                          />
+                                        </div>
+                                        <span>{watchedSeasonsCount} / {totalSeasonsCount} seasons</span>
+                                      </div>
                                     )}
-                                  </h4>
-                                  <div className="flex gap-2 items-center">
-                                    <span className="text-sm font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                                      {item.year}
-                                    </span>
-                                    <Badge variant="outline" className={isMovie ? "bg-blue-500/10 text-blue-500 border-blue-500/20" : "bg-purple-500/10 text-purple-500 border-purple-500/20"}>
-                                      {isMovie ? <Film className="w-3 h-3 mr-1" /> : <Tv className="w-3 h-3 mr-1" />}
-                                      {isMovie ? 'Movie' : 'Series'}
-                                    </Badge>
+                                    
+                                    {item.notes && (
+                                      <p className="text-sm text-muted-foreground mt-2 border-l-2 border-muted pl-3">
+                                        {item.notes}
+                                      </p>
+                                    )}
                                   </div>
                                 </div>
-                                {item.notes && (
-                                  <p className="text-sm text-muted-foreground mt-2 border-l-2 border-muted pl-3">
-                                    {item.notes}
-                                  </p>
-                                )}
                               </div>
                             </div>
                           );

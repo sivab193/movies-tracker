@@ -654,3 +654,124 @@ def get_public_profile(user_id):
         profile['email'] = user.get('email') # Show email to admin
 
     return jsonify(profile)
+
+@users_bp.route('/series-progress', methods=['POST'])
+def update_series_progress():
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    token = auth_header.split(' ')[1]
+    decoded_token = get_user_from_token(token)
+    if not decoded_token:
+        return jsonify({"error": "Invalid token"}), 401
+        
+    firebase_uid = decoded_token['uid']
+    data = request.get_json()
+    imdb_id = data.get('imdbId')
+    season_number = data.get('seasonNumber')
+    
+    if not imdb_id or season_number is None:
+        return jsonify({"error": "imdbId and seasonNumber are required"}), 400
+        
+    user = db.users.find_one({"firebaseUid": firebase_uid})
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+        
+    series_progress = user.get('seriesProgress', [])
+    now = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    
+    target_entry = None
+    target_idx = -1
+    for idx, entry in enumerate(series_progress):
+        if entry.get('imdbId') == imdb_id:
+            target_entry = entry
+            target_idx = idx
+            break
+            
+    if target_entry:
+        watched_seasons = target_entry.get('watchedSeasons', [])
+        if season_number in watched_seasons:
+            watched_seasons.remove(season_number)
+        else:
+            watched_seasons.append(season_number)
+            
+        target_entry['watchedSeasons'] = watched_seasons
+        target_entry['updatedAt'] = now
+        series_progress[target_idx] = target_entry
+    else:
+        title = None
+        series = db.series.find_one({"imdbId": imdb_id})
+        if series:
+            title = series.get('title')
+            
+        target_entry = {
+            "imdbId": imdb_id,
+            "title": title,
+            "watchedSeasons": [season_number],
+            "startedAt": now,
+            "updatedAt": now
+        }
+        series_progress.append(target_entry)
+        
+    db.users.update_one(
+        {"firebaseUid": firebase_uid},
+        {"$set": {"seriesProgress": series_progress}}
+    )
+    
+    return jsonify({"message": "Series progress updated", "seriesProgress": target_entry})
+
+@users_bp.route('/series-progress/<imdb_id>', methods=['DELETE'])
+def delete_series_progress(imdb_id):
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    token = auth_header.split(' ')[1]
+    decoded_token = get_user_from_token(token)
+    if not decoded_token:
+        return jsonify({"error": "Invalid token"}), 401
+        
+    firebase_uid = decoded_token['uid']
+    
+    db.users.update_one(
+        {"firebaseUid": firebase_uid},
+        {"$pull": {"seriesProgress": {"imdbId": imdb_id}}}
+    )
+    
+    return jsonify({"message": "Series removed from progress"})
+
+@users_bp.route('/<uid>/series-progress', methods=['GET'])
+def get_series_progress(uid):
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    token = auth_header.split(' ')[1]
+    decoded_token = get_user_from_token(token)
+    if not decoded_token:
+        return jsonify({"error": "Invalid token"}), 401
+        
+    current_uid = decoded_token['uid']
+    caller = db.users.find_one({"firebaseUid": current_uid})
+    is_admin = caller and caller.get('isAdmin')
+    
+    if current_uid != uid and not is_admin:
+        return jsonify({"error": "Forbidden"}), 403
+        
+    user = db.users.find_one({"firebaseUid": uid})
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+        
+    series_progress = user.get('seriesProgress', [])
+    
+    for entry in series_progress:
+        series = db.series.find_one({"imdbId": entry.get('imdbId')})
+        if series:
+            entry['totalSeasons'] = series.get('totalSeasons')
+            entry['posterUrl'] = series.get('posterUrl')
+            if not entry.get('title'):
+                entry['title'] = series.get('title')
+            entry['year'] = series.get('year')
+            
+    return jsonify({"seriesProgress": series_progress})

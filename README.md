@@ -61,6 +61,8 @@ For detailed sequence diagrams of request lifecycles and storage topologies, see
 
 | Document | Description |
 | :--- | :--- |
+| **[Architecture Reference](./docs/ARCHITECTURE.md)** | Technical reference for authentication flows, MongoDB storage strategies, and request pipelines. |
+| **[Visual Architecture Map](./docs/ARCHITECTURE_MAP.md)** | System diagrams, ER database models, API endpoint tables, and full codebase graph. |
 | **[MCP Server Guide](./mcp-server/README.md)** | Connect Claude AI and other assistants to your Movies Tracker via Model Context Protocol. |
 | **[REST API Reference](./docs/API_DOCS.md)** | Complete documentation of all endpoints, authentication headers, schemas, and status codes. |
 | **[OpenAPI 3.0 Specification](./docs/openapi.yaml)** | Standard OpenAPI / Swagger definition ready for Postman or Redoc import. |

@@ -2,6 +2,8 @@
 
 This document describes the end-to-end architecture, data pipelines, authentication flow, and deployment topology of **Movies Tracker**.
 
+> 💡 **Visual Map**: For interactive Mermaid system diagrams, ER database models, API endpoint tables, and full codebase directory graphs, see **[ARCHITECTURE_MAP.md](./ARCHITECTURE_MAP.md)**.
+
 ---
 
 ## 🌐 High-Level Topology

@@ -63,20 +63,29 @@ def add_watch_order():
     now = datetime.datetime.now(datetime.timezone.utc)
     items = data.get('items', [])
     
-    # Ensure all items have ObjectIds
-    for item in items:
-        if '_id' not in item:
-            item['_id'] = ObjectId()
-        elif isinstance(item['_id'], str):
+    processed_items = []
+    for idx, item in enumerate(items):
+        item_id = item.get('_id')
+        if not item_id:
+            item_id = ObjectId()
+        elif isinstance(item_id, str):
             try:
-                item['_id'] = ObjectId(item['_id'])
+                item_id = ObjectId(item_id)
             except InvalidId:
-                item['_id'] = ObjectId()
+                item_id = ObjectId()
+        
+        processed_items.append({
+            "_id": item_id,
+            "type": item.get("type", "movie"),
+            "itemId": item.get("itemId", ""),
+            "notes": item.get("notes", ""),
+            "orderIndex": item.get("orderIndex", idx + 1)
+        })
 
     new_order = {
         "name": data['name'],
         "description": data.get('description', ''),
-        "items": items,
+        "items": processed_items,
         "createdAt": now,
         "updatedAt": now
     }
@@ -112,15 +121,25 @@ def update_watch_order(order_id):
     
     if 'items' in data:
         items = data['items']
-        for item in items:
-            if '_id' not in item:
-                item['_id'] = ObjectId()
-            elif isinstance(item['_id'], str):
+        processed_items = []
+        for idx, item in enumerate(items):
+            item_id = item.get('_id')
+            if not item_id:
+                item_id = ObjectId()
+            elif isinstance(item_id, str):
                 try:
-                    item['_id'] = ObjectId(item['_id'])
+                    item_id = ObjectId(item_id)
                 except InvalidId:
-                    item['_id'] = ObjectId()
-        update_data['items'] = items
+                    item_id = ObjectId()
+            
+            processed_items.append({
+                "_id": item_id,
+                "type": item.get("type", "movie"),
+                "itemId": item.get("itemId", ""),
+                "notes": item.get("notes", ""),
+                "orderIndex": item.get("orderIndex", idx + 1)
+            })
+        update_data['items'] = processed_items
 
     try:
         result = db.watch_orders.update_one({"_id": oid}, {"$set": update_data})

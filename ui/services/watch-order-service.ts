@@ -1,5 +1,6 @@
 import { auth } from "@/lib/firebase"
-import { WatchOrder } from "@/lib/types"
+import { WatchOrder, WatchOrderItem, EnrichedWatchOrderItem } from "@/lib/types"
+import { lookupMovie, lookupSeries } from "@/services/series-service"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
 
@@ -72,4 +73,43 @@ export async function deleteWatchOrder(id: string): Promise<void> {
     headers,
   })
   if (!res.ok) throw new Error("Failed to delete watch order")
+}
+
+// Enrich watch order items with live data from movies/series collections
+export async function enrichWatchOrderItems(items: WatchOrderItem[]): Promise<EnrichedWatchOrderItem[]> {
+  const enriched = await Promise.allSettled(
+    items.map(async (item) => {
+      try {
+        if (item.type === 'series') {
+          const data = await lookupSeries(item.itemId)
+          return {
+            ...item,
+            title: data.title,
+            year: data.year,
+            endYear: data.endYear,
+            posterUrl: data.posterUrl,
+            totalSeasons: data.totalSeasons,
+            totalEpisodes: data.totalEpisodes,
+            totalRuntimeMinutes: data.totalRuntimeMinutes,
+            imdbRating: data.imdbRating,
+            isOngoing: data.isOngoing,
+          }
+        } else {
+          const data = await lookupMovie(item.itemId)
+          return {
+            ...item,
+            title: data.title,
+            year: data.year,
+            posterUrl: data.posterUrl,
+            runtime: data.runtime,
+            imdbRating: data.imdbRating,
+          }
+        }
+      } catch {
+        // Return item with whatever data it has (fallback)
+        return { ...item }
+      }
+    })
+  )
+  return enriched.map(r => r.status === 'fulfilled' ? r.value : (r as any).value || {})
 }

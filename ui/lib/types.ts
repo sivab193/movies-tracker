@@ -159,6 +159,90 @@ export interface WatchOrder {
   updatedAt: string
 }
 
+// Enriched watch order item with resolved data from movies/series collections
+export interface EnrichedWatchOrderItem extends WatchOrderItem {
+  endYear?: number | null
+  posterUrl?: string | null
+  totalSeasons?: number
+  totalEpisodes?: number
+  totalRuntimeMinutes?: number
+  runtime?: string | null
+  imdbRating?: number | null
+  isOngoing?: boolean
+}
+
+// Series episode
+export interface SeriesEpisode {
+  episodeNumber: number
+  title: string
+  imdbId: string
+  runtimeMinutes: number
+  airDate: string | null
+  imdbRating: number | null
+}
+
+// Series season
+export interface SeriesSeason {
+  seasonNumber: number
+  episodeCount: number
+  seasonRuntimeMinutes: number
+  episodes: SeriesEpisode[]
+}
+
+// Full series document
+export interface Series {
+  id: string
+  _id?: string
+  imdbId: string
+  title: string
+  year: number
+  endYear: number | null
+  posterUrl: string | null
+  plot: string | null
+  genre: string | null
+  actors: string | null
+  director: string | null
+  language: string | null
+  country: string | null
+  imdbRating: number | null
+  isOngoing: boolean
+  totalSeasons: number
+  totalEpisodes: number
+  totalRuntimeMinutes: number
+  seasons: SeriesSeason[]
+  createdAt: string
+  updatedAt: string
+  lastOmdbSync: string | null
+}
+
+// Lightweight series info (from lookup endpoint)
+export interface SeriesLookup {
+  id: string
+  imdbId: string
+  title: string
+  year: number
+  endYear: number | null
+  posterUrl: string | null
+  totalSeasons: number
+  totalEpisodes: number
+  totalRuntimeMinutes: number
+  imdbRating: number | null
+  isOngoing: boolean
+}
+
+// User's per-season progress on a series
+export interface SeriesProgress {
+  imdbId: string
+  title: string
+  watchedSeasons: number[]
+  startedAt: string
+  updatedAt: string
+  // Enriched from lookup:
+  totalSeasons?: number
+  posterUrl?: string | null
+  year?: number
+}
+
 // Helper to format seconds to display string
 export function formatTimeDisplay(seconds: number): string {
   const mins = Math.floor(seconds / 60)
@@ -246,4 +330,20 @@ export function formatRuntimeToHHMM(runtime?: string | null | number): string {
     return `${hrs}h`
   }
   return `${hrs}h ${remMins}min`
+}
+
+// Format total minutes to a human-readable runtime string
+// < 600 min → "NNN mins"
+// >= 600 min → "X days Y hrs Z mins" or "Y hrs Z mins"
+export function formatRuntimeMinutes(totalMinutes: number): string {
+  if (!totalMinutes || totalMinutes <= 0) return "? mins"
+  if (totalMinutes < 600) return `${totalMinutes} mins`
+  const days = Math.floor(totalMinutes / (24 * 60))
+  const hrs = Math.floor((totalMinutes % (24 * 60)) / 60)
+  const mins = totalMinutes % 60
+  const parts: string[] = []
+  if (days > 0) parts.push(`${days}d`)
+  if (hrs > 0) parts.push(`${hrs}h`)
+  if (mins > 0) parts.push(`${mins}m`)
+  return parts.join(' ') || '0 mins'
 }
