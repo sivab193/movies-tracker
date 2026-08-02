@@ -37,6 +37,7 @@ Options:
 import os
 import sys
 import json
+import re
 import argparse
 import datetime
 
@@ -193,6 +194,21 @@ def build_release_order(catalog_path):
 
 # ----------------------------------------------------------------------- saving
 
+def slug_for(name, exclude_id=None):
+    """Public short-link slug (/w/<slug>). Mirrors routes/watch_orders.py rules."""
+    base = re.sub(r'[^a-z0-9]+', '-', (name or '').lower()).strip('-')[:40].strip('-') or "watch-order"
+    candidate, suffix = base, 2
+    while True:
+        query = {"slug": candidate}
+        if exclude_id is not None:
+            query["_id"] = {"$ne": exclude_id}
+        if not db.watch_orders.find_one(query):
+            return candidate
+        trimmed = base[:40 - len(str(suffix)) - 1].strip('-')
+        candidate = f"{trimmed}-{suffix}"
+        suffix += 1
+
+
 def save_order(name, description, items, args):
     existing = db.watch_orders.find_one({"name": name})
 
@@ -220,14 +236,17 @@ def save_order(name, description, items, args):
             if item['itemId'] in existing_ids:
                 item['_id'] = existing_ids[item['itemId']]
 
-        db.watch_orders.update_one(
-            {"_id": existing["_id"]},
-            {"$set": {"description": description, "items": items, "updatedAt": now}}
-        )
+        update = {"description": description, "items": items, "updatedAt": now}
+        # Never overwrite a slug an admin may have customised.
+        if not existing.get("slug"):
+            update["slug"] = slug_for(name, exclude_id=existing["_id"])
+
+        db.watch_orders.update_one({"_id": existing["_id"]}, {"$set": update})
         print(f"♻️  Updated '{name}' — {len(items)} items (ID: {existing['_id']}).")
     else:
         result = db.watch_orders.insert_one({
             "name": name,
+            "slug": slug_for(name),
             "description": description,
             "items": items,
             "createdAt": now,

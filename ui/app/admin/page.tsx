@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Header } from "@/components/header"
+import { AdminWatchOrders } from "@/components/admin-watch-orders"
 import { getAdminRequests, resolveAdminRequest } from "@/services/user-service"
 import { getMovies, deleteMovie, clearMovieSubmissions, getTheaters, addTheater, updateTheater, deleteTheater, updateMovie, addMovie, fetchOmdbPreview, getTheaterDuplicates, mergeTheaterDuplicates, getMovieDuplicates, mergeMovieDuplicates, verifyTheater, verifyMovie, getMovieDataQuality } from "@/services/api"
 import { addSeriesFromOmdb, deleteSeries, refreshSeriesFromOmdb, getAllSeries } from "@/services/series-service"
@@ -1034,6 +1035,9 @@ export default function AdminPage() {
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* Watch Orders Card */}
+                    <AdminWatchOrders />
 
                     {/* Theaters Card */}
                             <Card>

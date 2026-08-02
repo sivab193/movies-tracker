@@ -153,6 +153,7 @@ export interface WatchOrder {
   _id: string
   id: string // alias for _id
   name: string
+  slug: string // public short link: /w/<slug>, admin editable
   description: string | null
   items: WatchOrderItem[]
   createdAt: string

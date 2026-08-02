@@ -1,37 +1,36 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useAuth } from "@/contexts/auth-context";
 import { getAllWatchOrders, enrichWatchOrderItems } from "@/services/watch-order-service";
-import { getSeriesProgress } from "@/services/series-service";
 import { formatRuntimeMinutes, resolveApiUrl } from "@/lib/types";
-import type { EnrichedWatchOrderItem, SeriesProgress } from "@/lib/types";
+import type { EnrichedWatchOrderItem } from "@/lib/types";
 import Link from "next/link";
 import { Header } from "@/components/header";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, ListOrdered, Film, Tv, CheckCircle, Clock } from "lucide-react";
+import { Loader2, ListOrdered, Film, Tv, Clock, ArrowRight } from "lucide-react";
+
+type OrderCard = {
+  id: string;
+  slug: string;
+  name: string;
+  description?: string | null;
+  items: EnrichedWatchOrderItem[];
+};
 
 export default function WatchOrdersPage() {
-  const { user, userProfile, loading: authLoading } = useAuth();
-  const [watchOrders, setWatchOrders] = useState<any[]>([]);
+  const [watchOrders, setWatchOrders] = useState<OrderCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [seriesProgressList, setSeriesProgressList] = useState<SeriesProgress[]>([]);
 
   useEffect(() => {
     async function loadData() {
       try {
         setLoading(true);
-        // Pass auth token if required by your API setup
         const data = await getAllWatchOrders();
-        
-        // Enrich all items with live data
         const enrichedOrders = await Promise.all(
           data.map(async (order: any) => ({
             ...order,
-            items: await enrichWatchOrderItems(order.items || [])
+            items: await enrichWatchOrderItems(order.items || []),
           }))
         );
         setWatchOrders(enrichedOrders);
@@ -42,33 +41,30 @@ export default function WatchOrdersPage() {
         setLoading(false);
       }
     }
-    
-    if (!authLoading) {
-      loadData();
-      if (user) {
-        getSeriesProgress(user.uid).then(progress => {
-          setSeriesProgressList(progress || []);
-        }).catch(err => {
-          console.error("Failed to load series progress", err);
-          setSeriesProgressList([]);
-        });
-      }
-    }
-  }, [authLoading, user]);
 
-  // Check if a movie has been watched by the logged-in user
-  const hasWatched = (imdbId: string) => {
-    if (!userProfile?.watchHistory) return false;
-    return userProfile.watchHistory.some((entry: any) => entry.imdbId === imdbId);
+    loadData();
+  }, []);
+
+  const summarize = (items: EnrichedWatchOrderItem[]) => {
+    const movies = items.filter((i) => i.type?.toLowerCase() === "movie").length;
+    const series = items.length - movies;
+    const minutes = items.reduce((sum, item) => {
+      if (item.type?.toLowerCase() === "movie") {
+        const parsed = parseInt(String(item.runtime || "").replace(/[^0-9]/g, ""), 10);
+        return sum + (Number.isNaN(parsed) ? 0 : parsed);
+      }
+      return sum + (item.totalRuntimeMinutes || 0);
+    }, 0);
+    return { movies, series, minutes };
   };
 
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <Header />
-      
-      <main className="flex-1 container max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold flex items-center gap-2 mb-2">
+
+      <main className="flex-1 container max-w-5xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+        <div className="mb-10">
+          <h1 className="text-3xl sm:text-4xl font-bold flex items-center gap-2 mb-2">
             <ListOrdered className="w-8 h-8 text-primary" />
             Universe Watch Orders
           </h1>
@@ -95,136 +91,75 @@ export default function WatchOrdersPage() {
             <p className="text-muted-foreground">Check back later for curated timelines.</p>
           </div>
         ) : (
-          <div className="space-y-6">
+          <div className="grid gap-6 sm:grid-cols-2">
             {watchOrders.map((order) => {
-              const isExpanded = expandedId === order.id;
-              
+              const items = [...(order.items || [])].sort((a, b) => a.orderIndex - b.orderIndex);
+              const { movies, series, minutes } = summarize(items);
+              const posters = items.map((i) => i.posterUrl).filter(Boolean).slice(0, 5) as string[];
+
               return (
-                <Card 
-                  key={order.id} 
-                  id={order.id}
-                  className={`overflow-hidden transition-all duration-300 ${isExpanded ? 'ring-2 ring-primary border-primary/50' : 'hover:border-primary/30 cursor-pointer'}`}
-                  onClick={() => !isExpanded && setExpandedId(order.id)}
+                <Link
+                  key={order.id}
+                  href={`/w/${order.slug || order.id}`}
+                  className="group relative overflow-hidden rounded-xl border bg-card/60 transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg"
                 >
-                  <CardHeader className={`${isExpanded ? 'bg-primary/5' : ''}`}>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <CardTitle className="text-xl mb-1">{order.name}</CardTitle>
-                        <CardDescription>{order.description}</CardDescription>
-                      </div>
+                  {/* Poster strip */}
+                  <div className="relative h-32 overflow-hidden bg-muted">
+                    <div className="flex h-full">
+                      {posters.map((poster, i) => (
+                        <img
+                          key={`${poster}-${i}`}
+                          src={resolveApiUrl(poster)}
+                          alt=""
+                          aria-hidden
+                          className="h-full flex-1 object-cover transition-transform duration-500 group-hover:scale-105"
+                          loading="lazy"
+                        />
+                      ))}
+                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-card via-card/60 to-transparent" />
+                  </div>
+
+                  <div className="p-5 -mt-10 relative">
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <h2 className="text-xl font-semibold group-hover:text-primary transition-colors">
+                        {order.name}
+                      </h2>
                       <Badge variant="secondary" className="whitespace-nowrap">
-                        {order.items?.length || 0} Items
+                        {items.length} items
                       </Badge>
                     </div>
-                  </CardHeader>
-                  
-                  {isExpanded && (
-                    <CardContent className="pt-6 border-t bg-card/50">
-                      <div className="relative border-l-2 border-primary/20 ml-3 md:ml-4 space-y-8 pb-4">
-                        {order.items?.sort((a: any, b: any) => a.orderIndex - b.orderIndex).map((item: EnrichedWatchOrderItem, index: number) => {
-                          const isMovie = item.type?.toLowerCase() === 'movie';
-                          const watched = isMovie && item.itemId ? hasWatched(item.itemId) : false;
-                          
-                          const seriesProgress = !isMovie ? seriesProgressList.find(p => p.imdbId === item.itemId) : null;
-                          const watchedSeasonsCount = seriesProgress?.watchedSeasons?.length || 0;
-                          const totalSeasonsCount = item.totalSeasons || 0;
-                          const seriesFullyWatched = totalSeasonsCount > 0 && watchedSeasonsCount >= totalSeasonsCount;
-                          
-                          return (
-                            <div key={item.id || index} className="relative pl-6 md:pl-8">
-                              {/* Timeline Dot */}
-                              <div className="absolute -left-[9px] top-1 w-4 h-4 rounded-full bg-background border-2 border-primary ring-4 ring-background" />
-                              
-                              <div className="bg-background rounded-lg border p-4 shadow-sm hover:shadow-md transition-shadow">
-                                <div className="flex gap-4">
-                                  {item.posterUrl && (
-                                    <div className="flex-shrink-0">
-                                      <img 
-                                        src={resolveApiUrl(item.posterUrl)} 
-                                        alt={item.title || 'Poster'} 
-                                        className="w-10 h-16 object-cover rounded shadow-sm bg-muted"
-                                        loading="lazy"
-                                      />
-                                    </div>
-                                  )}
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex flex-wrap justify-between items-start gap-2 mb-2">
-                                      <h4 className="font-semibold text-lg flex items-center gap-2">
-                                        <Link href={isMovie ? `/movie/${item.itemId}` : `/series/${item.itemId}`} className="hover:underline hover:text-primary transition-colors">
-                                          {item.title || 'Unknown'}
-                                        </Link>
-                                        {user && isMovie && watched && (
-                                          <span title="Watched"><CheckCircle className="w-4 h-4 text-green-500" /></span>
-                                        )}
-                                        {user && !isMovie && seriesFullyWatched && (
-                                          <span title="Fully Watched"><CheckCircle className="w-4 h-4 text-green-500" /></span>
-                                        )}
-                                      </h4>
-                                      <div className="flex gap-2 items-center flex-wrap justify-end">
-                                        <span className="text-sm font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                                          {isMovie ? item.year : `${item.year}${item.endYear ? `–${item.endYear}` : (item.isOngoing ? '–present' : '')}`}
-                                        </span>
-                                        {isMovie && item.runtime && (
-                                          <span className="text-sm text-muted-foreground border-l border-muted pl-2">
-                                            {item.runtime}
-                                          </span>
-                                        )}
-                                        {!isMovie && item.totalSeasons ? (
-                                          <span className="text-sm text-muted-foreground border-l border-muted pl-2">
-                                            {item.totalSeasons} Season{item.totalSeasons !== 1 ? 's' : ''}
-                                          </span>
-                                        ) : null}
-                                        {!isMovie && item.totalRuntimeMinutes ? (
-                                          <span className="text-sm text-muted-foreground border-l border-muted pl-2">
-                                            {formatRuntimeMinutes(item.totalRuntimeMinutes)}
-                                          </span>
-                                        ) : null}
-                                        
-                                        <Badge variant="outline" className={isMovie ? "bg-blue-500/10 text-blue-500 border-blue-500/20 ml-2" : "bg-purple-500/10 text-purple-500 border-purple-500/20 ml-2"}>
-                                          {isMovie ? <Film className="w-3 h-3 mr-1" /> : <Tv className="w-3 h-3 mr-1" />}
-                                          {isMovie ? 'Movie' : 'Series'}
-                                        </Badge>
-                                      </div>
-                                    </div>
-                                    
-                                    {user && !isMovie && totalSeasonsCount > 0 && (
-                                      <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
-                                        <div className="flex-1 max-w-[100px] h-1.5 bg-muted rounded-full overflow-hidden">
-                                          <div 
-                                            className="h-full bg-primary transition-all" 
-                                            style={{ width: `${Math.min(100, (watchedSeasonsCount / totalSeasonsCount) * 100)}%` }}
-                                          />
-                                        </div>
-                                        <span>{watchedSeasonsCount} / {totalSeasonsCount} seasons</span>
-                                      </div>
-                                    )}
-                                    
-                                    {item.notes && (
-                                      <p className="text-sm text-muted-foreground mt-2 border-l-2 border-muted pl-3">
-                                        {item.notes}
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                      <div className="mt-6 flex justify-end">
-                        <button 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setExpandedId(null);
-                          }}
-                          className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          Collapse Timeline ↑
-                        </button>
-                      </div>
-                    </CardContent>
-                  )}
-                </Card>
+
+                    {order.description && (
+                      <p className="text-sm text-muted-foreground line-clamp-2">{order.description}</p>
+                    )}
+
+                    <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
+                      {movies > 0 && (
+                        <span className="flex items-center gap-1.5">
+                          <Film className="w-3.5 h-3.5 text-blue-500" />
+                          {movies}
+                        </span>
+                      )}
+                      {series > 0 && (
+                        <span className="flex items-center gap-1.5">
+                          <Tv className="w-3.5 h-3.5 text-purple-500" />
+                          {series}
+                        </span>
+                      )}
+                      {minutes > 0 && (
+                        <span className="flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5" />
+                          {formatRuntimeMinutes(minutes)}
+                        </span>
+                      )}
+                      <span className="ml-auto flex items-center gap-1 font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100">
+                        View timeline
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </span>
+                    </div>
+                  </div>
+                </Link>
               );
             })}
           </div>

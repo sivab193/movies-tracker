@@ -164,7 +164,7 @@ export default function SeriesDetailPage({
         {seriesWatchOrders.length > 0 && (
           <div className="flex flex-col gap-2 mb-6">
             {seriesWatchOrders.map((order) => (
-              <Link href={`/watch-orders#${order.id}`} key={order.id}>
+              <Link href={`/w/${order.slug || order.id}`} key={order.id}>
                 <div className="bg-gradient-to-r from-amber-500/10 to-rose-500/10 border border-amber-500/20 text-amber-500 hover:text-amber-400 hover:border-amber-500/40 rounded-lg p-4 flex items-center justify-between transition-colors shadow-sm">
                   <div className="flex items-center gap-3">
                     <ListOrdered className="w-5 h-5" />

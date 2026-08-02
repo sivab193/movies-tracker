@@ -35,6 +35,14 @@ export async function getWatchOrder(id: string): Promise<WatchOrder> {
   return normalizeWatchOrder(data)
 }
 
+// Resolve a public short link (/w/<slug>). Also accepts a raw watch order id.
+export async function getWatchOrderBySlug(slug: string): Promise<WatchOrder> {
+  const res = await fetch(`${API_BASE_URL}/watch-orders/slug/${encodeURIComponent(slug)}`)
+  if (!res.ok) throw new Error("Watch order not found")
+  const data = await res.json()
+  return normalizeWatchOrder(data)
+}
+
 export async function getWatchOrdersForMovie(imdbId: string): Promise<WatchOrder[]> {
   const res = await fetch(`${API_BASE_URL}/watch-orders/movie/${imdbId}`)
   if (!res.ok) throw new Error("Failed to fetch watch orders for movie")
@@ -61,7 +69,10 @@ export async function updateWatchOrder(id: string, data: Partial<WatchOrder>): P
     headers: { ...headers, "Content-Type": "application/json" },
     body: JSON.stringify(data),
   })
-  if (!res.ok) throw new Error("Failed to update watch order")
+  if (!res.ok) {
+    const err = await res.json().catch(() => null)
+    throw new Error(err?.error || "Failed to update watch order")
+  }
   const json = await res.json()
   return normalizeWatchOrder(json)
 }
