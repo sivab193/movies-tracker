@@ -7,9 +7,10 @@ import { Loader2, Plus, ShieldAlert, Trash2, Search, Users, MapPin, ExternalLink
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Header } from "@/components/header"
+import { CollapsibleSection } from "@/components/collapsible-section"
 import { AdminWatchOrders } from "@/components/admin-watch-orders"
+import { AdminCards } from "@/components/admin-cards"
 import { getAdminRequests, resolveAdminRequest } from "@/services/user-service"
 import { getMovies, deleteMovie, clearMovieSubmissions, getTheaters, addTheater, updateTheater, deleteTheater, updateMovie, addMovie, fetchOmdbPreview, getTheaterDuplicates, mergeTheaterDuplicates, getMovieDuplicates, mergeMovieDuplicates, verifyTheater, verifyMovie, getMovieDataQuality } from "@/services/api"
 import { addSeriesFromOmdb, deleteSeries, refreshSeriesFromOmdb, getAllSeries } from "@/services/series-service"
@@ -638,15 +639,15 @@ export default function AdminPage() {
                     <div className="space-y-6">
                             {/* Access Requests */}
                             {requests.length > 0 && (
-                                <Card>
-                                    <CardHeader>
-                                        <CardTitle className="flex items-center gap-2">
+                                <CollapsibleSection
+                                    title={
+                                        <>
                                             <ShieldAlert className="h-5 w-5 text-yellow-500" />
-                                            Access Requests
-                                        </CardTitle>
-                                        <CardDescription>Manage user requests for admin access</CardDescription>
-                                    </CardHeader>
-                                    <CardContent>
+                                            Access Requests ({requests.length})
+                                        </>
+                                    }
+                                    description="Manage user requests for admin access"
+                                >
                                         <div className="space-y-4">
                                             {requests.map((request) => (
                                                 <div key={request.id} className="flex items-center justify-between p-4 border rounded-lg">
@@ -667,26 +668,23 @@ export default function AdminPage() {
                                                 </div>
                                             ))}
                                         </div>
-                                    </CardContent>
-                                </Card>
+                                </CollapsibleSection>
                             )}
 
                             {/* Movies List */}
-                            <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                            <div>
-                                <CardTitle>Movies ({filteredMovies.length})</CardTitle>
-                                <CardDescription>All movies in the database</CardDescription>
-                            </div>
-                            <Button
-                                onClick={openAddMovieModal}
-                                className="flex items-center gap-2 bg-primary text-primary-foreground shadow hover:bg-primary/90"
+                            <CollapsibleSection
+                                title={`Movies (${filteredMovies.length})`}
+                                description="All movies in the database"
+                                headerActions={
+                                    <Button
+                                        onClick={openAddMovieModal}
+                                        className="flex items-center gap-2 bg-primary text-primary-foreground shadow hover:bg-primary/90"
+                                    >
+                                        <Plus className="h-4 w-4" />
+                                        Add Movie
+                                    </Button>
+                                }
                             >
-                                <Plus className="h-4 w-4" />
-                                Add Movie
-                            </Button>
-                        </CardHeader>
-                        <CardContent>
                             {/* Global Filters */}
                             <div className="flex flex-wrap items-center gap-3 mb-4 p-3 bg-muted/20 border rounded-lg">
                                 <div className="relative flex-1 min-w-[200px]">
@@ -927,19 +925,18 @@ export default function AdminPage() {
                                     </Button>
                                 </div>
                             </div>
-                        </CardContent>
-                    </Card>
+                    </CollapsibleSection>
 
                     {/* Series Card */}
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                            <div>
-                                <CardTitle className="flex items-center gap-2">
-                                    <Tv className="h-5 w-5 text-primary" />
-                                    Series ({seriesList.length})
-                                </CardTitle>
-                                <CardDescription>Manage TV Series in the database</CardDescription>
-                            </div>
+                    <CollapsibleSection
+                        title={
+                            <>
+                                <Tv className="h-5 w-5 text-primary" />
+                                Series ({seriesList.length})
+                            </>
+                        }
+                        description="Manage TV Series in the database"
+                        headerActions={
                             <form onSubmit={handleAddSeries} className="flex items-center gap-2">
                                 <Input
                                     placeholder="IMDb ID (e.g. tt0903747)"
@@ -957,8 +954,8 @@ export default function AdminPage() {
                                     Add Series
                                 </Button>
                             </form>
-                        </CardHeader>
-                        <CardContent>
+                        }
+                    >
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
                                     <thead>
@@ -1033,22 +1030,22 @@ export default function AdminPage() {
                                     </tbody>
                                 </table>
                             </div>
-                        </CardContent>
-                    </Card>
+                    </CollapsibleSection>
 
                     {/* Watch Orders Card */}
                     <AdminWatchOrders />
 
                     {/* Theaters Card */}
-                            <Card>
-                        <CardHeader>
-                            <CardTitle className="flex items-center gap-2">
-                                <MapPin className="h-5 w-5 text-primary" />
-                                Theaters ({theaters.length})
-                            </CardTitle>
-                            <CardDescription>Manage the approved list of theaters for users to log watches</CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-6">
+                            <CollapsibleSection
+                                title={
+                                    <>
+                                        <MapPin className="h-5 w-5 text-primary" />
+                                        Theaters ({theaters.length})
+                                    </>
+                                }
+                                description="Manage the approved list of theaters for users to log watches"
+                                contentClassName="space-y-6"
+                            >
                             {/* Add Theater Form */}
                             <form onSubmit={handleAddTheater} className="flex flex-col md:flex-row gap-4 p-4 border rounded-lg bg-muted/20">
                                 <div className="flex-1 space-y-2">
@@ -1230,21 +1227,19 @@ export default function AdminPage() {
                                     </Button>
                                 </div>
                             </div>
-                        </CardContent>
-                            </Card>
+                            </CollapsibleSection>
 
                             {/* Deduplication Card */}
-                            <Card className="border-amber-500/30 bg-amber-500/5 dark:bg-amber-950/10">
-                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                                    <div>
-                                        <CardTitle className="flex items-center gap-2">
-                                            <ShieldAlert className="h-5 w-5 text-amber-500" />
-                                            Database Deduplication & Cleanup
-                                        </CardTitle>
-                                        <CardDescription>
-                                            Scan MongoDB for duplicate theaters and movies, and auto-merge them safely while updating user watch histories.
-                                        </CardDescription>
-                                    </div>
+                            <CollapsibleSection
+                                className="border-amber-500/30 bg-amber-500/5 dark:bg-amber-950/10"
+                                title={
+                                    <>
+                                        <ShieldAlert className="h-5 w-5 text-amber-500" />
+                                        Database Deduplication & Cleanup
+                                    </>
+                                }
+                                description="Scan MongoDB for duplicate theaters and movies, and auto-merge them safely while updating user watch histories."
+                                headerActions={
                                     <Button
                                         onClick={handleScanDuplicates}
                                         disabled={scanningDups}
@@ -1253,8 +1248,9 @@ export default function AdminPage() {
                                         {scanningDups ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                                         Scan For Duplicates
                                     </Button>
-                                </CardHeader>
-                                <CardContent className="space-y-6">
+                                }
+                                contentClassName="space-y-6"
+                            >
                                     <div className="grid md:grid-cols-2 gap-4">
                                         <div className="p-4 border rounded-lg bg-background flex flex-col justify-between">
                                             <div>
@@ -1328,21 +1324,19 @@ export default function AdminPage() {
                                             </Button>
                                         </div>
                                     </div>
-                                </CardContent>
-                            </Card>
+                            </CollapsibleSection>
 
                             {/* Data Quality Card */}
-                            <Card className="border-sky-500/30 bg-sky-500/5 dark:bg-sky-950/10">
-                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                                    <div>
-                                        <CardTitle className="flex items-center gap-2">
-                                            <ClipboardList className="h-5 w-5 text-sky-500" />
-                                            Data Quality
-                                        </CardTitle>
-                                        <CardDescription>
-                                            Find movies missing key data — runtime, cover art, or a reported title-card time — so they can be fixed.
-                                        </CardDescription>
-                                    </div>
+                            <CollapsibleSection
+                                className="border-sky-500/30 bg-sky-500/5 dark:bg-sky-950/10"
+                                title={
+                                    <>
+                                        <ClipboardList className="h-5 w-5 text-sky-500" />
+                                        Data Quality
+                                    </>
+                                }
+                                description="Find movies missing key data — runtime, cover art, or a reported title-card time — so they can be fixed."
+                                headerActions={
                                     <Button
                                         onClick={handleScanDataQuality}
                                         disabled={scanningDataQuality}
@@ -1351,9 +1345,11 @@ export default function AdminPage() {
                                         {scanningDataQuality ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                                         Scan Data Quality
                                     </Button>
-                                </CardHeader>
-                                {dataQuality && (
-                                    <CardContent className="grid md:grid-cols-3 gap-4">
+                                }
+                                contentClassName="grid md:grid-cols-3 gap-4"
+                            >
+                                {dataQuality ? (
+                                    <>
                                         {([
                                             { key: "noRuntime", label: "No Runtime", items: dataQuality.noRuntime || [] },
                                             { key: "noPoster", label: "No Cover Art", items: dataQuality.noPoster || [] },
@@ -1387,9 +1383,14 @@ export default function AdminPage() {
                                                 )}
                                             </div>
                                         ))}
-                                    </CardContent>
+                                    </>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground col-span-3">Click "Scan Data Quality" to check for missing data.</p>
                                 )}
-                            </Card>
+                            </CollapsibleSection>
+
+                            {/* Cards & Offers */}
+                            <AdminCards />
                     </div>
                 </div>
             </main>

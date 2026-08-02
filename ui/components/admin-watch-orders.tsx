@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { CollapsibleSection } from "@/components/collapsible-section"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -82,18 +82,15 @@ export function AdminWatchOrders() {
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+    <CollapsibleSection
+      title={
+        <>
           <ListOrdered className="h-5 w-5 text-primary" />
           Watch Orders ({orders.length})
-        </CardTitle>
-        <CardDescription>
-          Edit the name, description and public short link (/w/…) of each curated watch order.
-          Items are managed by the import scripts.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+        </>
+      }
+      description="Edit the name, description and public short link (/w/…) of each curated watch order. Items are managed by the import scripts."
+    >
         {error && !editingId && (
           <div className="mb-4 rounded-md bg-destructive/15 p-3 text-sm text-destructive">{error}</div>
         )}
@@ -223,7 +220,6 @@ export function AdminWatchOrders() {
             })}
           </div>
         )}
-      </CardContent>
-    </Card>
+    </CollapsibleSection>
   )
 }

@@ -64,6 +64,7 @@ export default function CardsPage() {
     
     // Dialog state
     const [selectedCard, setSelectedCard] = useState<UserCard | null>(null)
+    const [viewingCard, setViewingCard] = useState<CardInfo | null>(null)
     const [reportModalOpen, setReportModalOpen] = useState(false)
     const [reportReason, setReportReason] = useState("")
     
@@ -149,10 +150,11 @@ export default function CardsPage() {
             setProcessingId(cardId)
             setError(null)
             await addUserCard(cardId)
-            
+
             // Refresh user cards
             const uCards = await getUserCards()
             setUserCards(uCards)
+            setViewingCard(null)
         } catch (err: any) {
             setError(err.message || "Failed to add card")
         } finally {
@@ -504,7 +506,11 @@ export default function CardsPage() {
                                 const platforms = Array.from(new Set(card.offers.map(o => o.platform)))
                                 
                                 return (
-                                    <Card key={card.id} className="flex flex-col h-full bg-card/50 hover:bg-card transition-colors">
+                                    <Card
+                                        key={card.id}
+                                        className="flex flex-col h-full bg-card/50 hover:bg-card transition-colors cursor-pointer"
+                                        onClick={() => setViewingCard(card)}
+                                    >
                                         <CardContent className="p-4 flex flex-col h-full">
                                             <div className="flex justify-between items-start mb-2">
                                                 <div className="font-semibold text-base line-clamp-2">{card.name}</div>
@@ -513,7 +519,7 @@ export default function CardsPage() {
                                                 </span>
                                             </div>
                                             <div className="text-sm text-muted-foreground mb-4">{card.bankName} • {card.network}</div>
-                                            
+
                                             <div className="flex flex-wrap gap-1 mb-6 mt-auto">
                                                 {platforms.map(p => {
                                                     const isBms = p.toLowerCase().includes('bookmy')
@@ -524,16 +530,31 @@ export default function CardsPage() {
                                                     )
                                                 })}
                                             </div>
-                                            
-                                            <Button 
-                                                variant="outline" 
-                                                className="w-full mt-auto text-xs" 
-                                                disabled={!user || processingId === card.id}
-                                                onClick={() => handleAddCard(card.id)}
-                                            >
-                                                {processingId === card.id ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Plus className="w-3 h-3 mr-2" />}
-                                                Add to My Cards
-                                            </Button>
+
+                                            <div className="grid grid-cols-2 gap-2 mt-auto">
+                                                <Button
+                                                    variant="outline"
+                                                    className="text-xs"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        setViewingCard(card)
+                                                    }}
+                                                >
+                                                    View Offers
+                                                </Button>
+                                                <Button
+                                                    variant="outline"
+                                                    className="text-xs"
+                                                    disabled={!user || processingId === card.id}
+                                                    onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        handleAddCard(card.id)
+                                                    }}
+                                                >
+                                                    {processingId === card.id ? <Loader2 className="w-3 h-3 animate-spin mr-2" /> : <Plus className="w-3 h-3 mr-2" />}
+                                                    Add
+                                                </Button>
+                                            </div>
                                         </CardContent>
                                     </Card>
                                 )
@@ -724,6 +745,56 @@ export default function CardsPage() {
                 </DialogContent>
             </Dialog>
             
+            {/* View Offers Dialog (browse cards, not yet added) */}
+            <Dialog open={!!viewingCard} onOpenChange={(open) => !open && setViewingCard(null)}>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-0 gap-0 bg-background/95 backdrop-blur-xl">
+                    {viewingCard && (
+                        <>
+                            <div className={`p-6 pb-8 bg-gradient-to-br ${getBankGradient(viewingCard.bankName)} text-white`}>
+                                <DialogTitle className="text-2xl font-bold">{viewingCard.name}</DialogTitle>
+                                <div className="text-white/80">{viewingCard.bankName} • {viewingCard.type} • {viewingCard.network}</div>
+                            </div>
+
+                            <div className="p-6 space-y-6">
+                                <section>
+                                    <h3 className="text-lg font-semibold flex items-center gap-2 mb-4">
+                                        <Ticket className="w-5 h-5 text-primary" />
+                                        Available Offers
+                                    </h3>
+                                    <div className="grid gap-3">
+                                        {viewingCard.offers.map((offer, idx) => (
+                                            <div key={offer.id || idx} className="bg-secondary/40 rounded-lg p-4 border border-border/50">
+                                                <div className="flex justify-between items-start gap-4 mb-2">
+                                                    <div className="font-semibold">{offer.platform}</div>
+                                                    {offer.offerType && <div className="text-xs bg-primary/20 text-primary px-2 py-1 rounded-md">{offer.offerType}</div>}
+                                                </div>
+                                                <div className="text-sm space-y-1.5 text-muted-foreground">
+                                                    {offer.description && <div>{offer.description}</div>}
+                                                    {offer.maxDiscount && <div><strong className="text-foreground">Discount:</strong> Up to ₹{offer.maxDiscount}</div>}
+                                                    {offer.usesPerMonth && <div><strong className="text-foreground">Usage Limit:</strong> {offer.usesPerMonth} times/month</div>}
+                                                    {offer.minTickets && <div><strong className="text-foreground">Min Tickets:</strong> {offer.minTickets}</div>}
+                                                    {offer.couponCode && <div><strong className="text-foreground">Code:</strong> <code className="bg-muted px-1.5 py-0.5 rounded">{offer.couponCode}</code></div>}
+                                                    {offer.notes && <div className="text-xs italic mt-2">{offer.notes}</div>}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </section>
+
+                                <Button
+                                    className="w-full"
+                                    disabled={!user || processingId === viewingCard.id}
+                                    onClick={() => handleAddCard(viewingCard.id)}
+                                >
+                                    {processingId === viewingCard.id ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Plus className="w-4 h-4 mr-2" />}
+                                    {user ? "Add to My Cards" : "Sign in to add this card"}
+                                </Button>
+                            </div>
+                        </>
+                    )}
+                </DialogContent>
+            </Dialog>
+
             {/* Report Modal */}
             <Dialog open={reportModalOpen} onOpenChange={setReportModalOpen}>
                 <DialogContent className="max-w-sm">
