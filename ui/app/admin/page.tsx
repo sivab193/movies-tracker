@@ -967,7 +967,6 @@ export default function AdminPage() {
                                             <th className="text-left py-3 px-2 font-medium w-24">Seasons</th>
                                             <th className="text-left py-3 px-2 font-medium w-24">Episodes</th>
                                             <th className="text-left py-3 px-2 font-medium w-24">Runtime</th>
-                                            <th className="text-right py-3 px-2 font-medium w-24">Rating</th>
                                             <th className="text-center py-3 px-2 font-medium w-24">Action</th>
                                         </tr>
                                     </thead>
@@ -997,13 +996,6 @@ export default function AdminPage() {
                                                 <td className="py-3 px-2">{series.totalSeasons}</td>
                                                 <td className="py-3 px-2">{series.totalEpisodes}</td>
                                                 <td className="py-3 px-2 text-muted-foreground">{formatRuntimeMinutes(series.totalRuntimeMinutes)}</td>
-                                                <td className="py-3 px-2 text-right">
-                                                    {series.imdbRating ? (
-                                                        <span className="inline-flex items-center rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
-                                                            ★ {series.imdbRating}
-                                                        </span>
-                                                    ) : "N/A"}
-                                                </td>
                                                 <td className="py-3 px-2 text-center">
                                                     <div className="flex items-center justify-center gap-1">
                                                         <Button

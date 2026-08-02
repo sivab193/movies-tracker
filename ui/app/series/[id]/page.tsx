@@ -2,7 +2,7 @@
 
 import { useEffect, useState, use } from "react"
 import Link from "next/link"
-import { ArrowLeft, Clock, Star, Calendar, Timer, Check, Loader2, ListOrdered, ArrowRight, ChevronDown, ChevronUp, CheckCircle2, Circle } from "lucide-react"
+import { ArrowLeft, Clock, Calendar, Timer, Check, Loader2, ListOrdered, ArrowRight, ChevronDown, ChevronUp, CheckCircle2, Circle } from "lucide-react"
 import { Header } from "@/components/header"
 import { getSeries, toggleSeasonWatched, getSeriesProgress } from "@/services/series-service"
 import { getWatchOrdersForMovie } from "@/services/watch-order-service"
@@ -200,15 +200,6 @@ export default function SeriesDetailPage({
               <Timer className="h-3.5 w-3.5 text-sky-400 shrink-0" />
               <span>Runtime: {formatRuntimeMinutes(series.totalRuntimeMinutes)}</span>
             </div>
-            
-            {series.imdbRating && (
-              <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-yellow-500/90 text-black px-4 py-1.5 rounded-full shadow border border-yellow-400 whitespace-nowrap backdrop-blur-sm">
-                <div className="flex items-center gap-1.5 font-bold">
-                  <Star className="h-4 w-4 fill-black shrink-0" />
-                  <span>{series.imdbRating} / 10</span>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Series Info */}
@@ -376,12 +367,6 @@ export default function SeriesDetailPage({
                                     <div className="flex items-center gap-1">
                                       <Clock className="w-3.5 h-3.5" />
                                       {ep.runtimeMinutes} min
-                                    </div>
-                                  )}
-                                  {ep.imdbRating && (
-                                    <div className="flex items-center gap-1 text-yellow-500/90 font-medium">
-                                      <Star className="w-3.5 h-3.5 fill-current" />
-                                      {ep.imdbRating}
                                     </div>
                                   )}
                                 </div>

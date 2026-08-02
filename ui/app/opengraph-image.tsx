@@ -109,7 +109,7 @@ export default async function Image() {
               flexDirection: "column",
             }}
           >
-            <span>Log every film you watch with dates, ratings & technical stats.</span>
+            <span>Log every film you watch with dates & technical stats.</span>
             <span style={{ color: "#d8b4fe" }}>Compete on the global leaderboard & time title cards.</span>
           </div>
         </div>

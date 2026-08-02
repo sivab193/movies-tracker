@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Clock, Star, Timer } from "lucide-react"
+import { Clock, Timer } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { formatTitleCardTime, formatRuntimeToHHMM, type Movie } from "@/lib/types"
 

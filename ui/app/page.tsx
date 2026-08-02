@@ -10,7 +10,7 @@ const mainFeatures = [
     href: "/watch-history",
     icon: List,
     title: "Detailed Watch History",
-    description: "Log every movie you watch with dates, ratings, and detailed technical and theater information.",
+    description: "Log every movie you watch with dates and detailed technical and theater information.",
   },
   {
     href: "/leaderboard",

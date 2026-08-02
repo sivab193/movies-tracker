@@ -8,7 +8,7 @@ import { Header } from "@/components/header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Loader2, Tv, Star, Search, Clock } from "lucide-react";
+import { Loader2, Tv, Search, Clock } from "lucide-react";
 import { formatRuntimeMinutes, resolveApiUrl, Series, SeriesProgress } from "@/lib/types";
 
 export default function SeriesPage() {
@@ -138,12 +138,6 @@ export default function SeriesPage() {
                           <h3 className="font-bold text-lg line-clamp-2 group-hover:text-primary transition-colors leading-tight">
                             {s.title}
                           </h3>
-                          {s.imdbRating && (
-                            <Badge variant="secondary" className="flex items-center gap-1 shrink-0 ml-2">
-                              <Star className="w-3 h-3 fill-yellow-500 text-yellow-500" />
-                              {s.imdbRating}
-                            </Badge>
-                          )}
                         </div>
                         
                         <div className="text-sm text-muted-foreground mb-2">

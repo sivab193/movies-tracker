@@ -2,7 +2,7 @@
 
 import { useEffect, useState, use } from "react"
 import Link from "next/link"
-import { ArrowLeft, Clock, Star, Calendar, Timer, MessageSquare, Share2, Copy, Check, Loader2, ListOrdered, ArrowRight } from "lucide-react"
+import { ArrowLeft, Clock, Calendar, Timer, MessageSquare, Share2, Copy, Check, Loader2, ListOrdered, ArrowRight } from "lucide-react"
 import { Header } from "@/components/header"
 import { getMovie, getSubmissions, createShortUrl } from "@/services/api"
 import { getWatchOrdersForMovie } from "@/services/watch-order-service"
