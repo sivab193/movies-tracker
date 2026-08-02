@@ -44,3 +44,5 @@ ui/.ds-entry.css
 ui/index.d.ts
 # Everything else under .design-sync/ is durable and IS committed:
 # config.json, NOTES.md, conventions.md, previews/, fonts/, and the build scripts.
+
+new-features-reel/

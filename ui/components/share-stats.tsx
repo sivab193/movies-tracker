@@ -235,23 +235,39 @@ function drawWrappedImage(stats: WrappedStats, selection: StatSelection): HTMLCa
     const contentBottom = footerStart - 30
     const contentH = contentBottom - contentTop
 
-    // Calculate tile grid dimensions
+    // Calculate tile grid dimensions - add a 3rd column once there are enough
+    // tiles that 2 columns would produce too many rows to fit the canvas
     let cols = 2
-    if (activeTiles.length <= 3 && activeTiles.length > 0) {
+    if (activeTiles.length > 0 && activeTiles.length <= 3) {
         cols = 1
+    } else if (activeTiles.length > 6) {
+        cols = 3
     }
-    const tileRows = Math.ceil(activeTiles.length / cols)
+    const tileRows = activeTiles.length > 0 ? Math.ceil(activeTiles.length / cols) : 0
 
-    // Highlight card height
-    const highlightCardH = 130
-    const highlightGap = 24
-    const totalHighlightH = highlightCount > 0 ? highlightCount * highlightCardH + (highlightCount - 1) * highlightGap + 40 : 0
+    // Highlight card height (base/max values - scaled down below if content overflows)
+    const highlightCardHBase = 130
+    const highlightGapBase = 24
+    const tilesToHighlightsGapBase = 20
+    const rowGapBase = 26
+    const maxTileH = 220
 
-    // Calculate tile height to fill available space
-    const tileAreaH = contentH - totalHighlightH
-    const rowGap = 26
-    let tileH = tileRows > 0 ? Math.min(220, Math.max(140, (tileAreaH - (tileRows - 1) * rowGap) / tileRows)) : 0
-    let colW = cols === 1 ? (W - pad * 2) : (W - pad * 2 - gap) / 2
+    // Compute the height everything would need at "natural" (max) size, then
+    // scale both the tile grid and highlight cards down uniformly so the
+    // combined content always fits within contentH - this keeps the layout
+    // intact no matter how many stats/highlights are selected.
+    const naturalTileBlockH = tileRows > 0 ? tileRows * maxTileH + (tileRows - 1) * rowGapBase : 0
+    const naturalHighlightBlockH = highlightCount > 0 ? tilesToHighlightsGapBase + highlightCount * highlightCardHBase + (highlightCount - 1) * highlightGapBase : 0
+    const naturalTotalH = naturalTileBlockH + naturalHighlightBlockH
+    const scale = naturalTotalH > contentH && naturalTotalH > 0 ? contentH / naturalTotalH : 1
+
+    const rowGap = rowGapBase * scale
+    const highlightGap = highlightGapBase * scale
+    const highlightCardH = highlightCardHBase * scale
+    const tilesToHighlightsGap = tilesToHighlightsGapBase * scale
+
+    let tileH = tileRows > 0 ? maxTileH * scale : 0
+    let colW = cols === 1 ? (W - pad * 2) : (W - pad * 2 - gap * (cols - 1)) / cols
 
     // --- Header brand ---
     ctx.textAlign = "center"
@@ -320,13 +336,16 @@ function drawWrappedImage(stats: WrappedStats, selection: StatSelection): HTMLCa
 
     // --- Highlights (top movie / theater) ---
     const tilesBottomEdge = tileRows > 0 ? gridTop + tileRows * (tileH + rowGap) : gridTop
-    let hy = tilesBottomEdge + 20
+    let hy = tilesBottomEdge + tilesToHighlightsGap
     if (activeTiles.length === 0 && highlightCount > 0) hy = contentTop
 
     const drawHighlight = (iconType: "popcorn" | "pin", label: string, value: string) => {
         const x = pad
         const w = W - pad * 2
         const h = highlightCardH
+        // Scale icon size / text offsets with the card so content never spills
+        // past a shrunken card's edges when many highlights are selected.
+        const hScale = h / highlightCardHBase
 
         // Red-tinted card background
         ctx.fillStyle = "rgba(220, 38, 38, 0.12)"
@@ -339,19 +358,19 @@ function drawWrappedImage(stats: WrappedStats, selection: StatSelection): HTMLCa
 
         // Draw icon instead of emoji
         if (iconType === "pin") {
-            drawLocationPin(ctx, x + 66, hy + h / 2 + 6, 48)
+            drawLocationPin(ctx, x + 66, hy + h / 2 + 6, 48 * hScale)
         } else {
-            drawPopcornIcon(ctx, x + 66, hy + h / 2, 48)
+            drawPopcornIcon(ctx, x + 66, hy + h / 2, 48 * hScale)
         }
 
         ctx.textAlign = "left"
 
         ctx.fillStyle = "rgba(255,255,255,0.6)"
-        ctx.font = "600 26px system-ui, -apple-system, 'Segoe UI', sans-serif"
-        ctx.fillText(label.toUpperCase(), x + 130, hy + 52)
+        ctx.font = `600 ${Math.max(18, 26 * hScale)}px system-ui, -apple-system, 'Segoe UI', sans-serif`
+        ctx.fillText(label.toUpperCase(), x + 130, hy + 52 * hScale)
 
         ctx.fillStyle = "#ffffff"
-        let vFont = 44
+        let vFont = Math.max(26, 44 * hScale)
         ctx.font = `700 ${vFont}px system-ui, -apple-system, 'Segoe UI', sans-serif`
         const maxW = w - 170
         let text = value
@@ -359,7 +378,7 @@ function drawWrappedImage(stats: WrappedStats, selection: StatSelection): HTMLCa
             text = text.slice(0, -2)
         }
         if (text !== value) text = text.trimEnd() + "…"
-        ctx.fillText(text, x + 130, hy + 98)
+        ctx.fillText(text, x + 130, hy + 98 * hScale)
 
         hy += h + highlightGap
     }
