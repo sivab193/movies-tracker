@@ -43,6 +43,64 @@ You can save that to any file (e.g. `scripts/oct_2026.json`) and run `python3 sc
 
 ---
 
+## MCU Bulk Load + Watch Order
+
+Two scripts turn `scripts/mcu.json` (movies + series IMDb IDs) and
+`scripts/mcu_watch_order.json` (curated chronological order) into DB content.
+
+### 1. `bulk_import_imdb_ids.py` — bulk load movies & series
+
+```bash
+cd backend
+python3 scripts/bulk_import_imdb_ids.py scripts/mcu.json              # defaults to mcu.json
+python3 scripts/bulk_import_imdb_ids.py scripts/mcu.json --dry-run    # preview, no writes
+python3 scripts/bulk_import_imdb_ids.py scripts/mcu.json --no-episodes
+```
+
+- Reads `{"movies": [{"title","id"}...], "series": [...]}` (a plain array is treated as movies).
+- Fetches full metadata from OMDb by IMDb ID and stores posters as binary in
+  `db.movie_posters` / `db.series_posters`.
+- **Skips anything already in `db.movies` / `db.series`** (matched by `imdbId`,
+  then by case-insensitive title). Use `--force` to refresh those instead.
+- Series documents mirror `routes/series.py::fetch_series_full_data`, including the
+  per-season/per-episode breakdown.
+- Options: `--movies-only`, `--series-only`, `--no-episodes` (series-level only —
+  much faster and far fewer OMDb calls), `--force`, `--dry-run`.
+
+`scripts/mcu_pending.json` holds whatever the last MCU run couldn't finish (series that
+were never imported plus any flagged `episodesNeedBackfill`). Resume with:
+
+```bash
+python3 scripts/bulk_import_imdb_ids.py scripts/mcu_pending.json --force
+python3 scripts/seed_mcu_watch_orders.py --with-release-order   # re-resolve titles from the DB
+```
+
+> ⚠️ A full series import makes one OMDb call per episode (thousands for the MCU
+> TV catalog). On the free OMDb tier (1,000 requests/day) run the first pass with
+> `--no-episodes`, then backfill episodes later.
+
+### 2. `seed_mcu_watch_orders.py` — map the MCU watch order
+
+```bash
+cd backend
+python3 scripts/seed_mcu_watch_orders.py                        # chronological order
+python3 scripts/seed_mcu_watch_orders.py --dry-run              # preview
+python3 scripts/seed_mcu_watch_orders.py --with-release-order   # also build release order
+```
+
+- Builds **"Marvel Cinematic Universe (Chronological Order)"** in `db.watch_orders`
+  from `scripts/mcu_watch_order.json` (`order`, `title`, `id`, `type`, optional `note`).
+- `--with-release-order` / `--release-only` additionally builds
+  **"Marvel Cinematic Universe (Release Order)"** from `mcu.json`, sorted by the
+  `releaseDate` stored in the DB (unreleased titles land at the end).
+- Titles/years are resolved from `db.movies` / `db.series` when present, falling back
+  to the JSON titles — so it can run before the bulk import.
+- Re-running updates the existing order in place (same `_id`, and item `_id`s are kept
+  stable for titles already in the list). `--skip-existing` leaves existing orders alone.
+- Warns about drift between `mcu.json` and `mcu_watch_order.json` (titles in one but not the other).
+
+---
+
 ## Other Active Core Scripts
 
 - **`scripts/bulk_import.py`**
