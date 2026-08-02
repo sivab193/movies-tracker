@@ -55,6 +55,75 @@ function roundRect(
     ctx.closePath()
 }
 
+const LABEL_FONT = (size: number) =>
+    `600 ${size}px system-ui, -apple-system, 'Segoe UI', sans-serif`
+
+/**
+ * Fits a tile label inside `maxWidth`: shrink on one line first, then fall back
+ * to a balanced two-line break, shrinking further only if that still overflows.
+ * Leaves ctx.font set to the returned size.
+ */
+function fitLabel(
+    ctx: CanvasRenderingContext2D,
+    text: string,
+    maxWidth: number,
+    startSize: number,
+    minSize: number
+): { fontSize: number; lines: string[] } {
+    let size = Math.max(startSize, minSize)
+    ctx.font = LABEL_FONT(size)
+    if (ctx.measureText(text).width <= maxWidth) return { fontSize: size, lines: [text] }
+
+    // A little shrinking on one line reads better than an early wrap
+    const singleLineFloor = Math.max(minSize, size - 5)
+    while (size > singleLineFloor) {
+        size -= 1
+        ctx.font = LABEL_FONT(size)
+        if (ctx.measureText(text).width <= maxWidth) return { fontSize: size, lines: [text] }
+    }
+
+    // Keep a lone separator attached to the word before it, so "MOST WATCHES /
+    // MONTH" breaks as "MOST WATCHES /" + "MONTH" rather than orphaning the slash
+    const words: string[] = []
+    for (const word of text.split(" ").filter(Boolean)) {
+        if ((word === "/" || word === "·" || word === "-") && words.length > 0) {
+            words[words.length - 1] += ` ${word}`
+        } else {
+            words.push(word)
+        }
+    }
+
+    if (words.length < 2) {
+        while (size > minSize && ctx.measureText(text).width > maxWidth) {
+            size -= 1
+            ctx.font = LABEL_FONT(size)
+        }
+        return { fontSize: size, lines: [text] }
+    }
+
+    let fallback: string[] = [text]
+    while (size >= minSize) {
+        ctx.font = LABEL_FONT(size)
+        let best: string[] = [text]
+        let bestWidth = Infinity
+        for (let i = 1; i < words.length; i++) {
+            const head = words.slice(0, i).join(" ")
+            const tail = words.slice(i).join(" ")
+            const widest = Math.max(ctx.measureText(head).width, ctx.measureText(tail).width)
+            if (widest < bestWidth) {
+                bestWidth = widest
+                best = [head, tail]
+            }
+        }
+        fallback = best
+        if (bestWidth <= maxWidth) return { fontSize: size, lines: best }
+        size -= 1
+    }
+
+    ctx.font = LABEL_FONT(minSize)
+    return { fontSize: minSize, lines: fallback }
+}
+
 export type StatSelection = {
     totalRuntime: boolean;
     totalHours: boolean;
@@ -301,6 +370,26 @@ function drawWrappedImage(stats: WrappedStats, selection: StatSelection): HTMLCa
     // --- Stat tiles grid ---
     const gridTop = contentTop
 
+    // Fit every label up front and settle on one font size and one line count
+    // for the whole grid, so labels stay the same size and every value sits at
+    // the same height even when only some labels have to wrap.
+    const labelMaxW = colW - 28
+    const labelLayouts: string[][] = []
+    let labelFont = Math.min(30, Math.max(20, tileH * 0.16))
+    if (activeTiles.length > 0) {
+        for (const t of activeTiles) {
+            const fit = fitLabel(ctx, t.label.toUpperCase(), labelMaxW, labelFont, 17)
+            labelFont = Math.min(labelFont, fit.fontSize)
+        }
+        for (const t of activeTiles) {
+            labelLayouts.push(fitLabel(ctx, t.label.toUpperCase(), labelMaxW, labelFont, labelFont).lines)
+        }
+    }
+    const labelLineCount = labelLayouts.reduce((m, l) => Math.max(m, l.length), 1)
+    const labelLineH = labelFont * 1.15
+    const labelBottomPad = Math.max(18, 28 * scale)
+    const labelBlockH = labelFont + (labelLineCount - 1) * labelLineH + labelBottomPad
+
     activeTiles.forEach((t, i) => {
         const col = i % cols
         const row = Math.floor(i / cols)
@@ -319,19 +408,27 @@ function drawWrappedImage(stats: WrappedStats, selection: StatSelection): HTMLCa
         ctx.textAlign = "center"
         const cx = x + colW / 2
 
+        // The label block is bottom-anchored and identically sized on every
+        // tile; the value is centred in whatever space is left above it.
+        const labelLines = labelLayouts[i]
+        const labelBaseline = y + tileH - labelBottomPad
+        const valueSpace = tileH - labelBlockH
+
         // Auto-shrink value font to fit
-        let vFont = Math.min(68, tileH * 0.35)
+        let vFont = Math.min(68, Math.max(30, valueSpace * 0.62))
         ctx.font = `800 ${vFont}px system-ui, -apple-system, 'Segoe UI', sans-serif`
-        while (ctx.measureText(t.value).width > colW - 50 && vFont > 34) {
-            vFont -= 4
+        while (ctx.measureText(t.value).width > colW - 40 && vFont > 28) {
+            vFont -= 2
             ctx.font = `800 ${vFont}px system-ui, -apple-system, 'Segoe UI', sans-serif`
         }
         ctx.fillStyle = "#ff4b4b"
-        ctx.fillText(t.value, cx, y + tileH / 2 + 8)
+        ctx.fillText(t.value, cx, y + valueSpace / 2 + vFont * 0.35)
 
         ctx.fillStyle = "rgba(255,255,255,0.65)"
-        ctx.font = "600 30px system-ui, -apple-system, 'Segoe UI', sans-serif"
-        ctx.fillText(t.label.toUpperCase(), cx, y + tileH - 32)
+        ctx.font = LABEL_FONT(labelFont)
+        labelLines.forEach((line, li) => {
+            ctx.fillText(line, cx, labelBaseline - (labelLines.length - 1 - li) * labelLineH)
+        })
     })
 
     // --- Highlights (top movie / theater) ---

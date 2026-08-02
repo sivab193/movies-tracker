@@ -47,19 +47,86 @@ export async function lookupMovie(imdbId: string): Promise<any> {
   return await res.json()
 }
 
-// Admin: Add series from OMDB
-export async function addSeriesFromOmdb(imdbId: string): Promise<any> {
+// Admin: Add series from OMDB (one-shot; prefer the preview + import flow)
+export async function addSeriesFromOmdb(imdbId: string, apiKey?: string): Promise<any> {
+  return adminPost("/series/fetch-omdb", { imdbId, apiKey })
+}
+
+async function adminPost(path: string, body: Record<string, any>): Promise<any> {
   const headers = await getAuthHeader()
-  const res = await fetch(`${API_BASE_URL}/series/fetch-omdb`, {
+  // Drop empty values so the backend falls back to its own defaults
+  const payload = Object.fromEntries(
+    Object.entries(body).filter(([, v]) => v !== undefined && v !== null && v !== "")
+  )
+  const res = await fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
     headers: { ...headers, "Content-Type": "application/json" },
-    body: JSON.stringify({ imdbId }),
+    body: JSON.stringify(payload),
   })
-  if (!res.ok) {
-    const err = await res.json()
-    throw new Error(err.error || "Failed to add series")
-  }
-  return await res.json()
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error || `Request to ${path} failed`)
+  return data
+}
+
+export interface SeriesPreviewSeason {
+  seasonNumber: number
+  episodeCount: number
+  available: boolean
+  error?: string
+}
+
+export interface SeriesPreview {
+  imdbId: string
+  title: string
+  year: number
+  endYear: number | null
+  posterUrl: string | null
+  imdbRating: number | null
+  isOngoing: boolean
+  totalSeasons: number
+  totalEpisodes: number
+  seriesRuntimeMinutes: number
+  seasons: SeriesPreviewSeason[]
+  previewCallsUsed: number
+  cached: boolean
+  exists: boolean
+  existingSeasons: number[]
+}
+
+// Admin: Inspect a series before importing. Costs 1 + totalSeasons OMDb calls
+// and caches the payload so the import itself is free in fast mode.
+export async function previewSeries(imdbId: string, apiKey?: string): Promise<SeriesPreview> {
+  return adminPost("/series/preview", { imdbId, apiKey })
+}
+
+// Admin: Create/refresh the series shell document before importing seasons
+export async function importSeriesStart(
+  imdbId: string,
+  opts: { apiKey?: string; replace?: boolean } = {}
+): Promise<{ seriesId: string; title: string; callsUsed: number; usedCache: boolean }> {
+  return adminPost("/series/import/start", { imdbId, ...opts })
+}
+
+// Admin: Import a single season (one request per season keeps each call short)
+export async function importSeriesSeason(
+  imdbId: string,
+  seasonNumber: number,
+  opts: { apiKey?: string; precise?: boolean } = {}
+): Promise<{
+  seasonNumber: number
+  episodeCount: number
+  seasonRuntimeMinutes: number
+  runtimeSource: string
+  callsUsed: number
+  totalEpisodes: number
+  totalRuntimeMinutes: number
+}> {
+  return adminPost("/series/import/season", { imdbId, seasonNumber, ...opts })
+}
+
+// Admin: Mark the import complete and drop the preview cache
+export async function importSeriesFinish(imdbId: string): Promise<any> {
+  return adminPost("/series/import/finish", { imdbId })
 }
 
 // Admin: Update series
@@ -85,14 +152,11 @@ export async function deleteSeries(id: string): Promise<void> {
 }
 
 // Admin: Refresh series from OMDB
-export async function refreshSeriesFromOmdb(id: string): Promise<any> {
-  const headers = await getAuthHeader()
-  const res = await fetch(`${API_BASE_URL}/series/${id}/refresh-omdb`, {
-    method: "POST",
-    headers,
-  })
-  if (!res.ok) throw new Error("Failed to refresh series")
-  return await res.json()
+export async function refreshSeriesFromOmdb(
+  id: string,
+  opts: { apiKey?: string; precise?: boolean } = {}
+): Promise<any> {
+  return adminPost(`/series/${id}/refresh-omdb`, opts)
 }
 
 // User: Toggle season watched
