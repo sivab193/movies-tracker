@@ -5,6 +5,7 @@ import { Header } from "@/components/header"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
     Table,
     TableBody,
@@ -50,14 +51,13 @@ import {
 } from "@/components/ui/alert-dialog"
 
 export default function WatchHistoryPage() {
-    const { user, userProfile: contextProfile } = useAuth()
+    const { user, userProfile: contextProfile, loading: authLoading } = useAuth()
     const [profile, setProfile] = useState(contextProfile)
     const [searchQuery, setSearchQuery] = useState("")
     const [yearFilter, setYearFilter] = useState("All")
     const [monthFilter, setMonthFilter] = useState("All")
     const [cityFilter, setCityFilter] = useState("All")
     const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc')
-    const [loading, setLoading] = useState(false)
     const [editingEntry, setEditingEntry] = useState<WatchHistoryEntry | null>(null)
     const [rewatchingEntry, setRewatchingEntry] = useState<WatchHistoryEntry | null>(null)
     const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -387,6 +387,93 @@ export default function WatchHistoryPage() {
             month: 'short',
             day: 'numeric'
         })
+    }
+
+    // Show skeletons while auth resolves or the profile (stats source) is still loading,
+    // otherwise the stat cards flash zeros before the real numbers arrive.
+    const isLoading = authLoading || (!!user && !profile)
+
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-background pb-12">
+                <Header />
+                <main className="container py-8 max-w-6xl mx-auto px-4">
+                    {/* Header Section */}
+                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8">
+                        <div>
+                            <h1 className="text-3xl font-bold flex items-center gap-3">
+                                <Clock className="h-8 w-8 text-primary" />
+                                Watch History
+                            </h1>
+                            <p className="text-muted-foreground mt-1">Track your cinematic journey.</p>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <Skeleton className="h-9 w-28" />
+                            <Skeleton className="h-9 w-32" />
+                        </div>
+                    </div>
+
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                        {Array.from({ length: 6 }).map((_, i) => (
+                            <Card key={i}>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <Skeleton className="h-4 w-28" />
+                                    <Skeleton className="h-4 w-4 rounded-full" />
+                                </CardHeader>
+                                <CardContent>
+                                    <Skeleton className="h-7 w-20 mb-2" />
+                                    <Skeleton className="h-3 w-24" />
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+
+                    {/* Highlights */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+                        {Array.from({ length: 2 }).map((_, i) => (
+                            <Card key={i}>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <Skeleton className="h-4 w-28" />
+                                    <Skeleton className="h-4 w-4 rounded-full" />
+                                </CardHeader>
+                                <CardContent>
+                                    <Skeleton className="h-6 w-40 mb-2" />
+                                    <Skeleton className="h-3 w-28" />
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+
+                    {/* Filters & Table */}
+                    <Card>
+                        <CardHeader>
+                            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+                                <CardTitle>History Log</CardTitle>
+                                <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+                                    <Skeleton className="h-9 w-full sm:w-56" />
+                                    <Skeleton className="h-9 w-24" />
+                                    <Skeleton className="h-9 w-24" />
+                                    <Skeleton className="h-9 w-24" />
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="rounded-md border divide-y">
+                                {Array.from({ length: 6 }).map((_, i) => (
+                                    <div key={i} className="flex items-center gap-4 p-4">
+                                        <Skeleton className="h-4 w-24 shrink-0" />
+                                        <Skeleton className="h-4 flex-1" />
+                                        <Skeleton className="h-4 w-32 hidden sm:block" />
+                                        <Skeleton className="h-4 w-16 shrink-0" />
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </main>
+            </div>
+        )
     }
 
     if (!user) {
