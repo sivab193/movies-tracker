@@ -685,7 +685,8 @@ export default function AdminPage() {
                                             <th className="text-left py-3 px-2 font-medium w-28">Release Date</th>
                                             <th className="text-left py-3 px-2 font-medium w-24">Runtime</th>
                                             <th className="text-right py-3 px-2 font-medium">Title Card Time</th>
-                                            <th className="text-center py-3 px-2 font-medium w-20">Action</th>
+                                            <th className="text-center py-3 px-2 font-medium w-20">IMDb</th>
+                                            <th className="text-center py-3 px-2 font-medium w-24">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -738,6 +739,22 @@ export default function AdminPage() {
                                                             </td>
                                                             <td className="py-2 px-2 text-right text-xs text-muted-foreground">
                                                                 {movie.averageTimeSeconds ? formatTimeDisplay(movie.averageTimeSeconds) : "N/A"}
+                                                            </td>
+                                                            <td className="py-2 px-2 text-center">
+                                                                {movie.imdbId ? (
+                                                                    <a
+                                                                        href={`https://www.imdb.com/title/${movie.imdbId}`}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="inline-flex items-center gap-1 text-primary hover:underline font-medium text-xs bg-primary/10 px-2 py-1 rounded-full"
+                                                                        title="Open IMDb Page"
+                                                                    >
+                                                                        <ExternalLink className="h-3 w-3" />
+                                                                        IMDb
+                                                                    </a>
+                                                                ) : (
+                                                                    <span className="text-muted-foreground text-xs">N/A</span>
+                                                                )}
                                                             </td>
                                                             <td className="py-2 px-2 text-center">
                                                                 <div className="flex items-center justify-center gap-1">
@@ -802,6 +819,22 @@ export default function AdminPage() {
                                                                 )}
                                                             </td>
                                                             <td className="py-3 px-2 text-center">
+                                                                {movie.imdbId ? (
+                                                                    <a
+                                                                        href={`https://www.imdb.com/title/${movie.imdbId}`}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="inline-flex items-center gap-1 text-primary hover:underline font-medium text-xs bg-primary/10 px-2 py-1 rounded-full"
+                                                                        title="Open IMDb Page"
+                                                                    >
+                                                                        <ExternalLink className="h-3 w-3" />
+                                                                        IMDb
+                                                                    </a>
+                                                                ) : (
+                                                                    <span className="text-muted-foreground text-xs">N/A</span>
+                                                                )}
+                                                            </td>
+                                                            <td className="py-3 px-2 text-center">
                                                                 <div className="flex items-center justify-center gap-1">
                                                                     <Button
                                                                         variant="ghost"
@@ -840,7 +873,7 @@ export default function AdminPage() {
                                         })}
                                         {filteredMovies.length === 0 && (
                                             <tr>
-                                                <td colSpan={7} className="text-center py-10 text-muted-foreground">
+                                                <td colSpan={8} className="text-center py-10 text-muted-foreground">
                                                     No movies found matching your filters.
                                                 </td>
                                             </tr>

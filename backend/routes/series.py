@@ -788,6 +788,40 @@ def update_series(series_id):
         return jsonify({"error": str(e)}), 500
 
 
+@series_bp.route('/<series_id>/verify', methods=['POST'])
+def verify_series(series_id):
+    """Mark a series as verified (all metadata confirmed correct) or toggle it off.
+
+    Body may contain {"verified": true|false}. When omitted, the current flag is toggled.
+    """
+    if not verify_admin(request):
+        return jsonify({"error": "Unauthorized"}), 403
+
+    if db is None:
+        return jsonify({"error": "Database not connected"}), 500
+
+    try:
+        query = _series_query(series_id)
+        series = db.series.find_one(query)
+        if not series:
+            return jsonify({"error": "Series not found"}), 404
+
+        data = request.get_json(silent=True) or {}
+        if 'verified' in data:
+            new_val = bool(data.get('verified'))
+        else:
+            new_val = not bool(series.get('verified', False))
+
+        db.series.update_one({"_id": series["_id"]}, {"$set": {"verified": new_val}})
+        return jsonify({
+            "message": "Series verified" if new_val else "Series marked unverified",
+            "verified": new_val,
+            "id": str(series["_id"])
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @series_bp.route('/<series_id>', methods=['DELETE'])
 def delete_series(series_id):
     if not verify_admin(request):

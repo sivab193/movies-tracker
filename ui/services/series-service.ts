@@ -159,6 +159,19 @@ export async function refreshSeriesFromOmdb(
   return adminPost(`/series/${id}/refresh-omdb`, opts)
 }
 
+// Admin: Toggle verified flag on a series
+export async function verifySeries(id: string, verified?: boolean): Promise<{ verified: boolean; id: string }> {
+  const headers = await getAuthHeader()
+  const res = await fetch(`${API_BASE_URL}/series/${id}/verify`, {
+    method: "POST",
+    headers: { ...headers, "Content-Type": "application/json" },
+    body: JSON.stringify(verified === undefined ? {} : { verified }),
+  })
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || "Failed to verify series")
+  return data
+}
+
 // User: Toggle season watched
 export async function toggleSeasonWatched(imdbId: string, seasonNumber: number): Promise<any> {
   const headers = await getAuthHeader()

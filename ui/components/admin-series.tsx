@@ -17,6 +17,7 @@ import {
 import { CollapsibleSection } from "@/components/collapsible-section"
 import {
     AlertTriangle,
+    BadgeCheck,
     Check,
     ExternalLink,
     KeyRound,
@@ -31,6 +32,7 @@ import {
     getAllSeries,
     deleteSeries,
     refreshSeriesFromOmdb,
+    verifySeries,
     previewSeries,
     importSeriesStart,
     importSeriesSeason,
@@ -50,6 +52,7 @@ export function AdminSeries() {
     const [loading, setLoading] = useState(true)
     const [deletingId, setDeletingId] = useState<string | null>(null)
     const [refreshingId, setRefreshingId] = useState<string | null>(null)
+    const [verifyingId, setVerifyingId] = useState<string | null>(null)
 
     // Add flow
     const [imdbId, setImdbId] = useState("")
@@ -205,6 +208,18 @@ export function AdminSeries() {
         }
     }
 
+    const handleVerifySeries = async (s: any) => {
+        setVerifyingId(s.id)
+        try {
+            const res = await verifySeries(s.id, !s.verified)
+            setSeriesList((list) => list.map((item) => item.id === s.id ? { ...item, verified: res.verified } : item))
+        } catch (err) {
+            alert(err instanceof Error ? err.message : "Failed to verify series")
+        } finally {
+            setVerifyingId(null)
+        }
+    }
+
     const doneCount = selectedSeasons.filter((n) => seasonState[n] === "done").length
     const progressPct = selectedSeasons.length
         ? Math.round((doneCount / selectedSeasons.length) * 100)
@@ -283,7 +298,8 @@ export function AdminSeries() {
                                 <th className="text-left py-3 px-2 font-medium w-24">Seasons</th>
                                 <th className="text-left py-3 px-2 font-medium w-24">Episodes</th>
                                 <th className="text-left py-3 px-2 font-medium w-24">Runtime</th>
-                                <th className="text-center py-3 px-2 font-medium w-24">Action</th>
+                                <th className="text-center py-3 px-2 font-medium w-20">IMDb</th>
+                                <th className="text-center py-3 px-2 font-medium w-28">Action</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -300,15 +316,21 @@ export function AdminSeries() {
                                             )}
                                             <div className="min-w-0">
                                                 <a
-                                                    href={`https://www.imdb.com/title/${series.imdbId}`}
+                                                    href={`/series/${series.id}`}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="text-primary hover:underline flex items-center gap-1.5"
-                                                    title="Open IMDb Page"
+                                                    title="Open Series Page"
                                                 >
                                                     {series.title}
                                                     <ExternalLink className="h-3 w-3 opacity-70 shrink-0" />
                                                 </a>
+                                                {series.verified && (
+                                                    <span className="ml-0.5 inline-flex items-center gap-0.5 rounded-full bg-green-500/10 px-1.5 py-0.5 text-[10px] font-semibold text-green-600" title="Verified">
+                                                        <BadgeCheck className="h-3 w-3" />
+                                                        Verified
+                                                    </span>
+                                                )}
                                                 {series.importStatus === "partial" && (
                                                     <span className="text-xs text-amber-600">
                                                         Partial import ·{" "}
@@ -328,7 +350,33 @@ export function AdminSeries() {
                                         {formatRuntimeMinutes(series.totalRuntimeMinutes)}
                                     </td>
                                     <td className="py-3 px-2 text-center">
+                                        {series.imdbId ? (
+                                            <a
+                                                href={`https://www.imdb.com/title/${series.imdbId}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="inline-flex items-center gap-1 text-primary hover:underline font-medium text-xs bg-primary/10 px-2 py-1 rounded-full"
+                                                title="Open IMDb Page"
+                                            >
+                                                <ExternalLink className="h-3 w-3" />
+                                                IMDb
+                                            </a>
+                                        ) : (
+                                            <span className="text-muted-foreground text-xs">N/A</span>
+                                        )}
+                                    </td>
+                                    <td className="py-3 px-2 text-center">
                                         <div className="flex items-center justify-center gap-1">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                disabled={verifyingId === series.id}
+                                                className={`h-8 w-8 p-0 hover:bg-green-500/10 ${series.verified ? "text-green-600 hover:text-green-700" : "text-muted-foreground hover:text-green-600"}`}
+                                                onClick={() => handleVerifySeries(series)}
+                                                title={series.verified ? "Verified — click to unverify" : "Mark as verified (all details correct)"}
+                                            >
+                                                {verifyingId === series.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <BadgeCheck className="h-4 w-4" />}
+                                            </Button>
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
@@ -363,7 +411,7 @@ export function AdminSeries() {
                             ))}
                             {seriesList.length === 0 && (
                                 <tr>
-                                    <td colSpan={6} className="text-center py-10 text-muted-foreground">
+                                    <td colSpan={7} className="text-center py-10 text-muted-foreground">
                                         {loading
                                             ? "Loading series…"
                                             : "No series in the database. Add one using its IMDb ID."}
