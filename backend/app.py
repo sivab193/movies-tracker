@@ -27,6 +27,7 @@ from routes.device_auth import device_auth_bp
 from routes.cards import cards_bp
 from routes.watch_orders import watch_orders_bp
 from routes.series import series_bp
+from routes.omdb_keys import omdb_keys_bp
 
 app.register_blueprint(movies_bp, url_prefix='/api/movies')
 app.register_blueprint(leaderboard_bp, url_prefix='/api/leaderboard')
@@ -37,6 +38,7 @@ app.register_blueprint(device_auth_bp, url_prefix='/api/auth')
 app.register_blueprint(cards_bp, url_prefix='/api/cards')
 app.register_blueprint(watch_orders_bp, url_prefix='/api/watch-orders')
 app.register_blueprint(series_bp, url_prefix='/api/series')
+app.register_blueprint(omdb_keys_bp, url_prefix='/api/omdb-keys')
 
 
 if __name__ == '__main__':

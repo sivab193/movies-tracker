@@ -12,6 +12,7 @@ import { CollapsibleSection } from "@/components/collapsible-section"
 import { AdminWatchOrders } from "@/components/admin-watch-orders"
 import { AdminCards } from "@/components/admin-cards"
 import { AdminSeries } from "@/components/admin-series"
+import { AdminOmdbKeys } from "@/components/admin-omdb-keys"
 import { getAdminRequests, resolveAdminRequest } from "@/services/user-service"
 import { getMovies, deleteMovie, clearMovieSubmissions, getTheaters, addTheater, updateTheater, deleteTheater, updateMovie, addMovie, fetchOmdbPreview, getTheaterDuplicates, mergeTheaterDuplicates, getMovieDuplicates, mergeMovieDuplicates, verifyTheater, verifyMovie, getMovieDataQuality } from "@/services/api"
 import { formatTimeDisplay, resolveApiUrl, formatRuntimeMinutes } from "@/lib/types"
@@ -908,6 +909,9 @@ export default function AdminPage() {
 
                     {/* Series Card */}
                     <AdminSeries />
+
+                    {/* OMDb API Keys Card */}
+                    <AdminOmdbKeys />
 
                     {/* Watch Orders Card */}
                     <AdminWatchOrders />

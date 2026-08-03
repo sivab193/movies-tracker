@@ -7,6 +7,7 @@ from bson import ObjectId, Binary
 from bson.errors import InvalidId
 from mongo_config import db
 from routes.movies import is_admin
+from routes.omdb_keys import get_available_api_key, record_omdb_call
 
 series_bp = Blueprint('series', __name__)
 
@@ -32,20 +33,16 @@ def verify_admin(req):
 
 
 def resolve_api_key(data=None):
-    """Use the admin-supplied key when present, else fall back to the env key.
+    """Use the admin-supplied key when present, else fall back to the DB key.
 
     The override lets an admin keep importing with a second key once the
     default key has burned through its daily quota. It is never persisted.
     """
     override = (data or {}).get('apiKey')
-    if isinstance(override, str) and override.strip():
-        return override.strip()
-    if not OMDB_API_KEY:
-        raise OmdbError("OMDB_API_KEY is not set")
-    return OMDB_API_KEY
+    return get_available_api_key(override_key=override)
 
 
-def omdb_request(api_key, **params):
+def omdb_request(api_key, key_id=None, **params):
     params['apikey'] = api_key
     try:
         res = requests.get(OMDB_URL, params=params, timeout=15)
@@ -60,6 +57,10 @@ def omdb_request(api_key, **params):
     data = res.json()
     if data.get('Response') == 'False' or data.get('Error'):
         raise OmdbError(data.get('Error') or "Unknown OMDb error")
+    
+    if key_id is not None:
+        record_omdb_call(key_id)
+        
     return data
 
 
@@ -131,9 +132,9 @@ def compute_total_episodes(seasons):
 # OMDb fetching
 # ---------------------------------------------------------------------------
 
-def fetch_series_meta(imdb_id, api_key):
+def fetch_series_meta(imdb_id, api_key, key_id=None):
     """One OMDb call. Returns (meta_doc_without_seasons, poster_url, series_runtime)."""
-    series_data = omdb_request(api_key, i=imdb_id)
+    series_data = omdb_request(api_key, key_id=key_id, i=imdb_id)
     if series_data.get('Type') != 'series':
         raise OmdbError("Not a TV series")
 
@@ -172,7 +173,7 @@ def fetch_series_meta(imdb_id, api_key):
     return meta, series_data.get('Poster'), series_runtime
 
 
-def build_season(raw_season, season_number, api_key, precise=False,
+def build_season(raw_season, season_number, api_key, key_id=None, precise=False,
                  fallback_runtime=0, known_runtimes=None):
     """Turn a raw OMDb season payload into a stored season document.
 
@@ -192,7 +193,7 @@ def build_season(raw_season, season_number, api_key, precise=False,
 
         if precise and ep_imdb:
             try:
-                details = omdb_request(api_key, i=ep_imdb)
+                details = omdb_request(api_key, key_id=key_id, i=ep_imdb)
                 runtime = _to_int(details.get('Runtime'), 0)
                 if rating is None:
                     rating = _to_float(details.get('imdbRating'))
@@ -222,8 +223,8 @@ def build_season(raw_season, season_number, api_key, precise=False,
     }
 
 
-def fetch_raw_season(imdb_id, season_number, api_key):
-    return omdb_request(api_key, i=imdb_id, Season=season_number)
+def fetch_raw_season(imdb_id, season_number, api_key, key_id=None):
+    return omdb_request(api_key, key_id=key_id, i=imdb_id, Season=season_number)
 
 
 # ---------------------------------------------------------------------------
@@ -403,15 +404,15 @@ def preview_series():
         return jsonify({"error": "Invalid IMDb ID format"}), 400
 
     try:
-        api_key = resolve_api_key(data)
-        meta, poster_url, series_runtime = fetch_series_meta(imdb_id, api_key)
+        api_key, key_id = resolve_api_key(data)
+        meta, poster_url, series_runtime = fetch_series_meta(imdb_id, api_key, key_id)
 
         calls_used = 1
         seasons = []
         raw_seasons = {}
         for s in range(1, meta['totalSeasons'] + 1):
             try:
-                raw = fetch_raw_season(imdb_id, s, api_key)
+                raw = fetch_raw_season(imdb_id, s, api_key, key_id)
                 calls_used += 1
             except OmdbError as e:
                 seasons.append({
@@ -475,14 +476,14 @@ def import_start():
     replace = bool(data.get('replace'))
 
     try:
-        api_key = resolve_api_key(data)
+        api_key, key_id = resolve_api_key(data)
         calls_used = 0
         cache = _cache_get(imdb_id)
         if cache:
             meta = cache['meta']
             poster_url = cache.get('posterUrl')
         else:
-            meta, poster_url, _ = fetch_series_meta(imdb_id, api_key)
+            meta, poster_url, _ = fetch_series_meta(imdb_id, api_key, key_id)
             calls_used = 1
 
         now = datetime.datetime.now(datetime.timezone.utc)
@@ -548,7 +549,7 @@ def import_season():
         return jsonify({"error": "seasonNumber must be a positive integer"}), 400
 
     try:
-        api_key = resolve_api_key(data)
+        api_key, key_id = resolve_api_key(data)
         series_doc = db.series.find_one({"imdbId": imdb_id})
         if not series_doc:
             return jsonify({"error": "Series shell not found -- call import/start first"}), 404
@@ -557,7 +558,7 @@ def import_season():
         cache = _cache_get(imdb_id)
         raw = (cache or {}).get('rawSeasons', {}).get(str(season_number))
         if raw is None:
-            raw = fetch_raw_season(imdb_id, season_number, api_key)
+            raw = fetch_raw_season(imdb_id, season_number, api_key, key_id)
             calls_used += 1
 
         fallback_runtime = (cache or {}).get('meta', {}).get('seriesRuntimeMinutes', 0)
@@ -566,7 +567,7 @@ def import_season():
 
         known = existing_runtime_map(series_doc) if not precise else {}
         season = build_season(
-            raw, season_number, api_key,
+            raw, season_number, api_key, key_id=key_id,
             precise=precise,
             fallback_runtime=fallback_runtime,
             known_runtimes=known,
@@ -653,8 +654,8 @@ def fetch_omdb():
         return jsonify({"error": "Series already exists", "series": format_doc(existing)}), 400
 
     try:
-        api_key = resolve_api_key(data)
-        meta, poster_url, series_runtime = fetch_series_meta(imdb_id, api_key)
+        api_key, key_id = resolve_api_key(data)
+        meta, poster_url, series_runtime = fetch_series_meta(imdb_id, api_key, key_id)
 
         wanted = range(1, meta['totalSeasons'] + 1)
         if isinstance(only_seasons, list) and only_seasons:
@@ -663,11 +664,11 @@ def fetch_omdb():
         seasons_array = []
         for s in wanted:
             try:
-                raw = fetch_raw_season(imdb_id, s, api_key)
+                raw = fetch_raw_season(imdb_id, s, api_key, key_id)
             except OmdbError:
                 continue
             seasons_array.append(build_season(
-                raw, s, api_key, precise=precise, fallback_runtime=series_runtime
+                raw, s, api_key, key_id=key_id, precise=precise, fallback_runtime=series_runtime
             ))
 
         now = datetime.datetime.now(datetime.timezone.utc)
@@ -717,18 +718,18 @@ def refresh_omdb(series_id):
         imdb_id = series['imdbId']
         real_id = str(series['_id'])
 
-        api_key = resolve_api_key(data)
-        meta, poster_url, series_runtime = fetch_series_meta(imdb_id, api_key)
+        api_key, key_id = resolve_api_key(data)
+        meta, poster_url, series_runtime = fetch_series_meta(imdb_id, api_key, key_id)
         known = existing_runtime_map(series) if not precise else {}
 
         seasons_array = []
         for s in range(1, meta['totalSeasons'] + 1):
             try:
-                raw = fetch_raw_season(imdb_id, s, api_key)
+                raw = fetch_raw_season(imdb_id, s, api_key, key_id)
             except OmdbError:
                 continue
             seasons_array.append(build_season(
-                raw, s, api_key, precise=precise,
+                raw, s, api_key, key_id=key_id, precise=precise,
                 fallback_runtime=series_runtime, known_runtimes=known
             ))
 

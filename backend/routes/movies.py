@@ -8,6 +8,7 @@ from mongo_config import db
 from bson import ObjectId, Binary
 import base64
 import secrets
+from routes.omdb_keys import get_available_api_key, record_omdb_call
 
 movies_bp = Blueprint('movies', __name__)
 
@@ -38,7 +39,10 @@ def is_admin(id_token):
         return False
 
 def fetch_movie_from_omdb(imdb_id):
-    if not OMDB_API_KEY:
+    try:
+        api_key, key_id = get_available_api_key()
+    except Exception:
+        # Fallback to empty if no key
         return {
             "Title": f"Movie {imdb_id}",
             "Year": "2024",
@@ -47,13 +51,17 @@ def fetch_movie_from_omdb(imdb_id):
             "Runtime": "N/A"
         }
 
-    url = f"https://www.omdbapi.com/?i={imdb_id}&apikey={OMDB_API_KEY}"
+    url = f"https://www.omdbapi.com/?i={imdb_id}&apikey={api_key}"
     response = requests.get(url)
     if response.status_code != 200:
         raise Exception("Failed to fetch from OMDB")
     data = response.json()
     if data.get('Error'):
         raise Exception(data['Error'])
+        
+    if key_id:
+        record_omdb_call(key_id)
+        
     return data
 
 def save_poster_to_db(movie_id, poster_url):
@@ -130,12 +138,20 @@ def ensure_movie_metadata(movie_doc):
         lang = 'English' # fallback
         released_str = str(movie_doc.get('year', ''))
         
-        if imdb_id and OMDB_API_KEY:
+        try:
+            api_key, key_id = get_available_api_key()
+        except Exception:
+            api_key = None
+            key_id = None
+            
+        if imdb_id and api_key:
             try:
-                omdb_res = requests.get(f"http://www.omdbapi.com/?apikey={OMDB_API_KEY}&i={imdb_id}", timeout=4).json()
+                omdb_res = requests.get(f"http://www.omdbapi.com/?apikey={api_key}&i={imdb_id}", timeout=4).json()
                 if omdb_res.get('Response') == 'True':
                     lang = omdb_res.get('Language', 'English')
                     released_str = omdb_res.get('Released', released_str)
+                if key_id:
+                    record_omdb_call(key_id)
             except Exception as e:
                 print(f"OMDb fetch error during metadata sync for {imdb_id}: {e}")
         
@@ -499,16 +515,20 @@ def search_omdb():
     language_filter = request.args.get('language')
     upcoming_filter = request.args.get('upcoming')
     
-    if not OMDB_API_KEY:
+    try:
+        api_key, key_id = get_available_api_key()
+    except Exception:
         return jsonify({"Search": [], "totalResults": "0", "Response": "True"})
 
     # Build OMDb URL with type=movie to exclude TV series
-    url = f"https://www.omdbapi.com/?s={query}&type=movie&apikey={OMDB_API_KEY}"
+    url = f"https://www.omdbapi.com/?s={query}&type=movie&apikey={api_key}"
     if year:
         url += f"&y={year}"
         
     response = requests.get(url)
     data = response.json()
+    if key_id and not data.get('Error'):
+        record_omdb_call(key_id)
     
     if data.get('Search'):
         # Check which movies exist in DB
@@ -527,9 +547,11 @@ def search_omdb():
         if language_filter:
             filtered_results = []
             for m in data['Search'][:20]:  # Limit to 20 to avoid too many API calls
-                details_url = f"https://www.omdbapi.com/?i={m['imdbID']}&apikey={OMDB_API_KEY}"
+                details_url = f"https://www.omdbapi.com/?i={m['imdbID']}&apikey={api_key}"
                 details_response = requests.get(details_url)
                 details = details_response.json()
+                if key_id and not details.get('Error'):
+                    record_omdb_call(key_id)
                 
                 if details.get('Language') and language_filter.lower() in details.get('Language', '').lower():
                     m['Language'] = details.get('Language')
