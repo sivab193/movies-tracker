@@ -58,6 +58,42 @@ def get_stats_summary():
     average_watches_per_movie = round(total_watch_entries / total_movies, 1) if total_movies else 0
     history_share = round((users_with_history / total_users) * 100, 1) if total_users else 0
 
+    total_series = db.series.count_documents({})
+    series_agg = list(db.series.aggregate([
+        {"$group": {"_id": None, "totalEps": {"$sum": "$totalEpisodes"}, "totalRuntime": {"$sum": "$totalRuntimeMinutes"}}}
+    ]))
+    total_episodes = series_agg[0]["totalEps"] if series_agg else 0
+    series_catalog_runtime_minutes = series_agg[0]["totalRuntime"] if series_agg else 0
+
+    movies_runtime_agg = list(db.movies.aggregate([
+        {"$group": {"_id": None, "totalSeconds": {"$sum": "$runtimeSeconds"}}}
+    ]))
+    movies_catalog_runtime_minutes = (movies_runtime_agg[0]["totalSeconds"] // 60) if movies_runtime_agg else 0
+
+    total_catalog_runtime_minutes = series_catalog_runtime_minutes + movies_catalog_runtime_minutes
+
+    community_watch_agg = list(db.users.aggregate([
+        {"$group": {"_id": None, "totalSeconds": {"$sum": "$totalRuntimeSeconds"}}}
+    ]))
+    community_watch_time_seconds = community_watch_agg[0]["totalSeconds"] if community_watch_agg else 0
+
+    genre_counts = Counter()
+    for movie in db.movies.find({}, {"genre": 1}):
+        genre_val = movie.get("genre", "")
+        if genre_val:
+            for g in genre_val.split(","):
+                g = g.strip()
+                if g:
+                    genre_counts[g] += 1
+    for series in db.series.find({}, {"genre": 1}):
+        genre_val = series.get("genre", "")
+        if genre_val:
+            for g in genre_val.split(","):
+                g = g.strip()
+                if g:
+                    genre_counts[g] += 1
+    top_genre = genre_counts.most_common(1)[0][0] if genre_counts else None
+
     insights = []
     if most_watched_movie["count"] > 0:
         insights.append(f"{most_watched_movie['title']} is the crowd favorite with {most_watched_movie['count']} watches.")
@@ -67,6 +103,16 @@ def get_stats_summary():
         insights.append(f"Members average {average_watches_per_user} watch entries each, showing strong engagement.")
     if total_theaters:
         insights.append(f"Your theater lineup spans {total_theaters} venues, keeping discovery fresh.")
+    if total_catalog_runtime_minutes > 0:
+        catalog_days = total_catalog_runtime_minutes // (24 * 60)
+        catalog_hrs = (total_catalog_runtime_minutes % (24 * 60)) // 60
+        catalog_str = f"{catalog_days}d {catalog_hrs}h" if catalog_days > 0 else f"{catalog_hrs}h"
+        insights.append(f"Our content catalog spans {catalog_str} of entertainment across movies and series.")
+    if community_watch_time_seconds > 0:
+        comm_days = community_watch_time_seconds // 86400
+        comm_hrs = (community_watch_time_seconds % 86400) // 3600
+        comm_str = f"{comm_days}d {comm_hrs}h" if comm_days > 0 else f"{comm_hrs}h"
+        insights.append(f"Together, the community has watched {comm_str} of content — and counting!")
 
     return jsonify({
         "totalUsers": total_users,
@@ -81,5 +127,12 @@ def get_stats_summary():
         "mostWatchedMovie": most_watched_movie,
         "topLocation": top_location,
         "topTheater": top_theater,
+        "totalSeries": total_series,
+        "totalEpisodes": total_episodes,
+        "seriesCatalogRuntimeMinutes": series_catalog_runtime_minutes,
+        "moviesCatalogRuntimeMinutes": movies_catalog_runtime_minutes,
+        "totalCatalogRuntimeMinutes": total_catalog_runtime_minutes,
+        "communityWatchTimeSeconds": community_watch_time_seconds,
+        "topGenre": top_genre,
         "insights": insights,
     })

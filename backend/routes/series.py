@@ -325,6 +325,24 @@ def list_series():
         safe_search = re.escape(search)
         query['title'] = {'$regex': safe_search, '$options': 'i'}
 
+    genre = request.args.get('genre', '')
+    if genre:
+        safe_genre = re.escape(genre)
+        query['genre'] = {'$regex': safe_genre, '$options': 'i'}
+
+    year = request.args.get('year', '')
+    if year:
+        try:
+            y = int(year)
+            query['year'] = {'$lte': y}
+            query['$or'] = [
+                {'endYear': {'$gte': y}},
+                {'endYear': None},
+                {'isOngoing': True},
+            ]
+        except ValueError:
+            pass
+
     cursor = db.series.find(query, {"seasons": 0}).sort("title", 1)
     series_list = []
     for doc in cursor:

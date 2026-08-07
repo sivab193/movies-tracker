@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
 import { getAllSeries, getSeriesProgress } from "@/services/series-service";
@@ -8,8 +8,51 @@ import { Header } from "@/components/header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Loader2, Tv, Search, Clock } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Loader2, Tv, Search, Clock, Filter, X } from "lucide-react";
 import { formatRuntimeMinutes, resolveApiUrl, Series, SeriesProgress } from "@/lib/types";
+
+// Common TV genres
+const GENRE_OPTIONS = [
+  "Action",
+  "Adventure",
+  "Animation",
+  "Biography",
+  "Comedy",
+  "Crime",
+  "Documentary",
+  "Drama",
+  "Family",
+  "Fantasy",
+  "History",
+  "Horror",
+  "Music",
+  "Mystery",
+  "Romance",
+  "Sci-Fi",
+  "Sport",
+  "Thriller",
+  "War",
+  "Western",
+];
+
+// Generate year range from 1990 to current year
+function generateYearOptions(): string[] {
+  const currentYear = new Date().getFullYear();
+  const years: string[] = [];
+  for (let y = currentYear; y >= 1990; y--) {
+    years.push(String(y));
+  }
+  return years;
+}
+
+const YEAR_OPTIONS = generateYearOptions();
 
 export default function SeriesPage() {
   const { user, loading: authLoading } = useAuth();
@@ -20,6 +63,10 @@ export default function SeriesPage() {
   
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [selectedGenre, setSelectedGenre] = useState("");
+  const [selectedYear, setSelectedYear] = useState("");
+
+  const hasActiveFilters = selectedGenre !== "" || selectedYear !== "";
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchTerm), 500);
@@ -30,7 +77,11 @@ export default function SeriesPage() {
     async function loadData() {
       try {
         setLoading(true);
-        const data = await getAllSeries(debouncedSearch);
+        const data = await getAllSeries(
+          debouncedSearch || undefined,
+          selectedGenre || undefined,
+          selectedYear || undefined
+        );
         setSeries(data);
       } catch (err) {
         setError("Failed to load series. Please try again later.");
@@ -41,7 +92,7 @@ export default function SeriesPage() {
     }
     
     loadData();
-  }, [debouncedSearch]);
+  }, [debouncedSearch, selectedGenre, selectedYear]);
 
   useEffect(() => {
     async function loadProgress() {
@@ -62,6 +113,11 @@ export default function SeriesPage() {
     return progress.find(p => p.imdbId === imdbId);
   };
 
+  const clearAllFilters = () => {
+    setSelectedGenre("");
+    setSelectedYear("");
+  };
+
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <Header />
@@ -77,17 +133,86 @@ export default function SeriesPage() {
           </p>
         </div>
 
-        <div className="mb-8 relative max-w-md">
-          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-            <Search className="w-5 h-5 text-muted-foreground" />
+        {/* Search & Filters Bar */}
+        <div className="mb-8 space-y-3">
+          <div className="flex flex-col sm:flex-row gap-3">
+            {/* Search Input */}
+            <div className="relative flex-1 max-w-md">
+              <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+                <Search className="w-5 h-5 text-muted-foreground" />
+              </div>
+              <Input
+                type="text"
+                placeholder="Search series..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            {/* Genre Filter */}
+            <Select value={selectedGenre} onValueChange={setSelectedGenre}>
+              <SelectTrigger className="w-[160px]">
+                <Filter className="w-4 h-4 mr-1 text-muted-foreground" />
+                <SelectValue placeholder="Genre" />
+              </SelectTrigger>
+              <SelectContent>
+                {GENRE_OPTIONS.map((genre) => (
+                  <SelectItem key={genre} value={genre}>
+                    {genre}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {/* Year Filter */}
+            <Select value={selectedYear} onValueChange={setSelectedYear}>
+              <SelectTrigger className="w-[130px]">
+                <Clock className="w-4 h-4 mr-1 text-muted-foreground" />
+                <SelectValue placeholder="Year" />
+              </SelectTrigger>
+              <SelectContent>
+                {YEAR_OPTIONS.map((year) => (
+                  <SelectItem key={year} value={year}>
+                    {year}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <Input
-            type="text"
-            placeholder="Search series..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+
+          {/* Active Filters Chips */}
+          {hasActiveFilters && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xs text-muted-foreground font-medium">Active filters:</span>
+              {selectedGenre && (
+                <Badge
+                  variant="secondary"
+                  className="cursor-pointer gap-1 pr-1.5 hover:bg-destructive/15 hover:text-destructive transition-colors"
+                  onClick={() => setSelectedGenre("")}
+                >
+                  {selectedGenre}
+                  <X className="w-3 h-3" />
+                </Badge>
+              )}
+              {selectedYear && (
+                <Badge
+                  variant="secondary"
+                  className="cursor-pointer gap-1 pr-1.5 hover:bg-destructive/15 hover:text-destructive transition-colors"
+                  onClick={() => setSelectedYear("")}
+                >
+                  {selectedYear}
+                  <X className="w-3 h-3" />
+                </Badge>
+              )}
+              <button
+                onClick={clearAllFilters}
+                className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2 transition-colors ml-1"
+              >
+                Clear all
+              </button>
+            </div>
+          )}
         </div>
 
         {error && (
@@ -105,7 +230,15 @@ export default function SeriesPage() {
           <div className="text-center py-20 border rounded-lg border-dashed">
             <Tv className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
             <h3 className="text-lg font-medium">No series found</h3>
-            <p className="text-muted-foreground">Try adjusting your search or check back later.</p>
+            <p className="text-muted-foreground">Try adjusting your search or filters.</p>
+            {hasActiveFilters && (
+              <button
+                onClick={clearAllFilters}
+                className="mt-3 text-sm text-primary hover:underline"
+              >
+                Clear all filters
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -189,3 +322,4 @@ export default function SeriesPage() {
     </div>
   );
 }
+

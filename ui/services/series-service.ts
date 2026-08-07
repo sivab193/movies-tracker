@@ -17,9 +17,13 @@ function normalizeSeries(raw: any): Series {
 }
 
 // Public: List all series
-export async function getAllSeries(search?: string): Promise<Series[]> {
-  const params = search ? `?search=${encodeURIComponent(search)}` : ''
-  const res = await fetch(`${API_BASE_URL}/series${params}`)
+export async function getAllSeries(search?: string, genre?: string, year?: string): Promise<Series[]> {
+  const params = new URLSearchParams()
+  if (search) params.set('search', search)
+  if (genre) params.set('genre', genre)
+  if (year) params.set('year', year)
+  const qs = params.toString()
+  const res = await fetch(`${API_BASE_URL}/series${qs ? `?${qs}` : ''}`)
   if (!res.ok) throw new Error("Failed to fetch series")
   const data = await res.json()
   return data.map(normalizeSeries)
