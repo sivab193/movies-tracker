@@ -65,10 +65,15 @@ def get_stats_summary():
     total_episodes = series_agg[0]["totalEps"] if series_agg else 0
     series_catalog_runtime_minutes = series_agg[0]["totalRuntime"] if series_agg else 0
 
-    movies_runtime_agg = list(db.movies.aggregate([
-        {"$group": {"_id": None, "totalSeconds": {"$sum": "$runtimeSeconds"}}}
-    ]))
-    movies_catalog_runtime_minutes = (movies_runtime_agg[0]["totalSeconds"] // 60) if movies_runtime_agg else 0
+    total_movie_runtime_minutes = 0
+    for m in db.movies.find({}, {"runtime": 1}):
+        rt = m.get("runtime", "")
+        if rt and rt != "N/A":
+            try:
+                total_movie_runtime_minutes += int(rt.split(" ")[0])
+            except (ValueError, IndexError):
+                pass
+    movies_catalog_runtime_minutes = total_movie_runtime_minutes
 
     total_catalog_runtime_minutes = series_catalog_runtime_minutes + movies_catalog_runtime_minutes
 
