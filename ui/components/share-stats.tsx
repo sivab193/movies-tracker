@@ -317,7 +317,7 @@ function drawWrappedImage(stats: WrappedStats, selection: StatSelection): HTMLCa
     // Highlight card height (base/max values - scaled down below if content overflows)
     const highlightCardHBase = 130
     const highlightGapBase = 24
-    const tilesToHighlightsGapBase = 20
+    const tilesToHighlightsGapBase = 40
     const rowGapBase = 26
     const maxTileH = 220
 
@@ -325,18 +325,29 @@ function drawWrappedImage(stats: WrappedStats, selection: StatSelection): HTMLCa
     // scale both the tile grid and highlight cards down uniformly so the
     // combined content always fits within contentH - this keeps the layout
     // intact no matter how many stats/highlights are selected.
+    // Gaps are counted *between* blocks only, and the tiles->highlights gap only
+    // exists when both blocks are present, so the measured height matches what
+    // is actually drawn (an off-by-one-gap here used to push the last highlight
+    // card into the footer rule).
     const naturalTileBlockH = tileRows > 0 ? tileRows * maxTileH + (tileRows - 1) * rowGapBase : 0
-    const naturalHighlightBlockH = highlightCount > 0 ? tilesToHighlightsGapBase + highlightCount * highlightCardHBase + (highlightCount - 1) * highlightGapBase : 0
-    const naturalTotalH = naturalTileBlockH + naturalHighlightBlockH
+    const naturalHighlightBlockH = highlightCount > 0 ? highlightCount * highlightCardHBase + (highlightCount - 1) * highlightGapBase : 0
+    const naturalJoinGap = tileRows > 0 && highlightCount > 0 ? tilesToHighlightsGapBase : 0
+    const naturalTotalH = naturalTileBlockH + naturalJoinGap + naturalHighlightBlockH
     const scale = naturalTotalH > contentH && naturalTotalH > 0 ? contentH / naturalTotalH : 1
 
     const rowGap = rowGapBase * scale
     const highlightGap = highlightGapBase * scale
     const highlightCardH = highlightCardHBase * scale
-    const tilesToHighlightsGap = tilesToHighlightsGapBase * scale
+    const tilesToHighlightsGap = naturalJoinGap * scale
 
-    let tileH = tileRows > 0 ? maxTileH * scale : 0
-    let colW = cols === 1 ? (W - pad * 2) : (W - pad * 2 - gap * (cols - 1)) / cols
+    const tileH = tileRows > 0 ? maxTileH * scale : 0
+    const colW = cols === 1 ? (W - pad * 2) : (W - pad * 2 - gap * (cols - 1)) / cols
+
+    // When the content is shorter than the available zone (few stats selected),
+    // centre the whole block instead of letting it hug the hero and leave a big
+    // dead gap above the footer.
+    const contentBlockH = naturalTotalH * scale
+    const blockTop = contentTop + Math.max(0, (contentH - contentBlockH) / 2)
 
     // --- Header brand ---
     ctx.textAlign = "center"
@@ -368,12 +379,12 @@ function drawWrappedImage(stats: WrappedStats, selection: StatSelection): HTMLCa
     ctx.fillText("MOVIES WATCHED", W / 2, heroTop + 245)
 
     // --- Stat tiles grid ---
-    const gridTop = contentTop
+    const gridTop = blockTop
 
     // Fit every label up front and settle on one font size and one line count
     // for the whole grid, so labels stay the same size and every value sits at
     // the same height even when only some labels have to wrap.
-    const labelMaxW = colW - 28
+    const labelMaxW = colW - 40
     const labelLayouts: string[][] = []
     let labelFont = Math.min(30, Math.max(20, tileH * 0.16))
     if (activeTiles.length > 0) {
@@ -393,7 +404,11 @@ function drawWrappedImage(stats: WrappedStats, selection: StatSelection): HTMLCa
     activeTiles.forEach((t, i) => {
         const col = i % cols
         const row = Math.floor(i / cols)
-        const x = pad + col * (colW + gap)
+        // A final row that is not full gets centred, so 7 tiles in 3 columns
+        // don't leave a lone tile stranded against the left margin.
+        const itemsInRow = Math.min(cols, activeTiles.length - row * cols)
+        const rowW = itemsInRow * colW + (itemsInRow - 1) * gap
+        const x = (W - rowW) / 2 + col * (colW + gap)
         const y = gridTop + row * (tileH + rowGap)
 
         // Tile background with subtle red tint
@@ -417,7 +432,7 @@ function drawWrappedImage(stats: WrappedStats, selection: StatSelection): HTMLCa
         // Auto-shrink value font to fit
         let vFont = Math.min(68, Math.max(30, valueSpace * 0.62))
         ctx.font = `800 ${vFont}px system-ui, -apple-system, 'Segoe UI', sans-serif`
-        while (ctx.measureText(t.value).width > colW - 40 && vFont > 28) {
+        while (ctx.measureText(t.value).width > colW - 44 && vFont > 28) {
             vFont -= 2
             ctx.font = `800 ${vFont}px system-ui, -apple-system, 'Segoe UI', sans-serif`
         }
@@ -432,9 +447,9 @@ function drawWrappedImage(stats: WrappedStats, selection: StatSelection): HTMLCa
     })
 
     // --- Highlights (top movie / theater) ---
-    const tilesBottomEdge = tileRows > 0 ? gridTop + tileRows * (tileH + rowGap) : gridTop
+    const tilesBottomEdge = tileRows > 0 ? gridTop + tileRows * tileH + (tileRows - 1) * rowGap : gridTop
     let hy = tilesBottomEdge + tilesToHighlightsGap
-    if (activeTiles.length === 0 && highlightCount > 0) hy = contentTop
+    if (activeTiles.length === 0 && highlightCount > 0) hy = blockTop
 
     const drawHighlight = (iconType: "popcorn" | "pin", label: string, value: string) => {
         const x = pad
@@ -453,29 +468,40 @@ function drawWrappedImage(stats: WrappedStats, selection: StatSelection): HTMLCa
         roundRect(ctx, x, hy, w, h, 26)
         ctx.stroke()
 
-        // Draw icon instead of emoji
+        // Icon sits in a gutter whose width tracks the icon, so the text column
+        // starts at a consistent optical distance at any card size.
+        const iconSize = 48 * hScale
+        const iconCx = x + 40 + iconSize / 2
+        const textX = iconCx + iconSize / 2 + 34
         if (iconType === "pin") {
-            drawLocationPin(ctx, x + 66, hy + h / 2 + 6, 48 * hScale)
+            drawLocationPin(ctx, iconCx, hy + h / 2 + 6, iconSize)
         } else {
-            drawPopcornIcon(ctx, x + 66, hy + h / 2, 48 * hScale)
+            drawPopcornIcon(ctx, iconCx, hy + h / 2, iconSize)
         }
 
         ctx.textAlign = "left"
 
+        // Centre the label+value pair on the card's midline rather than pinning
+        // it to fixed offsets from the top, which left shrunken cards
+        // bottom-heavy.
+        const lFont = Math.max(18, 26 * hScale)
+        const vFont = Math.max(26, 44 * hScale)
+        const baselineGap = Math.max(32, 46 * hScale)
+        const labelBaseline = hy + (h - baselineGap + lFont * 0.72) / 2
+
         ctx.fillStyle = "rgba(255,255,255,0.6)"
-        ctx.font = `600 ${Math.max(18, 26 * hScale)}px system-ui, -apple-system, 'Segoe UI', sans-serif`
-        ctx.fillText(label.toUpperCase(), x + 130, hy + 52 * hScale)
+        ctx.font = `600 ${lFont}px system-ui, -apple-system, 'Segoe UI', sans-serif`
+        ctx.fillText(label.toUpperCase(), textX, labelBaseline)
 
         ctx.fillStyle = "#ffffff"
-        let vFont = Math.max(26, 44 * hScale)
         ctx.font = `700 ${vFont}px system-ui, -apple-system, 'Segoe UI', sans-serif`
-        const maxW = w - 170
+        const maxW = w - (textX - x) - 40
         let text = value
         while (ctx.measureText(text).width > maxW && text.length > 4) {
             text = text.slice(0, -2)
         }
         if (text !== value) text = text.trimEnd() + "…"
-        ctx.fillText(text, x + 130, hy + 98 * hScale)
+        ctx.fillText(text, textX, labelBaseline + baselineGap)
 
         hy += h + highlightGap
     }
