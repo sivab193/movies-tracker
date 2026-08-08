@@ -5,6 +5,17 @@ All notable changes to Movies Tracker will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Per-page link previews** - every URL now has its own title, description and OG image
+  - Movies and series render a card with the real poster art as a blurred backdrop,
+    plus year, genre, runtime and rating
+  - Short links (`/m/<code>`, `/s/<code>`) and watch orders (`/w/<slug>`) resolve
+    server-side, so a shared link previews as the actual title instead of a blank page
+  - Public profiles show display name, avatar, movies logged and runtime watched,
+    honouring the profile's own privacy settings
+  - Distinct cards for Leaderboard, Stats, Timer, Series, Watch Orders, Cards,
+    Roadmap, Contact, Watch History, Series History, Dashboard, Settings and Auth
+  - Auth-gated pages are marked `noindex`
+
 - **Reorganized navigation** - one shared config (`ui/lib/nav.ts`) drives every nav surface
   - Desktop header collapsed from 8 flat links to `Timer` + `Discover` / `Community` dropdowns
   - Mobile bottom nav: 4 tabs + raised TitleCard Timer button, with `Discover` and `More` bottom sheets
@@ -25,6 +36,9 @@ All notable changes to Movies Tracker will be documented in this file.
   - Per-series season chips with watch counts, inline count editing and rewatch/remove actions
 
 ### Fixed
+- Per-page metadata never applied: 11 `metadata.ts` files sat next to client `page.tsx`
+  files, which Next.js does not read, so every link fell back to the generic
+  MediaVerse card. Replaced with server `layout.tsx` files.
 - Marking a season watched had no visible effect - the series detail page read `watchedSeasons`
   off the response root while the API nested it under `seriesProgress`
 - Home page CTAs sent signed-in users to the sign-in screen instead of their dashboard
