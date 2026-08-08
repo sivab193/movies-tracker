@@ -3,11 +3,20 @@
 
 export const OG_SIZE = { width: 1200, height: 630 }
 
-/** Absolute origin of the deployment, usable from a server render. */
+/** Canonical production origin, matching metadataBase in app/layout.tsx. */
+const CANONICAL_ORIGIN = "https://mv.siv19.dev"
+
+/**
+ * Absolute origin usable from a server render.
+ *
+ * Deliberately does NOT fall back to VERCEL_URL: that per-deployment host
+ * redirects (302) rather than serving the API, so fetches through it never
+ * return JSON and every preview silently degrades to its not-found card.
+ */
 export function siteOrigin(): string {
   const explicit = process.env.NEXT_PUBLIC_APP_URL
   if (explicit) return explicit.replace(/\/$/, "")
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
+  if (process.env.NODE_ENV === "production") return CANONICAL_ORIGIN
   return "http://localhost:3000"
 }
 

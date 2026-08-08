@@ -53,3 +53,19 @@ export function pageMetadata(config: PageOg): Metadata {
     ...(config.private ? { robots: { index: false, follow: false } } : {}),
   }
 }
+
+/**
+ * Metadata for a target that could not be resolved. Sets openGraph/twitter
+ * explicitly — without them the tags fall back to the parent segment's, so a
+ * missing movie would inherit the generic MediaVerse title.
+ */
+export function notFoundMetadata(title: string, description: string): Metadata {
+  const fullTitle = `${title} | MediaVerse`
+  return {
+    title: fullTitle,
+    description,
+    openGraph: { title: fullTitle, description, type: "website", siteName: "MediaVerse" },
+    twitter: { card: "summary_large_image", title: fullTitle, description },
+    robots: { index: false, follow: true },
+  }
+}

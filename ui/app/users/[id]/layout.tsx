@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { formatMinutes, getPublicProfile } from "@/lib/og/data"
+import { notFoundMetadata } from "@/lib/og/static"
 
 export async function generateMetadata({
   params,
@@ -10,11 +11,7 @@ export async function generateMetadata({
   const profile = await getPublicProfile(id)
 
   if (!profile) {
-    return {
-      title: "Private profile | MediaVerse",
-      description: "This MediaVerse profile is not public.",
-      robots: { index: false, follow: false },
-    }
+    return notFoundMetadata("Private profile", "This MediaVerse profile is not public.")
   }
 
   const name = profile.displayName || "A MediaVerse member"

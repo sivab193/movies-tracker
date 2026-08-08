@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { getWatchOrder, truncate } from "@/lib/og/data"
+import { notFoundMetadata } from "@/lib/og/static"
 
 export async function generateMetadata({
   params,
@@ -10,10 +11,10 @@ export async function generateMetadata({
   const order = await getWatchOrder(slug)
 
   if (!order) {
-    return {
-      title: "Watch order not found | MediaVerse",
-      description: "This watch order is no longer available on MediaVerse.",
-    }
+    return notFoundMetadata(
+      "Watch order not found",
+      "This watch order is no longer available on MediaVerse.",
+    )
   }
 
   const count = Array.isArray(order.items) ? order.items.length : 0

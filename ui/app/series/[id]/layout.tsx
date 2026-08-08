@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { formatMinutes, getSeries, truncate } from "@/lib/og/data"
+import { notFoundMetadata } from "@/lib/og/static"
 
 export async function generateMetadata({
   params,
@@ -10,10 +11,7 @@ export async function generateMetadata({
   const series = await getSeries(id)
 
   if (!series) {
-    return {
-      title: "Series not found | MediaVerse",
-      description: "This series is no longer available on MediaVerse.",
-    }
+    return notFoundMetadata("Series not found", "This series is no longer available on MediaVerse.")
   }
 
   const runtime = formatMinutes(

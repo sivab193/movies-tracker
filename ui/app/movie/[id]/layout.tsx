@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { formatMinutes, getMovie, parseRuntimeMinutes, truncate } from "@/lib/og/data"
+import { notFoundMetadata } from "@/lib/og/static"
 
 export async function generateMetadata({
   params,
@@ -10,10 +11,7 @@ export async function generateMetadata({
   const movie = await getMovie(id)
 
   if (!movie) {
-    return {
-      title: "Movie not found | MediaVerse",
-      description: "This movie is no longer available on MediaVerse.",
-    }
+    return notFoundMetadata("Movie not found", "This movie is no longer available on MediaVerse.")
   }
 
   const runtime = formatMinutes(parseRuntimeMinutes(movie.runtime))

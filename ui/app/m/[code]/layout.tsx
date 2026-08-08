@@ -1,5 +1,6 @@
 import type { Metadata } from "next"
 import { getMovie, resolveShortCode, truncate } from "@/lib/og/data"
+import { notFoundMetadata } from "@/lib/og/static"
 
 export async function generateMetadata({
   params,
@@ -11,11 +12,10 @@ export async function generateMetadata({
   const movie = resolved?.movieId ? await getMovie(resolved.movieId) : null
 
   if (!movie) {
-    return {
-      title: "Link expired | MediaVerse",
-      description: "This short link has expired. Short links are cleared 30 days after creation.",
-      robots: { index: false, follow: false },
-    }
+    return notFoundMetadata(
+      "Link expired",
+      "This short link has expired. Short links are cleared 30 days after creation.",
+    )
   }
 
   const title = `${movie.title}${movie.year ? ` (${movie.year})` : ""} | MediaVerse`
