@@ -4,6 +4,7 @@ import Link from "next/link"
 import { Film, Trophy, List, Share2, ShieldCheck, MessageSquare, Bot, Map, Tv, Sparkles, CreditCard, BarChart3, ListOrdered, LayoutDashboard, Link2 } from "lucide-react"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
+import { useAuth } from "@/contexts/auth-context"
 
 const mainFeatures = [
   {
@@ -114,6 +115,8 @@ const upcomingFeatures = [
 ]
 
 export default function HomePage() {
+  const { user } = useAuth()
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <Header />
@@ -134,9 +137,9 @@ export default function HomePage() {
                 Track every movie and series you watch, analyze your statistics, compete on the global leaderboard, and connect with AI assistants — all in one place.
               </p>
               <div className="mt-10 flex items-center justify-center gap-x-6">
-                <Link href="/auth">
+                <Link href={user ? "/dashboard" : "/auth"}>
                   <Button size="lg" className="rounded-full px-8">
-                    Get Started
+                    {user ? "Go to Dashboard" : "Get Started"}
                   </Button>
                 </Link>
                 <Link href="/timer" className="text-sm font-semibold leading-6 text-foreground hover:underline">
@@ -231,15 +234,17 @@ export default function HomePage() {
         {/* CTA Section */}
         <section className="mx-auto max-w-7xl px-4 sm:px-6 py-16 sm:py-20 lg:px-8 mb-12 text-center animate-fade-in">
           <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-            Ready to start tracking?
+            {user ? "Pick up where you left off" : "Ready to start tracking?"}
           </h2>
           <p className="mx-auto mt-6 max-w-xl text-lg leading-8 text-muted-foreground">
-            Join cinephiles around the world in documenting their movie journey.
+            {user
+              ? "Your dashboard has your latest watches, stats and series progress."
+              : "Join cinephiles around the world in documenting their movie journey."}
           </p>
           <div className="mt-10 flex items-center justify-center gap-x-6">
-            <Link href="/auth">
+            <Link href={user ? "/dashboard" : "/auth"}>
               <Button size="lg" className="rounded-full px-8">
-                Get Started for Free
+                {user ? "Open Dashboard" : "Get Started for Free"}
               </Button>
             </Link>
           </div>

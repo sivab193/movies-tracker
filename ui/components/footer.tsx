@@ -1,11 +1,53 @@
 "use client"
 
 import React from "react"
+import Link from "next/link"
+import { useAuth } from "@/contexts/auth-context"
+import { ALL_GROUPS, HOME_ITEM, TIMER_ITEM, visibleItems } from "@/lib/nav"
 
 export function Footer() {
+    const { user, userProfile } = useAuth()
+    const visibility = { isSignedIn: !!user, isAdmin: !!userProfile?.isAdmin }
+
     return (
-        <footer className="w-full mt-auto bg-background/90 backdrop-blur-md border-t border-border py-6 px-4 md:px-8 hidden md:block">
-            <div className="w-full max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 text-center">
+        <footer className="w-full mt-auto bg-background/90 backdrop-blur-md border-t border-border py-8 px-4 md:px-8 hidden md:block">
+            {/* Sitemap mirrors the header grouping so both stay in sync via lib/nav. */}
+            <nav className="w-full max-w-6xl mx-auto mb-8 grid grid-cols-2 gap-8 sm:grid-cols-4 lg:grid-cols-5">
+                <div>
+                    <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-foreground">MediaVerse</p>
+                    <ul className="space-y-2">
+                        {[HOME_ITEM, TIMER_ITEM].map(({ href, label }) => (
+                            <li key={href}>
+                                <Link href={href} className="text-sm text-muted-foreground transition-colors hover:text-primary">
+                                    {label}
+                                </Link>
+                            </li>
+                        ))}
+                    </ul>
+                </div>
+                {ALL_GROUPS.map((group) => {
+                    const items = visibleItems(group, visibility)
+                    if (items.length === 0) return null
+                    return (
+                        <div key={group.id}>
+                            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-foreground">
+                                {group.label}
+                            </p>
+                            <ul className="space-y-2">
+                                {items.map(({ href, label }) => (
+                                    <li key={href}>
+                                        <Link href={href} className="text-sm text-muted-foreground transition-colors hover:text-primary">
+                                            {label}
+                                        </Link>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )
+                })}
+            </nav>
+
+            <div className="w-full max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 text-center border-t border-border pt-6">
                 <p className="text-xs md:text-sm text-muted-foreground text-center font-medium">
                     Build open source and Automate
                 </p>

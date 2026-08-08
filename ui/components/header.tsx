@@ -1,68 +1,99 @@
 "use client"
 
+import React from "react"
 import Link from "next/link"
-import { Film, Moon, Sun, User, Eye, LogOut, LayoutDashboard, Settings, LogIn, BarChart3, CreditCard, ListOrdered, Tv } from "lucide-react"
+import { usePathname } from "next/navigation"
+import { Film, Moon, Sun, LogOut, Settings, ChevronDown, Search } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useAuth } from "@/contexts/auth-context"
 import { useTheme } from "@/contexts/theme-context"
+import { CommandPalette, useCommandPalette } from "@/components/command-palette"
+import {
+  PRIMARY_GROUPS,
+  PERSONAL_GROUP,
+  SUPPORT_GROUP,
+  TIMER_ITEM,
+  isActiveGroup,
+  isActiveHref,
+  visibleItems,
+  type NavGroup,
+} from "@/lib/nav"
 
 export function Header() {
   const { user, userProfile, signOut } = useAuth()
   const { theme, toggleTheme } = useTheme()
+  const pathname = usePathname()
+  const { open: paletteOpen, setOpen: setPaletteOpen } = useCommandPalette()
+
+  const visibility = { isSignedIn: !!user, isAdmin: !!userProfile?.isAdmin }
+  const personalItems = visibleItems(PERSONAL_GROUP, visibility)
+  const supportItems = visibleItems(SUPPORT_GROUP, visibility)
+  const timerActive = isActiveHref(pathname, TIMER_ITEM.href)
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border bg-background/80 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4">
         <div className="flex items-center gap-6">
-          <Link href="/" className="flex items-center gap-2">
+          <Link href="/" className="flex shrink-0 items-center gap-2">
             <Film className="h-6 w-6 text-primary" />
             <span className="text-xl font-bold tracking-tight">MediaVerse</span>
           </Link>
-          <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
-            <Link href="/timer" className="text-muted-foreground transition-colors hover:text-foreground">
-              TitleCard Timer
-            </Link>
-            <Link href="/series" className="text-muted-foreground transition-colors hover:text-foreground flex items-center gap-1.5">
-              <Tv className="h-4 w-4" />
-              Series
-            </Link>
-            <Link href="/watch-orders" className="text-muted-foreground transition-colors hover:text-foreground flex items-center gap-1.5">
-              <ListOrdered className="h-4 w-4" />
-              Watch Orders
-            </Link>
-            <Link href="/leaderboard" className="text-muted-foreground transition-colors hover:text-foreground">
-              Leaderboard
-            </Link>
-            {user && (
-              <Link href="/watch-history" className="text-muted-foreground transition-colors hover:text-foreground">
-                Watch History
-              </Link>
-            )}
-            {user && (
-              <Link href="/cards" className="text-muted-foreground transition-colors hover:text-foreground flex items-center gap-1.5">
-                <CreditCard className="h-4 w-4" />
-                Cards
-              </Link>
-            )}
-            <Link href="/stats" className="text-muted-foreground transition-colors hover:text-foreground flex items-center gap-1.5">
-              <BarChart3 className="h-4 w-4" />
-              Stats
-            </Link>
-            <Link href="/contact" className="text-muted-foreground transition-colors hover:text-foreground">
-              Contact Us
-            </Link>
-          </nav>
 
+          <nav className="hidden items-center gap-1 text-sm font-medium md:flex">
+            <Link
+              href={TIMER_ITEM.href}
+              className={`rounded-md px-3 py-2 transition-colors ${
+                timerActive
+                  ? "bg-accent text-foreground"
+                  : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+              }`}
+            >
+              Timer
+            </Link>
+
+            {PRIMARY_GROUPS.map((group) => (
+              <NavGroupMenu
+                key={group.id}
+                group={group}
+                pathname={pathname}
+                items={visibleItems(group, visibility)}
+              />
+            ))}
+          </nav>
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Desktop: a real search affordance beats a hidden shortcut. */}
+          <button
+            type="button"
+            onClick={() => setPaletteOpen(true)}
+            className="hidden items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-foreground lg:flex"
+            aria-label="Search pages and actions"
+          >
+            <Search className="h-4 w-4" />
+            <span>Search</span>
+            <kbd className="ml-2 rounded border border-border bg-background px-1.5 py-0.5 text-[10px] font-medium">
+              ⌘K
+            </kbd>
+          </button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setPaletteOpen(true)}
+            className="lg:hidden"
+            aria-label="Search pages and actions"
+          >
+            <Search className="h-5 w-5" />
+          </Button>
+
           <Button
             variant="ghost"
             size="icon"
@@ -75,7 +106,7 @@ export function Header() {
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" aria-label="User menu">
+                <Button variant="ghost" size="icon" aria-label="Account menu">
                   {user.photoURL ? (
                     <img
                       src={user.photoURL}
@@ -91,26 +122,53 @@ export function Header() {
                   )}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuContent align="end" className="w-60">
                 <div className="px-2 py-1.5">
                   <p className="text-sm font-medium">{user.displayName || "User"}</p>
-                  <p className="text-xs text-muted-foreground">{user.email}</p>
+                  <p className="truncate text-xs text-muted-foreground">{user.email}</p>
                 </div>
-                <DropdownMenuSeparator />
-                {userProfile?.isAdmin && (
-                  <DropdownMenuItem asChild>
-                    <Link href="/admin" className="flex items-center gap-2">
-                      <LayoutDashboard className="h-4 w-4" />
-                      Admin
-                    </Link>
-                  </DropdownMenuItem>
+
+                {personalItems.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel className="text-xs text-muted-foreground">
+                      {PERSONAL_GROUP.label}
+                    </DropdownMenuLabel>
+                    {personalItems.map(({ href, label, icon: Icon }) => (
+                      <DropdownMenuItem key={href} asChild>
+                        <Link
+                          href={href}
+                          className={`flex items-center gap-2 ${
+                            isActiveHref(pathname, href) ? "font-semibold text-primary" : ""
+                          }`}
+                        >
+                          <Icon className="h-4 w-4" />
+                          {label}
+                        </Link>
+                      </DropdownMenuItem>
+                    ))}
+                  </>
                 )}
-                <DropdownMenuItem asChild>
-                  <Link href="/settings" className="flex items-center gap-2">
-                    <Settings className="h-4 w-4" />
-                    Settings
-                  </Link>
-                </DropdownMenuItem>
+
+                {supportItems.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    {supportItems.map(({ href, label, icon: Icon }) => (
+                      <DropdownMenuItem key={href} asChild>
+                        <Link
+                          href={href}
+                          className={`flex items-center gap-2 ${
+                            isActiveHref(pathname, href) ? "font-semibold text-primary" : ""
+                          }`}
+                        >
+                          <Icon className="h-4 w-4" />
+                          {label}
+                        </Link>
+                      </DropdownMenuItem>
+                    ))}
+                  </>
+                )}
+
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={signOut} className="flex items-center gap-2 text-destructive">
                   <LogOut className="h-4 w-4" />
@@ -119,14 +177,91 @@ export function Header() {
               </DropdownMenuContent>
             </DropdownMenu>
           ) : (
-            <Link href="/auth">
-              <Button variant="default" size="sm">
-                Sign in
-              </Button>
-            </Link>
+            <>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="hidden md:inline-flex" aria-label="More links">
+                    <Settings className="h-5 w-5" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-52">
+                  {supportItems.map(({ href, label, icon: Icon }) => (
+                    <DropdownMenuItem key={href} asChild>
+                      <Link href={href} className="flex items-center gap-2">
+                        <Icon className="h-4 w-4" />
+                        {label}
+                      </Link>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Link href="/auth">
+                <Button variant="default" size="sm">
+                  Sign in
+                </Button>
+              </Link>
+            </>
           )}
         </div>
       </div>
+
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
     </header>
+  )
+}
+
+function NavGroupMenu({
+  group,
+  pathname,
+  items,
+}: {
+  group: NavGroup
+  pathname: string
+  items: ReturnType<typeof visibleItems>
+}) {
+  if (items.length === 0) return null
+  const active = isActiveGroup(pathname, group)
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className={`group flex items-center gap-1 rounded-md px-3 py-2 transition-colors ${
+            active
+              ? "bg-accent text-foreground"
+              : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+          }`}
+        >
+          {group.label}
+          <ChevronDown className="h-3.5 w-3.5 transition-transform group-data-[state=open]:rotate-180" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-72">
+        {items.map(({ href, label, description, icon: Icon }) => (
+          <DropdownMenuItem key={href} asChild>
+            <Link href={href} className="flex items-start gap-3 py-2">
+              <Icon
+                className={`mt-0.5 h-4 w-4 shrink-0 ${
+                  isActiveHref(pathname, href) ? "text-primary" : "text-muted-foreground"
+                }`}
+              />
+              <span className="flex flex-col gap-0.5">
+                <span
+                  className={`text-sm font-medium ${
+                    isActiveHref(pathname, href) ? "text-primary" : ""
+                  }`}
+                >
+                  {label}
+                </span>
+                {description && (
+                  <span className="text-xs leading-snug text-muted-foreground">{description}</span>
+                )}
+              </span>
+            </Link>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
