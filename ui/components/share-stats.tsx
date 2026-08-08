@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Share2, Loader2, Download, Check } from "lucide-react"
+import { Share2, Loader2, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"

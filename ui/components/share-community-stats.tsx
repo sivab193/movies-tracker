@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Share2, Loader2, Download, Check } from "lucide-react"
+import { Share2, Loader2, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
     Dialog,
@@ -45,7 +45,7 @@ function roundRect(
 }
 
 function formatMinutesHuman(totalMinutes: number): string {
-    if (!totalMinutes || totalMinutes <= 0) return "0 mins"
+    if (!totalMinutes || totalMinutes <= 0) return "0m"
     const days = Math.floor(totalMinutes / (24 * 60))
     const hrs = Math.floor((totalMinutes % (24 * 60)) / 60)
     const mins = totalMinutes % 60
@@ -53,11 +53,48 @@ function formatMinutesHuman(totalMinutes: number): string {
     if (days > 0) parts.push(`${days}d`)
     if (hrs > 0) parts.push(`${hrs}h`)
     if (mins > 0) parts.push(`${mins}m`)
-    return parts.join(' ') || '0 mins'
+    return parts.join(' ') || '0m'
 }
 
 const FONT = (weight: number, size: number) =>
     `${weight} ${size}px system-ui, -apple-system, 'Segoe UI', sans-serif`
+
+// Three ascending bars, drawn rather than set as an emoji: canvas renders emoji
+// with whatever the host OS ships, so 📊 came out flat/greyscale (or missing)
+// depending on the device generating the card.
+const BADGE_ICON_W = 18
+function drawMiniBars(ctx: CanvasRenderingContext2D, x: number, baseY: number, color: string) {
+    ctx.fillStyle = color
+    const heights = [10, 16, 22]
+    for (let i = 0; i < heights.length; i++) {
+        ctx.fillRect(x + i * 7, baseY - heights[i], 4, heights[i])
+    }
+}
+
+// Shrinks `text` until it fits, then truncates with an ellipsis. The ellipsis is
+// included in the measurement so the string that gets drawn is the one that was
+// checked.
+function fitOrTruncate(
+    ctx: CanvasRenderingContext2D,
+    text: string,
+    maxWidth: number,
+    weight: number,
+    startSize: number,
+    minSize: number
+): string {
+    let size = startSize
+    ctx.font = FONT(weight, size)
+    while (ctx.measureText(text).width > maxWidth && size > minSize) {
+        size -= 2
+        ctx.font = FONT(weight, size)
+    }
+    if (ctx.measureText(text).width <= maxWidth) return text
+    let out = text
+    while (out.length > 1 && ctx.measureText(out + "…").width > maxWidth) {
+        out = out.slice(0, -1)
+    }
+    return out.trimEnd() + "…"
+}
 
 function drawCommunityCard(stats: CommunityStats): HTMLCanvasElement {
     const W = 1080
@@ -99,65 +136,25 @@ function drawCommunityCard(stats: CommunityStats): HTMLCanvasElement {
     }
 
     ctx.textBaseline = "alphabetic"
-
-    // --- Header ---
-    const pad = 70
-    let y = 120
-
-    // Badge
-    ctx.save()
-    roundRect(ctx, pad, y, 340, 48, 24)
-    ctx.fillStyle = "rgba(140, 80, 255, 0.2)"
-    ctx.fill()
-    ctx.strokeStyle = "rgba(140, 80, 255, 0.4)"
-    ctx.lineWidth = 1.5
-    ctx.stroke()
-    ctx.fillStyle = "rgba(180, 140, 255, 0.9)"
-    ctx.font = FONT(600, 20)
-    ctx.fillText("📊  Community Stats", pad + 28, y + 32)
-    ctx.restore()
-
-    y += 90
-
-    // Title
-    ctx.fillStyle = "#ffffff"
-    ctx.font = FONT(800, 64)
-    ctx.fillText("MediaVerse", pad, y)
-    y += 70
-    ctx.font = FONT(800, 64)
-    ctx.fillText("Community Pulse", pad, y)
-    y += 36
-
-    // Subtitle
-    ctx.fillStyle = "rgba(255, 255, 255, 0.5)"
-    ctx.font = FONT(400, 24)
-    ctx.fillText("What our community is watching, together.", pad, y)
-    y += 80
-
-    // --- Hero stat: total catalog runtime ---
-    const catalogLabel = formatMinutesHuman(stats.totalCatalogRuntimeMinutes)
-    ctx.fillStyle = "#ffffff"
-    ctx.font = FONT(900, 120)
-    const heroMetrics = ctx.measureText(catalogLabel)
-    // Center it
-    const heroX = (W - heroMetrics.width) / 2
-    ctx.fillText(catalogLabel, heroX, y + 100)
-
-    y += 130
-    ctx.fillStyle = "rgba(180, 140, 255, 0.9)"
-    ctx.font = FONT(600, 28)
-    ctx.textAlign = "center"
-    ctx.fillText("TOTAL CONTENT AVAILABLE", W / 2, y)
     ctx.textAlign = "start"
 
-    y += 70
+    const pad = 70
+    const contentW = W - pad * 2
 
-    // --- Stat tiles (2-column grid) ---
-    const tileW = (W - pad * 2 - 30) / 2
-    const tileH = 140
-    const tileGap = 24
+    // ===================== measure =====================
+    // Everything is measured first so the leftover vertical space can be shared
+    // out between sections instead of piling up above the footer.
 
-    const tiles: { value: string; label: string; accent?: string }[] = [
+    const catalogLabel = formatMinutesHuman(stats.totalCatalogRuntimeMinutes)
+    let heroFont = 120
+    ctx.font = FONT(900, heroFont)
+    while (ctx.measureText(catalogLabel).width > contentW && heroFont > 56) {
+        heroFont -= 4
+        ctx.font = FONT(900, heroFont)
+    }
+    const heroCapH = heroFont * 0.74
+
+    const tiles: { value: string; label: string; accent: string }[] = [
         { value: String(stats.totalMovies), label: "MOVIES", accent: "rgba(255, 100, 100, 0.9)" },
         { value: String(stats.totalSeries), label: "SERIES", accent: "rgba(100, 180, 255, 0.9)" },
         { value: formatMinutesHuman(stats.moviesCatalogRuntimeMinutes), label: "MOVIES RUNTIME", accent: "rgba(255, 150, 80, 0.9)" },
@@ -168,123 +165,188 @@ function drawCommunityCard(stats: CommunityStats): HTMLCanvasElement {
         { value: String(stats.totalTheaters), label: "THEATERS", accent: "rgba(255, 130, 180, 0.9)" },
     ]
 
+    const tileH = 134
+    const tileGap = 26
+    const tileW = (contentW - tileGap) / 2
+    const tileRows = Math.ceil(tiles.length / 2)
+    const gridH = tileRows * tileH + (tileRows - 1) * tileGap
+
+    const cards: { label: string; value: string; accent: string; h: number }[] = []
+    if (stats.communityWatchTimeSeconds > 0) {
+        cards.push({
+            label: "COMMUNITY WATCH TIME",
+            value: formatMinutesHuman(Math.floor(stats.communityWatchTimeSeconds / 60)),
+            accent: "rgba(180, 140, 255, 0.95)",
+            h: 132,
+        })
+    }
+    if (stats.mostWatchedMovie && stats.mostWatchedMovie.count > 0) {
+        cards.push({
+            label: "CROWD FAVORITE",
+            value: `${stats.mostWatchedMovie.title} (${stats.mostWatchedMovie.count} watches)`,
+            accent: "rgba(255, 200, 80, 0.95)",
+            h: 110,
+        })
+    }
+    if (stats.topGenre) {
+        cards.push({
+            label: "TOP GENRE",
+            value: stats.topGenre,
+            accent: "rgba(100, 200, 255, 0.95)",
+            h: 110,
+        })
+    }
+    const cardGap = 22
+    const cardsH = cards.reduce((sum, c) => sum + c.h, 0) + Math.max(0, cards.length - 1) * cardGap
+
+    const badgeH = 46
+    const titleLineH = 72
+    const titleH = titleLineH * 2
+    const subtitleH = 24
+    const heroLabelH = 26
+
+    const topMargin = 110
+    const footerRuleY = H - 175
+    const footerClearance = 60
+
+    const sectionsH = badgeH + titleH + subtitleH + heroCapH + heroLabelH + gridH + cardsH
+    // badge→title, title→subtitle, subtitle→hero, hero→heroLabel, heroLabel→grid, grid→cards
+    const gapsBase = [36, 26, 62, 30, 56, cards.length > 0 ? 40 : 0]
+    const gapsBaseTotal = gapsBase.reduce((a, b) => a + b, 0)
+    const availableH = footerRuleY - footerClearance - topMargin
+    const slack = availableH - sectionsH - gapsBaseTotal
+    // Distribute the slack proportionally so the larger separations absorb more
+    // of it and the rhythm stays recognisable. A floor keeps sections from
+    // colliding when there is more content than room.
+    const gaps = gapsBase.map((g) =>
+        gapsBaseTotal > 0 ? Math.max(g * 0.55, g + (slack * g) / gapsBaseTotal) : g
+    )
+
+    // ===================== draw =====================
+    let y = topMargin
+
+    // --- Badge (width follows its text instead of a fixed 340px box) ---
+    ctx.font = FONT(600, 20)
+    const badgeText = "Community Stats"
+    const badgeW = 22 + BADGE_ICON_W + 12 + ctx.measureText(badgeText).width + 24
+    roundRect(ctx, pad, y, badgeW, badgeH, badgeH / 2)
+    ctx.fillStyle = "rgba(140, 80, 255, 0.2)"
+    ctx.fill()
+    ctx.strokeStyle = "rgba(140, 80, 255, 0.4)"
+    ctx.lineWidth = 1.5
+    ctx.stroke()
+    drawMiniBars(ctx, pad + 22, y + badgeH / 2 + 11, "rgba(180, 140, 255, 0.95)")
+    ctx.fillStyle = "rgba(200, 170, 255, 0.95)"
+    ctx.font = FONT(600, 20)
+    ctx.fillText(badgeText, pad + 22 + BADGE_ICON_W + 12, y + badgeH / 2 + 7)
+    y += badgeH + gaps[0]
+
+    // --- Title ---
+    ctx.fillStyle = "#ffffff"
+    ctx.font = FONT(800, 64)
+    ctx.fillText("MediaVerse", pad, y + 50)
+    ctx.fillText("Community Pulse", pad, y + 50 + titleLineH)
+    y += titleH + gaps[1]
+
+    // --- Subtitle ---
+    ctx.fillStyle = "rgba(255, 255, 255, 0.5)"
+    ctx.font = FONT(400, 24)
+    ctx.fillText("What our community is watching, together.", pad, y + subtitleH)
+    y += subtitleH + gaps[2]
+
+    // --- Hero stat: total catalog runtime ---
+    // Left-aligned on the same grid line as everything else; it used to be
+    // centred, which fought the rest of the card and could overflow the canvas
+    // once the runtime grew a digit.
+    ctx.fillStyle = "#ffffff"
+    ctx.font = FONT(900, heroFont)
+    ctx.fillText(catalogLabel, pad, y + heroCapH)
+    y += heroCapH + gaps[3]
+
+    ctx.fillStyle = "rgba(180, 140, 255, 0.9)"
+    ctx.font = FONT(600, 26)
+    ctx.fillText("TOTAL CONTENT AVAILABLE", pad, y + 20)
+    y += heroLabelH + gaps[4]
+
+    // --- Stat tiles (2-column grid) ---
+    const gridTop = y
     for (let i = 0; i < tiles.length; i++) {
         const col = i % 2
         const row = Math.floor(i / 2)
-        const tx = pad + col * (tileW + tileGap + 6)
-        const ty = y + row * (tileH + tileGap)
+        const tx = pad + col * (tileW + tileGap)
+        const ty = gridTop + row * (tileH + tileGap)
 
-        // Tile background
-        roundRect(ctx, tx, ty, tileW, tileH, 16)
+        roundRect(ctx, tx, ty, tileW, tileH, 18)
         ctx.fillStyle = "rgba(255, 255, 255, 0.04)"
         ctx.fill()
         ctx.strokeStyle = "rgba(255, 255, 255, 0.08)"
         ctx.lineWidth = 1
         ctx.stroke()
 
-        // Value
-        ctx.fillStyle = tiles[i].accent || "#ffffff"
-        ctx.font = FONT(800, 40)
-        // Shrink if needed
         let valFont = 40
-        while (ctx.measureText(tiles[i].value).width > tileW - 40 && valFont > 20) {
+        ctx.font = FONT(800, valFont)
+        while (ctx.measureText(tiles[i].value).width > tileW - 48 && valFont > 20) {
             valFont -= 2
             ctx.font = FONT(800, valFont)
         }
-        ctx.fillText(tiles[i].value, tx + 20, ty + 55)
+        ctx.fillStyle = tiles[i].accent
+        ctx.fillText(tiles[i].value, tx + 24, ty + 56)
 
-        // Label
         ctx.fillStyle = "rgba(255, 255, 255, 0.5)"
         ctx.font = FONT(600, 18)
-        ctx.fillText(tiles[i].label, tx + 20, ty + tileH - 25)
+        ctx.fillText(tiles[i].label, tx + 24, ty + tileH - 26)
     }
+    y += gridH + gaps[5]
 
-    y += Math.ceil(tiles.length / 2) * (tileH + tileGap) + 20
-
-    // --- Community watch time ---
-    if (stats.communityWatchTimeSeconds > 0) {
-        const communityMins = Math.floor(stats.communityWatchTimeSeconds / 60)
-        const communityLabel = formatMinutesHuman(communityMins)
-
-        roundRect(ctx, pad, y, W - pad * 2, 130, 16)
-        ctx.fillStyle = "rgba(140, 80, 255, 0.08)"
+    // --- Highlight cards (one shared shape: accent rail, label, value) ---
+    for (const card of cards) {
+        roundRect(ctx, pad, y, contentW, card.h, 18)
+        ctx.fillStyle = "rgba(255, 255, 255, 0.035)"
         ctx.fill()
-        ctx.strokeStyle = "rgba(140, 80, 255, 0.2)"
-        ctx.lineWidth = 1.5
-        ctx.stroke()
-
-        ctx.fillStyle = "rgba(180, 140, 255, 0.9)"
-        ctx.font = FONT(600, 18)
-        ctx.fillText("COMMUNITY WATCH TIME", pad + 24, y + 40)
-
-        ctx.fillStyle = "#ffffff"
-        ctx.font = FONT(800, 48)
-        ctx.fillText(communityLabel, pad + 24, y + 100)
-
-        y += 160
-    }
-
-    // --- Highlights ---
-    if (stats.mostWatchedMovie && stats.mostWatchedMovie.count > 0) {
-        roundRect(ctx, pad, y, W - pad * 2, 100, 16)
-        ctx.fillStyle = "rgba(255, 255, 255, 0.03)"
-        ctx.fill()
-        ctx.strokeStyle = "rgba(255, 255, 255, 0.06)"
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.08)"
         ctx.lineWidth = 1
         ctx.stroke()
 
-        ctx.fillStyle = "rgba(255, 200, 80, 0.9)"
+        // Accent rail, clipped so it picks up the card's rounded corners.
+        // It carries the colour coding the emoji used to, without the emoji.
+        ctx.save()
+        roundRect(ctx, pad, y, contentW, card.h, 18)
+        ctx.clip()
+        ctx.fillStyle = card.accent
+        ctx.fillRect(pad, y, 5, card.h)
+        ctx.restore()
+
+        const textX = pad + 32
+        const textMaxW = contentW - (textX - pad) - 32
+
+        ctx.fillStyle = card.accent
         ctx.font = FONT(600, 18)
-        ctx.fillText("🏆  CROWD FAVORITE", pad + 24, y + 35)
+        ctx.fillText(card.label, textX, y + 42)
 
+        const valueText = fitOrTruncate(ctx, card.value, textMaxW, 700, 34, 24)
         ctx.fillStyle = "#ffffff"
-        ctx.font = FONT(700, 28)
-        // Truncate title if needed
-        let movieTitle = stats.mostWatchedMovie.title
-        while (ctx.measureText(movieTitle).width > (W - pad * 2 - 60) && movieTitle.length > 3) {
-            movieTitle = movieTitle.slice(0, -4) + "…"
-        }
-        ctx.fillText(`${movieTitle} (${stats.mostWatchedMovie.count} watches)`, pad + 24, y + 75)
+        ctx.fillText(valueText, textX, y + card.h - 30)
 
-        y += 125
-    }
-
-    if (stats.topGenre) {
-        roundRect(ctx, pad, y, W - pad * 2, 80, 16)
-        ctx.fillStyle = "rgba(255, 255, 255, 0.03)"
-        ctx.fill()
-
-        ctx.fillStyle = "rgba(100, 200, 255, 0.9)"
-        ctx.font = FONT(600, 18)
-        ctx.fillText("🎭  TOP GENRE", pad + 24, y + 32)
-
-        ctx.fillStyle = "#ffffff"
-        ctx.font = FONT(700, 26)
-        ctx.fillText(stats.topGenre, pad + 24, y + 65)
-
-        y += 105
+        y += card.h + cardGap
     }
 
     // --- Footer ---
-    const footerY = H - 120
-    ctx.fillStyle = "rgba(255, 255, 255, 0.15)"
-    ctx.fillRect(pad, footerY - 30, W - pad * 2, 1)
+    ctx.fillStyle = "rgba(255, 255, 255, 0.14)"
+    ctx.fillRect(pad, footerRuleY, contentW, 1)
 
-    ctx.fillStyle = "rgba(255, 255, 255, 0.7)"
+    ctx.fillStyle = "rgba(255, 255, 255, 0.75)"
     ctx.font = FONT(700, 28)
-    ctx.fillText(SITE, pad, footerY + 20)
+    ctx.fillText(SITE, pad, footerRuleY + 52)
 
     ctx.fillStyle = "rgba(255, 255, 255, 0.4)"
     ctx.font = FONT(500, 22)
     ctx.textAlign = "right"
-    ctx.fillText(INSTA, W - pad, footerY + 20)
+    ctx.fillText(INSTA, W - pad, footerRuleY + 52)
     ctx.textAlign = "start"
 
     ctx.fillStyle = "rgba(255, 255, 255, 0.3)"
     ctx.font = FONT(400, 18)
-    ctx.textAlign = "center"
-    ctx.fillText("Track your movie journey · Join us!", W / 2, footerY + 60)
-    ctx.textAlign = "start"
+    ctx.fillText("Track your movie journey · Join us!", pad, footerRuleY + 98)
 
     return canvas
 }
