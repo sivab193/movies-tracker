@@ -1,5 +1,5 @@
 import { auth } from "@/lib/firebase"
-import { Series, SeriesLookup, SeriesProgress } from "@/lib/types"
+import { Series, SeriesLookup, SeriesProgress, SeriesProgressSummary } from "@/lib/types"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
 
@@ -176,16 +176,76 @@ export async function verifySeries(id: string, verified?: boolean): Promise<{ ve
   return data
 }
 
-// User: Toggle season watched
-export async function toggleSeasonWatched(imdbId: string, seasonNumber: number): Promise<any> {
+export type SeriesProgressAction =
+  | "toggle"
+  | "watch"
+  | "unwatch"
+  | "increment"
+  | "decrement"
+  | "set"
+  | "watchAll"
+  | "unwatchAll"
+  | "incrementAll"
+
+export interface SeriesProgressResult {
+  message: string
+  /** null when the last season was unmarked and the entry was dropped. */
+  seriesProgress: SeriesProgress | null
+  watchedSeasons: number[]
+  seasonCounts: Record<string, number>
+  totalWatchCount: number
+}
+
+async function postSeriesProgress(body: Record<string, unknown>): Promise<SeriesProgressResult> {
   const headers = await getAuthHeader()
   const res = await fetch(`${API_BASE_URL}/users/series-progress`, {
     method: "POST",
     headers: { ...headers, "Content-Type": "application/json" },
-    body: JSON.stringify({ imdbId, seasonNumber }),
+    body: JSON.stringify(body),
   })
-  if (!res.ok) throw new Error("Failed to update series progress")
-  return await res.json()
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error || "Failed to update series progress")
+  return data
+}
+
+// User: Mark a season watched for the first time (no-op if already watched)
+export async function watchSeason(imdbId: string, seasonNumber: number) {
+  return postSeriesProgress({ imdbId, seasonNumber, action: "watch" })
+}
+
+// User: Log another viewing of a season already marked watched
+export async function rewatchSeason(imdbId: string, seasonNumber: number) {
+  return postSeriesProgress({ imdbId, seasonNumber, action: "increment" })
+}
+
+// User: Clear a season entirely
+export async function unwatchSeason(imdbId: string, seasonNumber: number) {
+  return postSeriesProgress({ imdbId, seasonNumber, action: "unwatch" })
+}
+
+// User: Set an exact watch count for a season (0 clears it)
+export async function setSeasonWatchCount(imdbId: string, seasonNumber: number, count: number) {
+  return postSeriesProgress({ imdbId, seasonNumber, action: "set", count })
+}
+
+// User: Mark every season of the series watched
+export async function watchEntireSeries(imdbId: string) {
+  return postSeriesProgress({ imdbId, action: "watchAll" })
+}
+
+// User: Log a full rewatch — bumps every season's count by one
+export async function rewatchEntireSeries(imdbId: string) {
+  return postSeriesProgress({ imdbId, action: "incrementAll" })
+}
+
+// User: Clear all progress for the series
+export async function unwatchEntireSeries(imdbId: string) {
+  return postSeriesProgress({ imdbId, action: "unwatchAll" })
+}
+
+// User: Toggle season watched (legacy helper, kept for older call sites)
+export async function toggleSeasonWatched(imdbId: string, seasonNumber: number) {
+  return postSeriesProgress({ imdbId, seasonNumber, action: "toggle" })
 }
 
 // User: Remove series from progress
@@ -198,13 +258,26 @@ export async function removeSeriesProgress(imdbId: string): Promise<void> {
   if (!res.ok) throw new Error("Failed to remove series progress")
 }
 
-// User: Get series progress
-export async function getSeriesProgress(uid: string): Promise<SeriesProgress[]> {
+// User: Get series progress plus aggregate totals
+export async function getSeriesProgressWithSummary(
+  uid: string
+): Promise<{ seriesProgress: SeriesProgress[]; summary: SeriesProgressSummary }> {
   const headers = await getAuthHeader()
-  const res = await fetch(`${API_BASE_URL}/users/${uid}/series-progress`, {
-    headers,
-  })
+  const res = await fetch(`${API_BASE_URL}/users/${uid}/series-progress`, { headers })
   if (!res.ok) throw new Error("Failed to fetch series progress")
   const data = await res.json()
-  return data.seriesProgress || []
+  return {
+    seriesProgress: data.seriesProgress || [],
+    summary: data.summary || {
+      seriesTracked: 0,
+      seriesCompleted: 0,
+      seasonsWatched: 0,
+      runtimeWatchedMinutes: 0,
+    },
+  }
+}
+
+// User: Get series progress
+export async function getSeriesProgress(uid: string): Promise<SeriesProgress[]> {
+  return (await getSeriesProgressWithSummary(uid)).seriesProgress
 }

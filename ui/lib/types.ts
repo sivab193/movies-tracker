@@ -236,12 +236,30 @@ export interface SeriesProgress {
   imdbId: string
   title: string
   watchedSeasons: number[]
+  /** Season number (as a string key) -> how many times it has been watched. */
+  seasonCounts: Record<string, number>
+  totalWatchCount: number
+  runtimeWatchedMinutes: number
   startedAt: string
   updatedAt: string
-  // Enriched from lookup:
+  lastWatchedAt?: string
+  completedAt?: string
+  isCompleted?: boolean
+  // Enriched from the series catalog:
+  seriesId?: string
   totalSeasons?: number
+  totalEpisodes?: number
   posterUrl?: string | null
   year?: number
+  genre?: string
+  seriesRuntimeMinutes?: number
+}
+
+export interface SeriesProgressSummary {
+  seriesTracked: number
+  seriesCompleted: number
+  seasonsWatched: number
+  runtimeWatchedMinutes: number
 }
 
 // Helper to format seconds to display string

@@ -5,6 +5,30 @@ All notable changes to Movies Tracker will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Reorganized navigation** - one shared config (`ui/lib/nav.ts`) drives every nav surface
+  - Desktop header collapsed from 8 flat links to `Timer` + `Discover` / `Community` dropdowns
+  - Mobile bottom nav: 4 tabs + raised TitleCard Timer button, with `Discover` and `More` bottom sheets
+  - Series, Watch Orders, Stats, Settings, Roadmap and Contact are now reachable on mobile
+  - Active-state highlighting across header, dropdowns and tabs
+  - Command palette (Cmd/Ctrl+K) over every destination plus theme and auth actions
+  - Footer sitemap generated from the same nav config
+
+- **Series watch counts** - seasons track how many times they were watched
+  - `seasonCounts`, `totalWatchCount`, `runtimeWatchedMinutes`, `lastWatchedAt` and `completedAt` on `seriesProgress`
+  - New actions on `POST /api/users/series-progress`: `watch`, `unwatch`, `increment`, `decrement`, `set`, `watchAll`, `unwatchAll`, `incrementAll`
+  - Mark an entire series watched, or log a full rewatch, in one action
+  - Editable per-season watch counts
+  - `GET /api/users/<uid>/series-progress` returns enriched entries plus aggregate totals
+
+- **Series History page** (`/series-history`)
+  - Summary tiles for series tracked, completed, seasons watched and runtime watched
+  - Per-series season chips with watch counts, inline count editing and rewatch/remove actions
+
+### Fixed
+- Marking a season watched had no visible effect - the series detail page read `watchedSeasons`
+  off the response root while the API nested it under `seriesProgress`
+- Home page CTAs sent signed-in users to the sign-in screen instead of their dashboard
+
 - **MCP Server Integration** - Model Context Protocol server for Claude AI and other assistants
   - Device authorization flow (OAuth-like code verification)
   - Long-lived refresh tokens (1 year expiry)

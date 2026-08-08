@@ -666,71 +666,195 @@ def get_public_profile(user_id):
 
     return jsonify(profile)
 
+SERIES_ACTIONS = {"toggle", "watch", "unwatch", "increment", "decrement", "set",
+                  "watchAll", "unwatchAll", "incrementAll"}
+
+
+def _series_season_meta(imdb_id):
+    """Season numbers and per-season runtime for a series, straight from the catalog."""
+    series = db.series.find_one({"imdbId": imdb_id})
+    if not series:
+        return None, [], {}
+    seasons = series.get('seasons') or []
+    numbers = sorted({int(s.get('seasonNumber')) for s in seasons if s.get('seasonNumber') is not None})
+    runtimes = {
+        str(int(s['seasonNumber'])): int(s.get('seasonRuntimeMinutes') or 0)
+        for s in seasons if s.get('seasonNumber') is not None
+    }
+    return series, numbers, runtimes
+
+
+def _normalize_entry(entry):
+    """Bring legacy entries (watchedSeasons only) up to the counted shape."""
+    counts = entry.get('seasonCounts')
+    if not isinstance(counts, dict):
+        counts = {}
+    # Any season marked watched before counts existed starts at a single view.
+    for season in entry.get('watchedSeasons') or []:
+        counts.setdefault(str(int(season)), 1)
+    entry['seasonCounts'] = {k: int(v) for k, v in counts.items() if int(v) > 0}
+    entry['watchedSeasons'] = sorted(int(k) for k in entry['seasonCounts'])
+    return entry
+
+
+def _finalize_entry(entry, imdb_id, now):
+    """Recompute derived fields after a mutation."""
+    counts = {k: int(v) for k, v in (entry.get('seasonCounts') or {}).items() if int(v) > 0}
+    entry['seasonCounts'] = counts
+    entry['watchedSeasons'] = sorted(int(k) for k in counts)
+    entry['totalWatchCount'] = sum(counts.values())
+    entry['updatedAt'] = now
+
+    _, season_numbers, runtimes = _series_season_meta(imdb_id)
+    entry['runtimeWatchedMinutes'] = sum(
+        count * runtimes.get(season, 0) for season, count in counts.items()
+    )
+
+    if season_numbers and set(entry['watchedSeasons']) >= set(season_numbers):
+        entry.setdefault('completedAt', now)
+    else:
+        entry.pop('completedAt', None)
+
+    if counts:
+        entry['lastWatchedAt'] = now
+    return entry
+
+
 @users_bp.route('/series-progress', methods=['POST'])
 def update_series_progress():
     auth_header = request.headers.get('Authorization')
     if not auth_header or not auth_header.startswith('Bearer '):
         return jsonify({"error": "Unauthorized"}), 401
-    
+
     token = auth_header.split(' ')[1]
     decoded_token = get_user_from_token(token)
     if not decoded_token:
         return jsonify({"error": "Invalid token"}), 401
-        
+
     firebase_uid = decoded_token['uid']
-    data = request.get_json()
+    data = request.get_json() or {}
     imdb_id = data.get('imdbId')
+    action = data.get('action') or 'toggle'
     season_number = data.get('seasonNumber')
-    
-    if not imdb_id or season_number is None:
-        return jsonify({"error": "imdbId and seasonNumber are required"}), 400
-        
+
+    if not imdb_id:
+        return jsonify({"error": "imdbId is required"}), 400
+    if action not in SERIES_ACTIONS:
+        return jsonify({"error": f"Unknown action '{action}'"}), 400
+
+    bulk = action in ("watchAll", "unwatchAll", "incrementAll")
+    if not bulk and season_number is None:
+        return jsonify({"error": "seasonNumber is required for this action"}), 400
+
+    try:
+        if season_number is not None:
+            season_number = int(season_number)
+    except (TypeError, ValueError):
+        return jsonify({"error": "seasonNumber must be a number"}), 400
+
     user = db.users.find_one({"firebaseUid": firebase_uid})
     if not user:
         return jsonify({"error": "User not found"}), 404
-        
+
+    series, season_numbers, _ = _series_season_meta(imdb_id)
+    if bulk and not season_numbers:
+        return jsonify({"error": "Series has no seasons to mark"}), 400
+    if not bulk and season_numbers and season_number not in season_numbers:
+        return jsonify({"error": f"Season {season_number} does not exist on this series"}), 400
+
     series_progress = user.get('seriesProgress', [])
     now = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    
-    target_entry = None
-    target_idx = -1
-    for idx, entry in enumerate(series_progress):
-        if entry.get('imdbId') == imdb_id:
-            target_entry = entry
-            target_idx = idx
-            break
-            
-    if target_entry:
-        watched_seasons = target_entry.get('watchedSeasons', [])
-        if season_number in watched_seasons:
-            watched_seasons.remove(season_number)
-        else:
-            watched_seasons.append(season_number)
-            
-        target_entry['watchedSeasons'] = watched_seasons
-        target_entry['updatedAt'] = now
-        series_progress[target_idx] = target_entry
+
+    target_idx = next(
+        (i for i, e in enumerate(series_progress) if e.get('imdbId') == imdb_id), -1
+    )
+    if target_idx >= 0:
+        entry = _normalize_entry(series_progress[target_idx])
     else:
-        title = None
-        series = db.series.find_one({"imdbId": imdb_id})
-        if series:
-            title = series.get('title')
-            
-        target_entry = {
+        entry = {
             "imdbId": imdb_id,
-            "title": title,
-            "watchedSeasons": [season_number],
+            "title": series.get('title') if series else None,
+            "watchedSeasons": [],
+            "seasonCounts": {},
             "startedAt": now,
-            "updatedAt": now
+            "updatedAt": now,
         }
-        series_progress.append(target_entry)
-        
+
+    counts = entry['seasonCounts']
+    key = str(season_number) if season_number is not None else None
+
+    if action == "toggle":
+        # Preserved for older clients: flips watched/unwatched without touching rewatches.
+        if key in counts:
+            counts.pop(key)
+        else:
+            counts[key] = 1
+    elif action == "watch":
+        counts.setdefault(key, 1)
+    elif action == "unwatch":
+        counts.pop(key, None)
+    elif action == "increment":
+        counts[key] = counts.get(key, 0) + 1
+    elif action == "decrement":
+        remaining = counts.get(key, 0) - 1
+        if remaining > 0:
+            counts[key] = remaining
+        else:
+            counts.pop(key, None)
+    elif action == "set":
+        try:
+            count = int(data.get('count'))
+        except (TypeError, ValueError):
+            return jsonify({"error": "count must be a number"}), 400
+        if count < 0 or count > 999:
+            return jsonify({"error": "count must be between 0 and 999"}), 400
+        if count == 0:
+            counts.pop(key, None)
+        else:
+            counts[key] = count
+    elif action == "watchAll":
+        for number in season_numbers:
+            counts.setdefault(str(number), 1)
+    elif action == "unwatchAll":
+        counts.clear()
+    elif action == "incrementAll":
+        for number in season_numbers:
+            counts[str(number)] = counts.get(str(number), 0) + 1
+
+    entry = _finalize_entry(entry, imdb_id, now)
+
+    if not entry['seasonCounts'] and action in ("unwatchAll",):
+        # Nothing left to track — drop the entry so history stays clean.
+        db.users.update_one(
+            {"firebaseUid": firebase_uid},
+            {"$pull": {"seriesProgress": {"imdbId": imdb_id}}}
+        )
+        return jsonify({
+            "message": "Series progress cleared",
+            "seriesProgress": None,
+            "watchedSeasons": [],
+            "seasonCounts": {},
+            "totalWatchCount": 0,
+        })
+
+    if target_idx >= 0:
+        series_progress[target_idx] = entry
+    else:
+        series_progress.append(entry)
+
     db.users.update_one(
         {"firebaseUid": firebase_uid},
         {"$set": {"seriesProgress": series_progress}}
     )
-    
-    return jsonify({"message": "Series progress updated", "seriesProgress": target_entry})
+
+    return jsonify({
+        "message": "Series progress updated",
+        "seriesProgress": entry,
+        # Flattened for convenience so callers don't have to reach into the entry.
+        "watchedSeasons": entry['watchedSeasons'],
+        "seasonCounts": entry['seasonCounts'],
+        "totalWatchCount": entry['totalWatchCount'],
+    })
 
 @users_bp.route('/series-progress/<imdb_id>', methods=['DELETE'])
 def delete_series_progress(imdb_id):
@@ -775,14 +899,45 @@ def get_series_progress(uid):
         return jsonify({"error": "User not found"}), 404
         
     series_progress = user.get('seriesProgress', [])
-    
+
+    enriched = []
     for entry in series_progress:
-        series = db.series.find_one({"imdbId": entry.get('imdbId')})
+        entry = _normalize_entry(dict(entry))
+        imdb_id = entry.get('imdbId')
+        counts = entry['seasonCounts']
+        entry['totalWatchCount'] = sum(counts.values())
+
+        series, season_numbers, runtimes = _series_season_meta(imdb_id)
+        entry['runtimeWatchedMinutes'] = sum(
+            count * runtimes.get(season, 0) for season, count in counts.items()
+        )
         if series:
+            entry['seriesId'] = str(series.get('_id'))
             entry['totalSeasons'] = series.get('totalSeasons')
+            entry['totalEpisodes'] = series.get('totalEpisodes')
             entry['posterUrl'] = series.get('posterUrl')
+            entry['year'] = series.get('year')
+            entry['genre'] = series.get('genre')
+            entry['seriesRuntimeMinutes'] = series.get('seriesRuntimeMinutes')
             if not entry.get('title'):
                 entry['title'] = series.get('title')
-            entry['year'] = series.get('year')
-            
-    return jsonify({"seriesProgress": series_progress})
+        entry['isCompleted'] = bool(
+            season_numbers and set(entry['watchedSeasons']) >= set(season_numbers)
+        )
+        enriched.append(entry)
+
+    # Most recently watched first so the history page reads like a timeline.
+    enriched.sort(
+        key=lambda e: e.get('lastWatchedAt') or e.get('updatedAt') or '',
+        reverse=True,
+    )
+
+    return jsonify({
+        "seriesProgress": serialize_mongo_doc(enriched),
+        "summary": {
+            "seriesTracked": len(enriched),
+            "seriesCompleted": sum(1 for e in enriched if e['isCompleted']),
+            "seasonsWatched": sum(e['totalWatchCount'] for e in enriched),
+            "runtimeWatchedMinutes": sum(e['runtimeWatchedMinutes'] for e in enriched),
+        },
+    })

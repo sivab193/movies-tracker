@@ -2,14 +2,40 @@
 
 import { useEffect, useState, use } from "react"
 import Link from "next/link"
-import { ArrowLeft, Clock, Calendar, Timer, Check, Loader2, ListOrdered, ArrowRight, ChevronDown, ChevronUp, CheckCircle2, Circle } from "lucide-react"
+import { ArrowLeft, Clock, Calendar, Timer, Check, Loader2, ListOrdered, ArrowRight, ChevronDown, ChevronUp, CheckCircle2, Circle, MoreVertical, Plus, RotateCcw, Trash2, CheckCheck, History } from "lucide-react"
 import { Header } from "@/components/header"
-import { getSeries, toggleSeasonWatched, getSeriesProgress } from "@/services/series-service"
+import {
+  getSeries,
+  getSeriesProgress,
+  watchSeason,
+  rewatchSeason,
+  unwatchSeason,
+  setSeasonWatchCount,
+  watchEntireSeries,
+  rewatchEntireSeries,
+  unwatchEntireSeries,
+} from "@/services/series-service"
 import { getWatchOrdersForMovie } from "@/services/watch-order-service"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { type Series, type SeriesProgress, formatRuntimeMinutes, resolveApiUrl } from "@/lib/types"
 import { useAuth } from "@/contexts/auth-context"
 
@@ -25,9 +51,17 @@ export default function SeriesDetailPage({
   const [seriesWatchOrders, setSeriesWatchOrders] = useState<any[]>([])
   
   // Progress state
-  const [watchedSeasons, setWatchedSeasons] = useState<number[]>([])
+  const [seasonCounts, setSeasonCounts] = useState<Record<string, number>>({})
   const [progressLoading, setProgressLoading] = useState(false)
   const [togglingSeason, setTogglingSeason] = useState<number | null>(null)
+  const [bulkPending, setBulkPending] = useState(false)
+  const [progressError, setProgressError] = useState<string | null>(null)
+  const [countEditor, setCountEditor] = useState<{ season: number; value: string } | null>(null)
+
+  const watchedSeasons = Object.keys(seasonCounts).map(Number).sort((a, b) => a - b)
+  const totalWatchCount = Object.values(seasonCounts).reduce((sum, n) => sum + n, 0)
+  const isCompleted =
+    !!series && (series.totalSeasons ?? 0) > 0 && watchedSeasons.length >= (series.totalSeasons ?? 0)
 
   // Accordion state
   const [expandedSeasons, setExpandedSeasons] = useState<Record<number, boolean>>({})
@@ -63,11 +97,7 @@ export default function SeriesDetailPage({
         try {
           const progressList = await getSeriesProgress(user.uid)
           const currentSeriesProgress = progressList.find(p => p.imdbId === series.imdbId)
-          if (currentSeriesProgress) {
-            setWatchedSeasons(currentSeriesProgress.watchedSeasons || [])
-          } else {
-            setWatchedSeasons([])
-          }
+          setSeasonCounts(currentSeriesProgress?.seasonCounts || {})
         } catch (error) {
           console.error("Error fetching progress:", error)
         } finally {
@@ -79,20 +109,67 @@ export default function SeriesDetailPage({
     fetchProgress()
   }, [user, series])
 
-  const handleToggleSeason = async (e: React.MouseEvent, seasonNumber: number) => {
-    e.stopPropagation() // Prevent accordion expansion
+  // Every progress mutation funnels through here so the server response is the
+  // single source of truth for what the user has watched.
+  const runSeasonAction = async (
+    seasonNumber: number,
+    action: () => Promise<{ seasonCounts: Record<string, number> }>,
+  ) => {
     if (!series || !user) return
-    
+    setProgressError(null)
     setTogglingSeason(seasonNumber)
     try {
-      const res = await toggleSeasonWatched(series.imdbId, seasonNumber)
-      if (res && res.watchedSeasons) {
-        setWatchedSeasons(res.watchedSeasons)
-      }
+      const res = await action()
+      setSeasonCounts(res.seasonCounts || {})
     } catch (error) {
-      console.error("Error toggling season:", error)
+      console.error("Error updating season progress:", error)
+      setProgressError(error instanceof Error ? error.message : "Could not update progress")
     } finally {
       setTogglingSeason(null)
+    }
+  }
+
+  // Primary click: first press marks it watched, every press after logs a rewatch.
+  const handleSeasonPrimary = (e: React.MouseEvent, seasonNumber: number) => {
+    e.stopPropagation() // Prevent accordion expansion
+    if (!series) return
+    const alreadyWatched = seasonCounts[String(seasonNumber)] > 0
+    runSeasonAction(seasonNumber, () =>
+      alreadyWatched
+        ? rewatchSeason(series.imdbId, seasonNumber)
+        : watchSeason(series.imdbId, seasonNumber),
+    )
+  }
+
+  const handleSeasonUnwatch = (seasonNumber: number) => {
+    if (!series) return
+    runSeasonAction(seasonNumber, () => unwatchSeason(series.imdbId, seasonNumber))
+  }
+
+  const handleSaveCount = async () => {
+    if (!series || !countEditor) return
+    const parsed = Number.parseInt(countEditor.value, 10)
+    if (Number.isNaN(parsed) || parsed < 0 || parsed > 999) {
+      setProgressError("Watch count must be between 0 and 999")
+      return
+    }
+    const season = countEditor.season
+    setCountEditor(null)
+    await runSeasonAction(season, () => setSeasonWatchCount(series.imdbId, season, parsed))
+  }
+
+  const runBulkAction = async (action: () => Promise<{ seasonCounts: Record<string, number> }>) => {
+    if (!series || !user) return
+    setProgressError(null)
+    setBulkPending(true)
+    try {
+      const res = await action()
+      setSeasonCounts(res.seasonCounts || {})
+    } catch (error) {
+      console.error("Error updating series progress:", error)
+      setProgressError(error instanceof Error ? error.message : "Could not update progress")
+    } finally {
+      setBulkPending(false)
     }
   }
 
@@ -263,20 +340,81 @@ export default function SeriesDetailPage({
             
             {user && (
               <Card className="bg-primary/5 border-primary/20">
-                <CardContent className="pt-6">
-                  <div className="flex items-center justify-between">
+                <CardContent className="pt-6 space-y-4">
+                  <div className="flex items-start justify-between gap-3">
                     <div>
                       <h3 className="font-semibold mb-1">Your Progress</h3>
                       <p className="text-sm text-muted-foreground">
                         {watchedSeasons.length} / {series.totalSeasons} seasons watched
+                        {totalWatchCount > watchedSeasons.length && (
+                          <> · {totalWatchCount} total views</>
+                        )}
                       </p>
                     </div>
-                    {watchedSeasons.length === series.totalSeasons && series.totalSeasons > 0 && (
+                    {isCompleted && (
                       <Badge className="bg-green-500/20 text-green-600 hover:bg-green-500/30 border-green-500/30">
                         Completed
                       </Badge>
                     )}
                   </div>
+
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all"
+                      style={{
+                        width: `${series.totalSeasons ? Math.min(100, (watchedSeasons.length / series.totalSeasons) * 100) : 0}%`,
+                      }}
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {isCompleted ? (
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="gap-2"
+                        disabled={bulkPending || progressLoading}
+                        onClick={() => runBulkAction(() => rewatchEntireSeries(series.imdbId))}
+                      >
+                        {bulkPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+                        Log full rewatch
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        className="gap-2"
+                        disabled={bulkPending || progressLoading}
+                        onClick={() => runBulkAction(() => watchEntireSeries(series.imdbId))}
+                      >
+                        {bulkPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCheck className="w-4 h-4" />}
+                        Mark entire series watched
+                      </Button>
+                    )}
+                    {watchedSeasons.length > 0 && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="gap-2 text-muted-foreground"
+                        disabled={bulkPending || progressLoading}
+                        onClick={() => runBulkAction(() => unwatchEntireSeries(series.imdbId))}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        Clear
+                      </Button>
+                    )}
+                  </div>
+
+                  {progressError && (
+                    <p className="text-sm text-destructive">{progressError}</p>
+                  )}
+
+                  <Link
+                    href="/series-history"
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+                  >
+                    <History className="w-4 h-4" />
+                    View your series history
+                  </Link>
                 </CardContent>
               </Card>
             )}
@@ -291,7 +429,8 @@ export default function SeriesDetailPage({
             <div className="space-y-3">
               {series.seasons.sort((a, b) => a.seasonNumber - b.seasonNumber).map((season) => {
                 const isExpanded = expandedSeasons[season.seasonNumber] || false
-                const isWatched = watchedSeasons.includes(season.seasonNumber)
+                const watchCount = seasonCounts[String(season.seasonNumber)] || 0
+                const isWatched = watchCount > 0
                 const isToggling = togglingSeason === season.seasonNumber
                 
                 return (
@@ -317,27 +456,70 @@ export default function SeriesDetailPage({
                       
                       <div className="flex items-center gap-4">
                         {user && (
-                          <Button 
-                            variant={isWatched ? "outline" : "secondary"} 
-                            size="sm"
-                            className={`gap-2 ${isWatched ? 'text-green-600 border-green-500/30 hover:bg-green-500/10' : ''}`}
-                            onClick={(e) => handleToggleSeason(e, season.seasonNumber)}
-                            disabled={isToggling || progressLoading}
-                          >
-                            {isToggling ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : isWatched ? (
-                              <>
-                                <Check className="w-4 h-4" />
-                                Watched
-                              </>
-                            ) : (
-                              <>
-                                <Circle className="w-4 h-4" />
-                                Mark Watched
-                              </>
+                          <div className="flex items-center" onClick={(e) => e.stopPropagation()}>
+                            <Button
+                              variant={isWatched ? "outline" : "secondary"}
+                              size="sm"
+                              className={`gap-2 ${isWatched ? 'rounded-r-none border-r-0 text-green-600 border-green-500/30 hover:bg-green-500/10' : ''}`}
+                              onClick={(e) => handleSeasonPrimary(e, season.seasonNumber)}
+                              disabled={isToggling || progressLoading}
+                              title={isWatched ? "Log another watch" : "Mark this season watched"}
+                            >
+                              {isToggling ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : isWatched ? (
+                                <>
+                                  <Check className="w-4 h-4" />
+                                  Watched
+                                  {watchCount > 1 && (
+                                    <span className="rounded-full bg-green-500/15 px-1.5 py-0.5 text-xs font-semibold">
+                                      ×{watchCount}
+                                    </span>
+                                  )}
+                                  <Plus className="w-3.5 h-3.5 opacity-60" />
+                                </>
+                              ) : (
+                                <>
+                                  <Circle className="w-4 h-4" />
+                                  Mark Watched
+                                </>
+                              )}
+                            </Button>
+                            {isWatched && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="rounded-l-none px-2 text-green-600 border-green-500/30 hover:bg-green-500/10"
+                                    aria-label={`Season ${season.seasonNumber} watch options`}
+                                    disabled={isToggling || progressLoading}
+                                  >
+                                    <MoreVertical className="w-4 h-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48">
+                                  <DropdownMenuItem
+                                    onClick={() =>
+                                      setCountEditor({
+                                        season: season.seasonNumber,
+                                        value: String(watchCount),
+                                      })
+                                    }
+                                  >
+                                    Edit watch count
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem
+                                    className="text-destructive"
+                                    onClick={() => handleSeasonUnwatch(season.seasonNumber)}
+                                  >
+                                    Mark unwatched
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
                             )}
-                          </Button>
+                          </div>
                         )}
                         {isExpanded ? <ChevronUp className="w-5 h-5 text-muted-foreground" /> : <ChevronDown className="w-5 h-5 text-muted-foreground" />}
                       </div>
@@ -393,6 +575,36 @@ export default function SeriesDetailPage({
           )}
         </div>
       </main>
+
+      <Dialog open={!!countEditor} onOpenChange={(open) => !open && setCountEditor(null)}>
+        <DialogContent className="sm:max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Season {countEditor?.season} watch count</DialogTitle>
+            <DialogDescription>
+              How many times have you watched this season? Set it to 0 to mark it unwatched.
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            type="number"
+            min={0}
+            max={999}
+            value={countEditor?.value ?? ""}
+            autoFocus
+            onChange={(e) =>
+              setCountEditor((prev) => (prev ? { ...prev, value: e.target.value } : prev))
+            }
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSaveCount()
+            }}
+          />
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setCountEditor(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveCount}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
