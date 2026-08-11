@@ -1,20 +1,30 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useAuth } from "@/contexts/auth-context"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Header } from "@/components/header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Bot, CheckCircle2, AlertCircle } from "lucide-react"
+import { Bot, CheckCircle2, AlertCircle, Info } from "lucide-react"
 
-export default function DeviceAuthPage() {
+function DeviceAuthContent() {
   const [code, setCode] = useState("")
   const [status, setStatus] = useState<"idle" | "loading" | "success" | "error">("idle")
   const [message, setMessage] = useState("")
+  const [fromQR, setFromQR] = useState(false)
   const { user } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    const codeParam = searchParams.get("code")
+    if (codeParam) {
+      setCode(codeParam.toUpperCase().trim())
+      setFromQR(true)
+    }
+  }, [searchParams])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -116,6 +126,13 @@ export default function DeviceAuthPage() {
                   </div>
                 )}
 
+                {fromQR && status === "idle" && (
+                  <div className="p-3 rounded-lg bg-primary/10 border border-primary/30 text-primary text-sm flex items-center gap-3">
+                    <Info className="h-5 w-5 shrink-0" />
+                    <span>Code <span className="font-mono font-bold">{code}</span> loaded from QR scan</span>
+                  </div>
+                )}
+
                 <Button
                   type="submit"
                   disabled={status === "loading" || status === "success" || !code}
@@ -146,5 +163,13 @@ export default function DeviceAuthPage() {
         </Card>
       </main>
     </div>
+  )
+}
+
+export default function DeviceAuthPage() {
+  return (
+    <Suspense>
+      <DeviceAuthContent />
+    </Suspense>
   )
 }

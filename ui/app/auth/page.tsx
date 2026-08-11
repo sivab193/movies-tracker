@@ -1,9 +1,9 @@
 "use client"
 
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Film, Mail, Lock, Loader2, ArrowLeft, AlertCircle, CheckCircle2 } from "lucide-react"
+import { Film, Mail, Lock, Loader2, ArrowLeft, AlertCircle, CheckCircle2, QrCode, Copy, Check, RefreshCw, Smartphone } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -11,6 +11,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { useAuth } from "@/contexts/auth-context"
+import { QRCodeSVG } from "qrcode.react"
+import { signInWithCustomToken } from "firebase/auth"
+import { auth as firebaseAuth } from "@/lib/firebase"
 
 export default function AuthPage() {
   const router = useRouter()
@@ -31,6 +34,15 @@ export default function AuthPage() {
   const [resetLoading, setResetLoading] = useState(false)
   const [resetSuccess, setResetSuccess] = useState(false)
   const [resetError, setResetError] = useState<string | null>(null)
+
+  // Device Code Login State
+  const [showDeviceCode, setShowDeviceCode] = useState(false)
+  const [deviceUserCode, setDeviceUserCode] = useState("")
+  const [deviceCode, setDeviceCode] = useState("")
+  const [deviceStatus, setDeviceStatus] = useState<"idle" | "loading" | "waiting" | "checking" | "success" | "error" | "expired">("idle")
+  const [deviceError, setDeviceError] = useState<string | null>(null)
+  const [codeCopied, setCodeCopied] = useState(false)
+  const [deviceExpiresAt, setDeviceExpiresAt] = useState<Date | null>(null)
 
   useEffect(() => {
     if (user) {
@@ -96,6 +108,103 @@ export default function AuthPage() {
     } finally {
       setResetLoading(false)
     }
+  }
+
+  const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
+
+  const handleRequestDeviceCode = async () => {
+    setDeviceStatus("loading")
+    setDeviceError(null)
+    try {
+      const response = await fetch(`${apiBase}/auth/device/code`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error || "Failed to generate code")
+
+      setDeviceUserCode(data.userCode)
+      setDeviceCode(data.deviceCode)
+      setDeviceExpiresAt(new Date(Date.now() + (data.expiresIn || 900) * 1000))
+      setDeviceStatus("waiting")
+      setShowDeviceCode(true)
+    } catch (err: any) {
+      setDeviceError(err.message || "Failed to generate device code")
+      setDeviceStatus("error")
+    }
+  }
+
+  const handleCheckDeviceStatus = async () => {
+    if (!deviceCode) return
+
+    // Check if expired locally
+    if (deviceExpiresAt && new Date() > deviceExpiresAt) {
+      setDeviceStatus("expired")
+      setDeviceError("Code has expired. Please generate a new one.")
+      return
+    }
+
+    setDeviceStatus("checking")
+    setDeviceError(null)
+    try {
+      const response = await fetch(`${apiBase}/auth/device/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deviceCode }),
+      })
+      const data = await response.json()
+
+      if (!response.ok) {
+        if (response.status === 400 && data.error === "Code expired") {
+          setDeviceStatus("expired")
+          setDeviceError("Code has expired. Please generate a new one.")
+          return
+        }
+        throw new Error(data.error || "Failed to check status")
+      }
+
+      if (data.status === "pending") {
+        setDeviceStatus("waiting")
+        setDeviceError("Code not yet approved. Ask someone to enter the code on a signed-in device.")
+        return
+      }
+
+      if (data.status === "authorized" && data.customToken) {
+        setDeviceStatus("success")
+        // Sign in with the custom token
+        if (firebaseAuth) {
+          await signInWithCustomToken(firebaseAuth, data.customToken)
+          router.push("/dashboard")
+        }
+      }
+    } catch (err: any) {
+      setDeviceError(err.message || "Failed to check device code status")
+      setDeviceStatus("waiting")
+    }
+  }
+
+  const handleCopyCode = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(deviceUserCode)
+      setCodeCopied(true)
+      setTimeout(() => setCodeCopied(false), 2000)
+    } catch {
+      // Fallback
+    }
+  }, [deviceUserCode])
+
+  const handleResetDeviceCode = () => {
+    setShowDeviceCode(false)
+    setDeviceUserCode("")
+    setDeviceCode("")
+    setDeviceStatus("idle")
+    setDeviceError(null)
+    setDeviceExpiresAt(null)
+  }
+
+  const getVerificationUrl = () => {
+    if (typeof window === "undefined") return ""
+    return `${window.location.origin}/device?code=${encodeURIComponent(deviceUserCode)}`
   }
 
   return (
@@ -385,6 +494,135 @@ export default function AuthPage() {
                 </form>
               </TabsContent>
             </Tabs>
+
+            {/* Device Code / QR Login Section */}
+            <div className="relative mt-6 mb-2">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">
+                  Or sign in from another device
+                </span>
+              </div>
+            </div>
+
+            {!showDeviceCode ? (
+              <Button
+                variant="outline"
+                className="w-full bg-transparent"
+                onClick={handleRequestDeviceCode}
+                disabled={loading || deviceStatus === "loading"}
+              >
+                {deviceStatus === "loading" ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <QrCode className="mr-2 h-4 w-4" />
+                )}
+                Sign in with Code / QR
+              </Button>
+            ) : (
+              <div className="space-y-5">
+                {/* Code Display */}
+                <div className="text-center space-y-3">
+                  <p className="text-sm text-muted-foreground">
+                    Enter this code on a device where you're already signed in, or scan the QR code.
+                  </p>
+
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="px-5 py-3 rounded-xl bg-muted/60 border border-border font-mono text-2xl font-bold tracking-[0.15em] select-all">
+                      {deviceUserCode}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10 shrink-0"
+                      onClick={handleCopyCode}
+                      title="Copy code"
+                    >
+                      {codeCopied ? (
+                        <Check className="h-4 w-4 text-emerald-500" />
+                      ) : (
+                        <Copy className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* QR Code */}
+                <div className="flex justify-center">
+                  <div className="p-3 bg-white rounded-xl border border-border shadow-sm">
+                    <QRCodeSVG
+                      value={getVerificationUrl()}
+                      size={160}
+                      level="M"
+                      marginSize={1}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center">
+                  <Smartphone className="h-3.5 w-3.5" />
+                  <span>
+                    Go to{" "}
+                    <span className="font-medium text-foreground">/device</span>
+                    {" "}on a signed-in device
+                  </span>
+                </div>
+
+                {/* Status Messages */}
+                {deviceError && (
+                  <div className={`p-3 rounded-lg text-sm flex items-start gap-2 border ${
+                    deviceStatus === "expired"
+                      ? "bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-300"
+                      : "bg-muted/50 border-border text-muted-foreground"
+                  }`}>
+                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                    <span>{deviceError}</span>
+                  </div>
+                )}
+
+                {deviceStatus === "success" && (
+                  <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-sm flex items-center gap-2">
+                    <CheckCircle2 className="h-4 w-4 shrink-0" />
+                    <span>Approved! Signing you in…</span>
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                <div className="flex gap-2">
+                  {deviceStatus === "expired" ? (
+                    <Button
+                      className="flex-1"
+                      onClick={() => { handleResetDeviceCode(); handleRequestDeviceCode(); }}
+                    >
+                      <RefreshCw className="mr-2 h-4 w-4" />
+                      Get New Code
+                    </Button>
+                  ) : (
+                    <Button
+                      className="flex-1"
+                      onClick={handleCheckDeviceStatus}
+                      disabled={deviceStatus === "checking" || deviceStatus === "success"}
+                    >
+                      {deviceStatus === "checking" ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                      )}
+                      {deviceStatus === "checking" ? "Checking…" : "Check Status"}
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    onClick={handleResetDeviceCode}
+                    disabled={deviceStatus === "success"}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

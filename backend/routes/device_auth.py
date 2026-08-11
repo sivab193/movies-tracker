@@ -96,6 +96,64 @@ def poll_device_authorization():
 
     return jsonify({"status": "pending"}), 200
 
+@device_auth_bp.route('/device/login', methods=['POST'])
+def login_with_device_code():
+    """
+    Exchange an authorized device code for a Firebase custom token.
+    Used by the login page to sign in after another device approves the code.
+    """
+    data = request.get_json()
+    device_code = data.get('deviceCode')
+
+    if not device_code:
+        return jsonify({"error": "Missing deviceCode"}), 400
+
+    # Find device code in database
+    device = db.device_codes.find_one({"deviceCode": device_code})
+
+    if not device:
+        return jsonify({"error": "Invalid device code"}), 404
+
+    # Check if expired
+    if device['expiresAt'] < datetime.datetime.now(datetime.timezone.utc):
+        db.device_codes.update_one(
+            {"deviceCode": device_code},
+            {"$set": {"status": "expired"}}
+        )
+        return jsonify({"error": "Code expired"}), 400
+
+    # Check status
+    if device['status'] == 'pending':
+        return jsonify({"status": "pending", "message": "Code not yet approved"}), 200
+
+    if device['status'] == 'authorized':
+        user_id = device['userId']
+
+        try:
+            # Generate a Firebase custom token for this user
+            custom_token = firebase_auth.create_custom_token(user_id)
+
+            # Get user info
+            user = db.users.find_one({"firebaseUid": user_id})
+
+            # Clean up - delete the device code after successful login
+            db.device_codes.delete_one({"deviceCode": device_code})
+
+            return jsonify({
+                "status": "authorized",
+                "customToken": custom_token.decode('utf-8') if isinstance(custom_token, bytes) else custom_token,
+                "user": {
+                    "uid": user_id,
+                    "email": user.get('email') if user else None,
+                    "displayName": user.get('displayName') if user else None
+                }
+            }), 200
+        except Exception as e:
+            print(f"Error creating custom token for device login: {e}")
+            return jsonify({"error": "Failed to create authentication token"}), 500
+
+    return jsonify({"status": "pending"}), 200
+
 @device_auth_bp.route('/device/verify', methods=['POST'])
 def verify_device_code():
     """
