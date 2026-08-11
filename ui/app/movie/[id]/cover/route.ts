@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getMovie } from "@/services/api";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +8,14 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const movie = await getMovie(id);
+    const apiUrl = new URL(`/api/movies/${id}`, request.url);
+    const response = await fetch(apiUrl.toString());
+    
+    if (!response.ok) {
+      return new NextResponse("Cover not found", { status: 404 });
+    }
+    
+    const movie = await response.json();
 
     if (!movie || !movie.posterUrl) {
       return new NextResponse("Cover not found", { status: 404 });

@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSeries } from "@/services/series-service";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +8,14 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const series = await getSeries(id);
+    const apiUrl = new URL(`/api/series/${id}`, request.url);
+    const response = await fetch(apiUrl.toString());
+    
+    if (!response.ok) {
+      return new NextResponse("Cover not found", { status: 404 });
+    }
+    
+    const series = await response.json();
 
     if (!series || !series.posterUrl) {
       return new NextResponse("Cover not found", { status: 404 });
