@@ -11,7 +11,7 @@ def generate_device_code():
     """Generate a user-friendly device code like WXYZ-ABCD"""
     chars = string.ascii_uppercase + string.digits
     # Remove confusing characters
-    chars = chars.replace('0', '').replace('O', '').replace('1', '').replace('I')
+    chars = chars.replace('0', '').replace('O', '').replace('1', '').replace('I', '')
     code = ''.join(secrets.choice(chars) for _ in range(4))
     code += '-'
     code += ''.join(secrets.choice(chars) for _ in range(4))
