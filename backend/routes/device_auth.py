@@ -66,7 +66,7 @@ def poll_device_authorization():
         return jsonify({"error": "Invalid device code"}), 404
 
     # Check if expired
-    if device['expiresAt'] < datetime.datetime.now(datetime.timezone.utc):
+    if device['expiresAt'].replace(tzinfo=datetime.timezone.utc) < datetime.datetime.now(datetime.timezone.utc):
         db.device_codes.update_one(
             {"deviceCode": device_code},
             {"$set": {"status": "expired"}}
@@ -115,7 +115,7 @@ def login_with_device_code():
         return jsonify({"error": "Invalid device code"}), 404
 
     # Check if expired
-    if device['expiresAt'] < datetime.datetime.now(datetime.timezone.utc):
+    if device['expiresAt'].replace(tzinfo=datetime.timezone.utc) < datetime.datetime.now(datetime.timezone.utc):
         db.device_codes.update_one(
             {"deviceCode": device_code},
             {"$set": {"status": "expired"}}
@@ -185,7 +185,7 @@ def verify_device_code():
         return jsonify({"error": "Invalid code"}), 404
 
     # Check if expired
-    if device['expiresAt'] < datetime.datetime.now(datetime.timezone.utc):
+    if device['expiresAt'].replace(tzinfo=datetime.timezone.utc) < datetime.datetime.now(datetime.timezone.utc):
         return jsonify({"error": "Code expired"}), 400
 
     if device['status'] != 'pending':
@@ -237,7 +237,7 @@ def refresh_access_token():
         return jsonify({"error": "Invalid refresh token"}), 401
 
     # Check if expired
-    if token_doc['expiresAt'] < datetime.datetime.now(datetime.timezone.utc):
+    if token_doc['expiresAt'].replace(tzinfo=datetime.timezone.utc) < datetime.datetime.now(datetime.timezone.utc):
         return jsonify({"error": "Refresh token expired"}), 401
 
     user_id = token_doc['userId']
