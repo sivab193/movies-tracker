@@ -18,6 +18,8 @@ function DeviceAuthContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
+  const isLoginFlow = searchParams.get("flow") === "login"
+
   useEffect(() => {
     const codeParam = searchParams.get("code")
     if (codeParam) {
@@ -51,14 +53,25 @@ function DeviceAuthContent() {
         }),
       })
 
-      const data = await response.json()
+      let data
+      const contentType = response.headers.get("content-type")
+      if (contentType && contentType.includes("application/json")) {
+        data = await response.json()
+      } else {
+        const text = await response.text()
+        throw new Error(`Server error: ${response.status}. Please try again.`)
+      }
 
       if (!response.ok) {
         throw new Error(data.error || "Failed to verify device authorization code.")
       }
 
       setStatus("success")
-      setMessage("Device authorized successfully! You can now close this browser window and return to your AI assistant CLI.")
+      setMessage(
+        isLoginFlow
+          ? "Login approved! The other device should now be signed in."
+          : "Device authorized successfully! You can now close this browser window and return to your AI assistant CLI."
+      )
     } catch (error: any) {
       setStatus("error")
       setMessage(error.message || "Failed to verify device code. Please check and try again.")
@@ -74,9 +87,13 @@ function DeviceAuthContent() {
             <div className="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center mx-auto">
               <Bot className="h-8 w-8" />
             </div>
-            <CardTitle className="text-2xl font-bold">Authorize AI Assistant</CardTitle>
+            <CardTitle className="text-2xl font-bold">
+              {isLoginFlow ? "Approve Sign-In" : "Authorize AI Assistant"}
+            </CardTitle>
             <CardDescription className="text-base text-muted-foreground">
-              Enter the 8-character verification code displayed on your command line or Claude/AI CLI.
+              {isLoginFlow
+                ? "Enter the code shown on the device you want to sign in to."
+                : "Enter the 8-character verification code displayed on your command line or Claude/AI CLI."}
             </CardDescription>
           </CardHeader>
           <CardContent>

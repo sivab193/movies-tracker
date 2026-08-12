@@ -120,7 +120,14 @@ export default function AuthPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
       })
-      const data = await response.json()
+
+      let data
+      const contentType = response.headers.get("content-type")
+      if (contentType && contentType.includes("application/json")) {
+        data = await response.json()
+      } else {
+        throw new Error(`Server error: ${response.status}. Please try again.`)
+      }
       if (!response.ok) throw new Error(data.error || "Failed to generate code")
 
       setDeviceUserCode(data.userCode)
@@ -152,7 +159,14 @@ export default function AuthPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ deviceCode }),
       })
-      const data = await response.json()
+
+      let data
+      const contentType = response.headers.get("content-type")
+      if (contentType && contentType.includes("application/json")) {
+        data = await response.json()
+      } else {
+        throw new Error(`Server error: ${response.status}. Please try again.`)
+      }
 
       if (!response.ok) {
         if (response.status === 400 && data.error === "Code expired") {
@@ -204,7 +218,7 @@ export default function AuthPage() {
 
   const getVerificationUrl = () => {
     if (typeof window === "undefined") return ""
-    return `${window.location.origin}/device?code=${encodeURIComponent(deviceUserCode)}`
+    return `${window.location.origin}/device?code=${encodeURIComponent(deviceUserCode)}&flow=login`
   }
 
   return (
