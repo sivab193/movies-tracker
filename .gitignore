@@ -23,6 +23,7 @@ gcs-service-account.json
 .vercel
 *.log
 */*.csv
+pnpm-workspace.yaml
 
 # MCP Server
 .movies-tracker/
