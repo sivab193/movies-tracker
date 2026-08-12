@@ -16,6 +16,7 @@ import {
 } from "lucide-react"
 import { Header } from "@/components/header"
 import { AddWatchDialog } from "@/components/add-watch-dialog"
+import { RequestTitleDialog } from "@/components/request-title-dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -118,7 +119,10 @@ export default function DashboardPage() {
               Track your movie watches and spending
             </p>
           </div>
-          <AddWatchDialog uid={user.uid} onWatchAdded={fetchHistory} />
+          <div className="flex gap-2">
+            <RequestTitleDialog />
+            <AddWatchDialog uid={user.uid} onWatchAdded={fetchHistory} />
+          </div>
         </div>
 
         {/* Stats Cards */}

@@ -91,6 +91,14 @@ export function AdminSeries() {
 
     useEffect(() => {
         load()
+        const handleOpenAddSeries = (e: CustomEvent) => {
+            if (e.detail && e.detail.imdbId) {
+                setImdbId(e.detail.imdbId)
+                // Optionally trigger the form submit programmatically
+            }
+        }
+        window.addEventListener('open-add-series-modal', handleOpenAddSeries as EventListener)
+        return () => window.removeEventListener('open-add-series-modal', handleOpenAddSeries as EventListener)
     }, [])
 
     const keyOpt = () => (apiKey.trim() ? { apiKey: apiKey.trim() } : {})
@@ -114,8 +122,13 @@ export function AdminSeries() {
 
     const handlePreview = async (e: React.FormEvent) => {
         e.preventDefault()
-        const id = imdbId.trim()
-        if (!id) return
+        let id = imdbId.trim()
+        const match = id.match(/tt\d+/)
+        if (match) {
+            id = match[0]
+            setImdbId(id)
+        }
+        if (!id || !id.startsWith("tt")) return
         setPreviewing(true)
         setError(null)
         try {
@@ -238,7 +251,7 @@ export function AdminSeries() {
                 headerActions={
                     <form onSubmit={handlePreview} className="flex items-center gap-2">
                         <Input
-                            placeholder="IMDb ID (e.g. tt0903747)"
+                            placeholder="IMDb ID or Link (e.g. tt0903747)"
                             value={imdbId}
                             onChange={(e) => setImdbId(e.target.value)}
                             className="w-48 h-9 text-sm"

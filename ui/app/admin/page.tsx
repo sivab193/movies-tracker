@@ -13,6 +13,7 @@ import { AdminWatchOrders } from "@/components/admin-watch-orders"
 import { AdminCards } from "@/components/admin-cards"
 import { AdminSeries } from "@/components/admin-series"
 import { AdminOmdbKeys } from "@/components/admin-omdb-keys"
+import { AdminRequests } from "@/components/admin-requests"
 import { getAdminRequests, resolveAdminRequest } from "@/services/user-service"
 import { getMovies, deleteMovie, clearMovieSubmissions, getTheaters, addTheater, updateTheater, deleteTheater, updateMovie, addMovie, fetchOmdbPreview, getTheaterDuplicates, mergeTheaterDuplicates, getMovieDuplicates, mergeMovieDuplicates, verifyTheater, verifyMovie, getMovieDataQuality } from "@/services/api"
 import { formatTimeDisplay, resolveApiUrl, formatRuntimeMinutes } from "@/lib/types"
@@ -305,14 +306,21 @@ export default function AdminPage() {
     }
 
     const handleFetchOmdb = async () => {
-        if (!modalImdbId.trim() || !modalImdbId.trim().startsWith("tt")) {
-            setModalError("Please enter a valid IMDb ID (e.g. tt1375666)")
+        let idToFetch = modalImdbId.trim()
+        const match = idToFetch.match(/tt\d+/)
+        if (match) {
+            idToFetch = match[0]
+            setModalImdbId(idToFetch)
+        }
+
+        if (!idToFetch || !idToFetch.startsWith("tt")) {
+            setModalError("Please enter a valid IMDb ID or Link (e.g. tt1375666)")
             return
         }
         setFetchingOmdb(true)
         setModalError(null)
         try {
-            const data = await fetchOmdbPreview(modalImdbId.trim())
+            const data = await fetchOmdbPreview(idToFetch)
             if (data.exists && data.movie) {
                 setModalMode("edit")
                 setModalMovieId(data.movie.id || data.movie.imdbId)
@@ -584,6 +592,32 @@ export default function AdminPage() {
 
                 <div className="grid gap-8">
                     <div className="space-y-6">
+                            <AdminRequests onApprove={(imdbId, type) => {
+                                if (type === 'series') {
+                                    window.dispatchEvent(new CustomEvent('open-add-series-modal', {
+                                        detail: { imdbId }
+                                    }))
+                                    // Scroll to the series section so the admin sees the pre-filled input
+                                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })
+                                } else {
+                                    setModalMode("add")
+                                    setModalMovieId(null)
+                                    setModalTitle("")
+                                    setModalYear("")
+                                    setModalLanguage("English")
+                                    setModalReleaseDate("")
+                                    setModalRuntime("")
+                                    setModalImdbRating("")
+                                    setModalPosterUrl("")
+                                    setModalPosterFile(null)
+                                    setModalPosterPreview("")
+                                    setModalPosterType("url")
+                                    setModalStep(1)
+                                    setModalError(null)
+                                    setIsMovieModalOpen(true)
+                                    setModalImdbId(imdbId)
+                                }
+                            }} />
                             {/* Access Requests */}
                             {requests.length > 0 && (
                                 <CollapsibleSection
@@ -1427,7 +1461,7 @@ export default function AdminPage() {
                                 <div className="flex gap-2">
                                     <Input
                                         id="imdbIdInput"
-                                        placeholder="e.g. tt1375666"
+                                        placeholder="e.g. tt1375666 or https://www.imdb.com/title/tt1375666/"
                                         value={modalImdbId}
                                         onChange={(e) => setModalImdbId(e.target.value)}
                                         onKeyDown={(e) => e.key === "Enter" && handleFetchOmdb()}
