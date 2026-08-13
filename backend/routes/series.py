@@ -13,6 +13,8 @@ series_bp = Blueprint('series', __name__)
 
 OMDB_API_KEY = os.environ.get('OMDB_API_KEY')
 OMDB_URL = "https://www.omdbapi.com/"
+MAX_IMAGE_BYTES = 5 * 1024 * 1024
+ALLOWED_IMAGE_MIME_TYPES = {'image/jpeg', 'image/png', 'image/webp'}
 
 # How long a preview payload stays reusable by the import endpoints.
 PREVIEW_CACHE_TTL_SECONDS = 3600
@@ -74,6 +76,16 @@ def _to_int(value, default=0):
 def _to_float(value):
     if value in (None, '', 'N/A'):
         return None
+
+
+def normalize_credit_names(value):
+    if isinstance(value, list):
+        names = value
+    elif isinstance(value, str) and value.strip() not in ('', 'N/A'):
+        names = value.split(',')
+    else:
+        return []
+    return list(dict.fromkeys(name.strip() for name in names if isinstance(name, str) and name.strip()))
     try:
         return float(value)
     except (TypeError, ValueError):
@@ -98,10 +110,17 @@ def save_poster_to_db(series_id, poster_url):
     if not poster_url or poster_url == "N/A":
         return None
     try:
-        response = requests.get(poster_url, timeout=15)
-        if response.status_code == 200:
-            content_type = response.headers.get('Content-Type', 'image/jpeg')
-            image_data = Binary(response.content)
+        response = requests.get(poster_url, timeout=15, stream=True)
+        content_type = response.headers.get('Content-Type', '').split(';', 1)[0].lower()
+        if response.status_code == 200 and content_type in ALLOWED_IMAGE_MIME_TYPES:
+            chunks = []
+            size = 0
+            for chunk in response.iter_content(64 * 1024):
+                size += len(chunk)
+                if size > MAX_IMAGE_BYTES:
+                    raise ValueError('Poster exceeds the 5 MB limit')
+                chunks.append(chunk)
+            image_data = Binary(b''.join(chunks))
             db.series_posters.update_one(
                 {"seriesId": str(series_id)},
                 {"$set": {
@@ -161,8 +180,9 @@ def fetch_series_meta(imdb_id, api_key, key_id=None):
         "posterUrl": series_data.get('Poster') if series_data.get('Poster') != 'N/A' else "",
         "plot": series_data.get('Plot'),
         "genre": series_data.get('Genre'),
-        "actors": series_data.get('Actors'),
-        "director": series_data.get('Director'),
+        "actors": normalize_credit_names(series_data.get('Actors')),
+        "director": series_data.get('Director') if series_data.get('Director') != 'N/A' else None,
+        "directors": normalize_credit_names(series_data.get('Director')),
         "language": series_data.get('Language'),
         "country": series_data.get('Country'),
         "imdbRating": _to_float(series_data.get('imdbRating')),

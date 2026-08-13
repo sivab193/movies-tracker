@@ -185,12 +185,13 @@ async function testConnection() {
       },
     );
 
-    const customToken = refreshResponse.data.customToken;
+    const idToken = refreshResponse.data.idToken;
+    if (!idToken) throw new Error("The API did not return a Firebase ID token");
 
     // Test API call
     const response = await axios.get(`${auth.apiBaseUrl}/users/me`, {
       headers: {
-        Authorization: `Bearer ${customToken}`,
+        Authorization: `Bearer ${idToken}`,
       },
     });
 

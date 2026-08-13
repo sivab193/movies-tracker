@@ -9,6 +9,59 @@ from bson import ObjectId, Binary
 
 users_bp = Blueprint('users', __name__)
 
+MAX_IMAGE_BYTES = 5 * 1024 * 1024
+ALLOWED_IMAGE_MIME_TYPES = {'image/jpeg', 'image/png', 'image/webp'}
+
+
+def decode_image_data_url(value):
+    """Validate and decode a small, supported image data URL."""
+    if not isinstance(value, str) or not value.startswith('data:'):
+        raise ValueError('Image must be a data URL')
+    try:
+        header, encoded = value.split(',', 1)
+        mime_type = header.split(';', 1)[0].split(':', 1)[1].lower()
+    except (IndexError, ValueError):
+        raise ValueError('Invalid image data URL')
+    if mime_type not in ALLOWED_IMAGE_MIME_TYPES:
+        raise ValueError('Only JPEG, PNG, and WebP images are supported')
+    # Base64 adds at least 4/3 overhead, so reject huge payloads before decoding.
+    if len(encoded) > (MAX_IMAGE_BYTES * 4 // 3) + 4:
+        raise ValueError('Image must be 5 MB or smaller')
+    try:
+        image_data = base64.b64decode(encoded, validate=True)
+    except (ValueError, base64.binascii.Error):
+        raise ValueError('Invalid base64 image data')
+    if not image_data or len(image_data) > MAX_IMAGE_BYTES:
+        raise ValueError('Image must be 5 MB or smaller')
+    return mime_type, Binary(image_data)
+
+
+def parse_watch_payload(data):
+    if not isinstance(data, dict):
+        raise ValueError('A JSON object is required')
+    currency = data.get('currency')
+    if currency not in {'INR', 'USD'}:
+        raise ValueError('Currency must be INR or USD')
+    for field in ('ticketCost', 'foodCost'):
+        value = data.get(field)
+        if value is None and field == 'foodCost':
+            continue
+        if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0:
+            raise ValueError(f'{field} must be a non-negative number')
+    timestamp = data.get('timestamp')
+    if timestamp is not None:
+        if not isinstance(timestamp, str):
+            raise ValueError('timestamp must be an ISO-8601 string')
+        try:
+            datetime.datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
+        except ValueError:
+            raise ValueError('timestamp must be an ISO-8601 string')
+    for field, maximum in (('theaterName', 200), ('theaterLocation', 300),
+                           ('theaterGmapsLink', 2048), ('showTime', 100)):
+        value = data.get(field)
+        if value is not None and (not isinstance(value, str) or len(value) > maximum):
+            raise ValueError(f'{field} is invalid or too long')
+
 def serialize_mongo_doc(doc):
     if isinstance(doc, dict):
         return {k: serialize_mongo_doc(v) for k, v in doc.items()}
@@ -208,7 +261,11 @@ def add_watch_history():
         return jsonify({"error": "Invalid token"}), 401
 
     firebase_uid = decoded_token['uid']
-    data = request.get_json()
+    data = request.get_json(silent=True)
+    try:
+        parse_watch_payload(data)
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
     
     movie_id = data.get('movieId')
     if not movie_id:
@@ -225,12 +282,10 @@ def add_watch_history():
     # Create entry
     entry_id = ObjectId()
     ticket_stub_url = None
-    ticket_stub_image = data.get('ticketStubImage')  # Expecting Base64 Data URL
-    if ticket_stub_image and ticket_stub_image.startswith('data:'):
+    ticket_stub_image = data.get('ticketStubImage')
+    if ticket_stub_image:
         try:
-            header, encoded = ticket_stub_image.split(",", 1)
-            mime_type = header.split(";")[0].split(":")[1]
-            image_data = Binary(base64.b64decode(encoded))
+            mime_type, image_data = decode_image_data_url(ticket_stub_image)
             db.ticket_stubs.update_one(
                 {"watchHistoryEntryId": str(entry_id)},
                 {"$set": {
@@ -241,8 +296,8 @@ def add_watch_history():
                 upsert=True
             )
             ticket_stub_url = f"/api/users/watch-history/ticketstub/{entry_id}"
-        except Exception as e:
-            print(f"Error saving ticket stub to MongoDB: {e}")
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
 
     entry = {
         "_id": entry_id,
@@ -272,15 +327,29 @@ def add_watch_history():
         pass
     runtime_seconds = runtime_minutes * 60
 
-    db.users.update_one(
+    result = db.users.update_one(
         {"firebaseUid": firebase_uid},
         {
+            "$setOnInsert": {
+                "firebaseUid": firebase_uid,
+                "email": decoded_token.get('email', ''),
+                "displayName": decoded_token.get('name', 'Anonymous'),
+                "photoURL": decoded_token.get('picture'),
+                "isPublic": False,
+                "isAdmin": False,
+                "adminRequestStatus": "NONE",
+                "joinedLeaderboard": False,
+                "publicFields": ["totalRuntime", "movieCount"],
+                "hiddenMovies": [],
+                "seriesProgress": [],
+            },
             "$push": {"watchHistory": entry},
             "$inc": {
                 "totalMoviesWatched": 1, 
                 "totalRuntimeSeconds": runtime_seconds
             }
-        }
+        },
+        upsert=True,
     )
 
     return jsonify({"message": "Watch history added successfully", "id": str(entry_id)})
@@ -350,10 +419,19 @@ def delete_watch_history(user_id, entry_id):
 def get_ticket_stub(entry_id):
     if db is None:
         return jsonify({"error": "Database not connected"}), 500
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({"error": "Unauthorized"}), 401
+    decoded_token = get_user_from_token(auth_header.split(' ')[1])
+    if not decoded_token:
+        return jsonify({"error": "Invalid token"}), 401
     try:
         stub_doc = db.ticket_stubs.find_one({"watchHistoryEntryId": entry_id})
         if not stub_doc:
             return jsonify({"error": "Ticket stub not found"}), 404
+        caller = db.users.find_one({"firebaseUid": decoded_token['uid']}, {"isAdmin": 1})
+        if stub_doc.get('userId') != decoded_token['uid'] and not (caller and caller.get('isAdmin')):
+            return jsonify({"error": "Forbidden"}), 403
         
         image_bytes = bytes(stub_doc['imageData'])
         return Response(image_bytes, mimetype=stub_doc.get('mimeType', 'image/jpeg'))
@@ -377,7 +455,21 @@ def update_watch_history(user_id, entry_id):
     if current_uid != user_id and not is_admin:
         return jsonify({"error": "Forbidden"}), 403
 
-    data = request.get_json()
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "A JSON object is required"}), 400
+    for field in ('ticketCost', 'foodCost'):
+        if field in data and (isinstance(data[field], bool) or not isinstance(data[field], (int, float)) or data[field] < 0):
+            return jsonify({"error": f"{field} must be a non-negative number"}), 400
+    if 'currency' in data and data['currency'] not in {'INR', 'USD'}:
+        return jsonify({"error": "Currency must be INR or USD"}), 400
+    if 'timestamp' in data:
+        if not isinstance(data['timestamp'], str):
+            return jsonify({"error": "timestamp must be an ISO-8601 string"}), 400
+        try:
+            datetime.datetime.fromisoformat(data['timestamp'].replace('Z', '+00:00'))
+        except ValueError:
+            return jsonify({"error": "timestamp must be an ISO-8601 string"}), 400
     
     updates = {}
     if 'theaterId' in data:
@@ -400,11 +492,9 @@ def update_watch_history(user_id, entry_id):
         updates['watchHistory.$.currency'] = data['currency']
     
     ticket_stub_image = data.get('ticketStubImage')
-    if ticket_stub_image and ticket_stub_image.startswith('data:'):
+    if ticket_stub_image:
         try:
-            header, encoded = ticket_stub_image.split(",", 1)
-            mime_type = header.split(";")[0].split(":")[1]
-            image_data = Binary(base64.b64decode(encoded))
+            mime_type, image_data = decode_image_data_url(ticket_stub_image)
             db.ticket_stubs.update_one(
                 {"watchHistoryEntryId": str(entry_id)},
                 {"$set": {
@@ -415,8 +505,8 @@ def update_watch_history(user_id, entry_id):
                 upsert=True
             )
             updates['watchHistory.$.ticketStubUrl'] = f"/api/users/watch-history/ticketstub/{entry_id}"
-        except Exception as e:
-            print(f"Error updating ticket stub: {e}")
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
     
     if not updates:
         return jsonify({"message": "No changes"})
@@ -629,7 +719,6 @@ def get_public_profile(user_id):
     public_fields = user.get('publicFields', ['totalRuntime', 'movieCount'])
     profile = {
         "userId": user.get('customUrl') or user.get('firebaseUid') or str(user['_id']),
-        "firebaseUid": user.get('firebaseUid'), # Return UID for admin actions
         "customUrl": user.get('customUrl'),
         "displayName": user.get('displayName', 'Anonymous'),
         "photoURL": user.get('photoURL'),
@@ -654,7 +743,10 @@ def get_public_profile(user_id):
             if not is_admin and str(m.get('imdbId')) in hidden_ids:
                 continue
 
-            history_to_return.append(enrich_watch_history([m])[0])
+            public_entry = dict(enrich_watch_history([dict(m)])[0])
+            # Ticket images are private even when the watch history itself is public.
+            public_entry.pop('ticketStubUrl', None)
+            history_to_return.append(public_entry)
                 
         profile['watchHistory'] = history_to_return
         profile['privateMoviesCount'] = len(full_history) - len(history_to_return) if not is_admin else 0
@@ -663,6 +755,7 @@ def get_public_profile(user_id):
 
     if is_admin:
         profile['email'] = user.get('email') # Show email to admin
+        profile['firebaseUid'] = user.get('firebaseUid')
 
     return jsonify(profile)
 

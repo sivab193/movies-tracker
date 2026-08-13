@@ -102,7 +102,10 @@ class MoviesTrackerMCPServer {
         refreshToken: this.auth.refreshToken,
       });
 
-      this.currentAccessToken = response.data.customToken;
+      this.currentAccessToken = response.data.idToken;
+      if (!this.currentAccessToken) {
+        throw new Error("The API did not return a Firebase ID token");
+      }
       // Set expiry to 50 minutes (tokens last 1 hour, refresh early)
       this.tokenExpiry = now + 50 * 60 * 1000;
 

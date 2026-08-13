@@ -38,6 +38,8 @@ import {
 } from "@/components/ui/dialog"
 import { type Series, type SeriesProgress, formatRuntimeMinutes, resolveApiUrl } from "@/lib/types"
 import { useAuth } from "@/contexts/auth-context"
+import { PersonLink } from "@/components/person-link"
+import { creditNames } from "@/lib/people"
 
 export default function SeriesDetailPage({
   params,
@@ -317,12 +319,18 @@ export default function SeriesDetailPage({
               <div className="mt-6 space-y-2 text-sm text-muted-foreground">
                 {(series.director && series.director !== "N/A") && (
                   <div>
-                    <span className="font-medium text-foreground">Director:</span> {series.director}
+                    <span className="font-medium text-foreground">Director:</span>{" "}
+                    {creditNames(series.directors || series.director).map((name, index) => (
+                      <span key={name}>{index > 0 && ", "}<PersonLink name={name} /></span>
+                    ))}
                   </div>
                 )}
-                {(series.actors && series.actors !== "N/A") && (
+                {creditNames(series.actors).length > 0 && (
                   <div>
-                    <span className="font-medium text-foreground">Cast:</span> {series.actors}
+                    <span className="font-medium text-foreground">Cast:</span>{" "}
+                    {creditNames(series.actors).map((name, index) => (
+                      <span key={name}>{index > 0 && ", "}<PersonLink name={name} /></span>
+                    ))}
                   </div>
                 )}
                 {(series.language && series.language !== "N/A") && (

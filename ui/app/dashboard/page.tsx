@@ -32,8 +32,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { useAuth } from "@/contexts/auth-context"
-import { type WatchHistoryEntry, resolveApiUrl } from "@/lib/types"
-import { deleteWatchHistory } from "@/services/api"
+import { type WatchHistoryEntry } from "@/lib/types"
+import { deleteWatchHistory, openProtectedAsset } from "@/services/api"
 import { getMySettings } from "@/services/user-service"
 
 export default function DashboardPage() {
@@ -277,14 +277,13 @@ export default function DashboardPage() {
                             </span>
                           </div>
                           {entry.ticketStubUrl && (
-                            <a 
-                              href={resolveApiUrl(entry.ticketStubUrl)} 
-                              target="_blank" 
-                              rel="noopener noreferrer" 
+                            <button
+                              type="button"
+                              onClick={() => openProtectedAsset(entry.ticketStubUrl!).catch((error) => console.error("Failed to open ticket stub", error))}
                               className="text-xs text-primary hover:underline flex items-center gap-1"
                             >
                               🎟️ View Ticket
-                            </a>
+                            </button>
                           )}
                         </div>
                       </div>

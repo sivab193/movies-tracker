@@ -12,7 +12,15 @@ from routes.omdb_keys import get_available_api_key, record_omdb_call
 
 movies_bp = Blueprint('movies', __name__)
 
+if db is not None:
+    try:
+        db.titlecard_rate_limits.create_index('expiresAt', expireAfterSeconds=0)
+    except Exception as e:
+        print(f"Index creation error for title-card rate limits: {e}")
+
 OMDB_API_KEY = os.environ.get('OMDB_API_KEY')
+MAX_IMAGE_BYTES = 5 * 1024 * 1024
+ALLOWED_IMAGE_MIME_TYPES = {'image/jpeg', 'image/png', 'image/webp'}
 # Admin check now uses DB only
 
 def is_admin(id_token):
@@ -68,10 +76,17 @@ def save_poster_to_db(movie_id, poster_url):
     if not poster_url or poster_url == "N/A":
         return None
     try:
-        response = requests.get(poster_url)
-        if response.status_code == 200:
-            content_type = response.headers.get('Content-Type', 'image/jpeg')
-            image_data = Binary(response.content)
+        response = requests.get(poster_url, timeout=15, stream=True)
+        content_type = response.headers.get('Content-Type', '').split(';', 1)[0].lower()
+        if response.status_code == 200 and content_type in ALLOWED_IMAGE_MIME_TYPES:
+            chunks = []
+            size = 0
+            for chunk in response.iter_content(64 * 1024):
+                size += len(chunk)
+                if size > MAX_IMAGE_BYTES:
+                    raise ValueError('Poster exceeds the 5 MB limit')
+                chunks.append(chunk)
+            image_data = Binary(b''.join(chunks))
             db.movie_posters.update_one(
                 {"movieId": str(movie_id)},
                 {"$set": {
@@ -90,8 +105,15 @@ def save_poster_base64_to_db(movie_id, base64_str):
         return None
     try:
         header, encoded = base64_str.split(",", 1)
-        mime_type = header.split(";")[0].split(":")[1]
-        image_data = Binary(base64.b64decode(encoded))
+        mime_type = header.split(";", 1)[0].split(":", 1)[1].lower()
+        if mime_type not in ALLOWED_IMAGE_MIME_TYPES:
+            raise ValueError('Only JPEG, PNG, and WebP posters are supported')
+        if len(encoded) > (MAX_IMAGE_BYTES * 4 // 3) + 4:
+            raise ValueError('Poster exceeds the 5 MB limit')
+        image_bytes = base64.b64decode(encoded, validate=True)
+        if not image_bytes or len(image_bytes) > MAX_IMAGE_BYTES:
+            raise ValueError('Poster exceeds the 5 MB limit')
+        image_data = Binary(image_bytes)
         db.movie_posters.update_one(
             {"movieId": str(movie_id)},
             {"$set": {
@@ -104,6 +126,44 @@ def save_poster_base64_to_db(movie_id, base64_str):
     except Exception as e:
         print(f"Error saving base64 poster to MongoDB: {e}")
     return None
+
+
+def decode_submission_image(value):
+    if not isinstance(value, str) or not value.startswith('data:'):
+        raise ValueError('Screenshot must be a data URL')
+    try:
+        header, encoded = value.split(',', 1)
+        mime_type = header.split(';', 1)[0].split(':', 1)[1].lower()
+    except (IndexError, ValueError):
+        raise ValueError('Invalid screenshot data URL')
+    if mime_type not in ALLOWED_IMAGE_MIME_TYPES:
+        raise ValueError('Only JPEG, PNG, and WebP screenshots are supported')
+    if len(encoded) > (MAX_IMAGE_BYTES * 4 // 3) + 4:
+        raise ValueError('Screenshot exceeds the 5 MB limit')
+    try:
+        image_bytes = base64.b64decode(encoded, validate=True)
+    except Exception:
+        raise ValueError('Invalid screenshot image data')
+    if not image_bytes or len(image_bytes) > MAX_IMAGE_BYTES:
+        raise ValueError('Screenshot exceeds the 5 MB limit')
+    return mime_type, Binary(image_bytes)
+
+
+def anonymous_submission_allowed():
+    """Allow a bounded number of anonymous writes per source each hour."""
+    source = request.headers.get('X-Forwarded-For', request.remote_addr or 'unknown').split(',')[0].strip()
+    device_id = (request.get_json(silent=True) or {}).get('deviceId')
+    if isinstance(device_id, str) and 8 <= len(device_id) <= 128:
+        source = f'{source}:{device_id}'
+    now = datetime.datetime.now(datetime.timezone.utc)
+    window_start = now.replace(minute=0, second=0, microsecond=0)
+    db.titlecard_rate_limits.update_one(
+        {'source': source, 'windowStart': window_start},
+        {'$inc': {'count': 1}, '$setOnInsert': {'expiresAt': window_start + datetime.timedelta(hours=2)}},
+        upsert=True,
+    )
+    current = db.titlecard_rate_limits.find_one({'source': source, 'windowStart': window_start})
+    return not current or current.get('count', 0) <= 20
 
 def parse_release_date_to_iso(released_str, year_val=None):
     if not released_str or released_str == 'N/A':
@@ -129,6 +189,17 @@ def parse_release_date_to_iso(released_str, year_val=None):
                 if year_val:
                     return f"{str(year_val)[:4]}-01-01"
                 return "1970-01-01"
+
+
+def normalize_credit_names(value):
+    """Turn OMDb's comma-separated credit strings into searchable arrays."""
+    if isinstance(value, list):
+        names = value
+    elif isinstance(value, str) and value.strip() not in ('', 'N/A'):
+        names = value.split(',')
+    else:
+        return []
+    return list(dict.fromkeys(name.strip() for name in names if isinstance(name, str) and name.strip()))
 
 def ensure_movie_metadata(movie_doc):
     """Ensure a movie document has language, released, and releaseDate fields populated."""
@@ -227,6 +298,9 @@ def fetch_omdb_endpoint():
             "runtime": runtime_str,
             "averageTimeSeconds": average_time_seconds,
             "imdbRating": imdb_rating,
+            "actors": normalize_credit_names(omdb_data.get('Actors')),
+            "director": omdb_data.get('Director') if omdb_data.get('Director') != 'N/A' else None,
+            "directors": normalize_credit_names(omdb_data.get('Director')),
             "posterUrl": omdb_data.get('Poster') if omdb_data.get('Poster') != "N/A" else ""
         }
         return jsonify({"exists": False, "movie": movie_preview})
@@ -286,6 +360,8 @@ def add_movie():
                 imdb_rating = float(data.get('imdbRating')) if data.get('imdbRating') not in [None, '', 'N/A'] else None
             except:
                 imdb_rating = None
+            actors = normalize_credit_names(data.get('actors') or data.get('Actors'))
+            directors = normalize_credit_names(data.get('directors') or data.get('director') or data.get('Director'))
             omdb_data = {}
         else:
             omdb_data = fetch_movie_from_omdb(imdb_id)
@@ -306,6 +382,8 @@ def add_movie():
                 imdb_rating = float(omdb_data.get('imdbRating')) if omdb_data.get('imdbRating') != "N/A" else None
             except:
                 imdb_rating = None
+            actors = normalize_credit_names(omdb_data.get('Actors'))
+            directors = normalize_credit_names(omdb_data.get('Director'))
 
         movie_data = {
             "imdbId": imdb_id,
@@ -313,6 +391,9 @@ def add_movie():
             "year": year_val,
             "posterUrl": None,
             "imdbRating": imdb_rating,
+            "actors": actors,
+            "director": ', '.join(directors) if directors else None,
+            "directors": directors,
             "runtime": runtime_str,
             "language": lang,
             "Language": lang,
@@ -666,6 +747,12 @@ def update_movie(movie_id):
             update_fields['imdbRating'] = float(data['imdbRating']) if data['imdbRating'] != '' and data['imdbRating'] is not None else None
         except ValueError:
             pass
+    if 'actors' in data or 'Actors' in data:
+        update_fields['actors'] = normalize_credit_names(data.get('actors') or data.get('Actors'))
+    if 'directors' in data or 'director' in data or 'Director' in data:
+        directors = normalize_credit_names(data.get('directors') or data.get('director') or data.get('Director'))
+        update_fields['directors'] = directors
+        update_fields['director'] = ', '.join(directors) if directors else None
 
     # Handle posterImage (Base64) or posterUrl
     poster_image = data.get('posterImage')
@@ -787,7 +874,7 @@ def add_submission():
             except Exception:
                 pass
 
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     movie_id = data.get('movieId')
     time_in_seconds = data.get('timeInSeconds')
     raw_input = data.get('rawInput')
@@ -796,6 +883,18 @@ def add_submission():
     
     if not movie_id or time_in_seconds is None:
         return jsonify({"error": "Missing required fields"}), 400
+    if not isinstance(time_in_seconds, (int, float)) or isinstance(time_in_seconds, bool) or not 0 <= time_in_seconds <= 8 * 3600:
+        return jsonify({"error": "timeInSeconds must be between 0 and 28800"}), 400
+    if not isinstance(movie_id, str) or not ObjectId.is_valid(movie_id):
+        return jsonify({"error": "Invalid movie ID"}), 400
+    if uid == "anonymous" and not anonymous_submission_allowed():
+        return jsonify({"error": "Too many anonymous submissions; please try again later"}), 429
+    screenshot = None
+    if screenshot_image:
+        try:
+            screenshot = decode_submission_image(screenshot_image)
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
         
     try:
         submission = {
@@ -811,12 +910,9 @@ def add_submission():
         submission_id = str(result.inserted_id)
         
         # Save screenshot if provided
-        if screenshot_image and screenshot_image.startswith('data:'):
+        if screenshot:
             try:
-                import base64
-                header, encoded = screenshot_image.split(",", 1)
-                mime_type = header.split(";")[0].split(":")[1]
-                image_bytes = Binary(base64.b64decode(encoded))
+                mime_type, image_bytes = screenshot
                 db.titlecard_images.update_one(
                     {"submissionId": submission_id},
                     {"$set": {
@@ -941,7 +1037,10 @@ def shorten_movie_url(movie_id):
 def resolve_short_movie_url(code):
     if db is None:
         return jsonify({"error": "Database not connected"}), 500
-    doc = db.short_urls.find_one({"code": code})
+    doc = db.short_urls.find_one({
+        "code": code,
+        "expiresAt": {"$gt": datetime.datetime.now(datetime.timezone.utc)}
+    })
     if not doc or not doc.get('movieId'):
         return jsonify({"error": "Short URL not found or expired"}), 404
     return jsonify({"movieId": str(doc['movieId'])})

@@ -103,7 +103,7 @@ Once configured, you can ask Claude:
 - "Update my last watch entry to fix the theater name"
 - "How many hours of movies have I watched total?"
 
-**Live at:** https://mt.siv19.dev
+**Live at:** https://mv.siv19.dev
 
 ## How It Works
 
@@ -170,7 +170,7 @@ npm start
 ### Environment Variables
 
 The MCP server automatically uses production API by default:
-- `API_BASE_URL`: https://mt.siv19.dev/api
+- `API_BASE_URL`: https://mv.siv19.dev/api
 
 For local development against your backend:
 ```bash

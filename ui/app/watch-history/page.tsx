@@ -36,9 +36,9 @@ import {
 import { useAuth } from "@/contexts/auth-context"
 import { AddWatchDialog } from "@/components/add-watch-dialog"
 import { ShareStats, type WrappedStats } from "@/components/share-stats"
-import { formatTimeDisplay, type WatchHistoryEntry, resolveApiUrl } from "@/lib/types"
+import { formatTimeDisplay, type WatchHistoryEntry } from "@/lib/types"
 import { getMySettings } from "@/services/user-service"
-import { deleteWatchHistory } from "@/services/api"
+import { deleteWatchHistory, openProtectedAsset } from "@/services/api"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -823,14 +823,13 @@ export default function WatchHistoryPage() {
                                                             </span>
                                                         )}
                                                         {entry.ticketStubUrl && (
-                                                            <a 
-                                                                href={resolveApiUrl(entry.ticketStubUrl)} 
-                                                                target="_blank" 
-                                                                rel="noopener noreferrer" 
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => openProtectedAsset(entry.ticketStubUrl!).catch((error) => console.error("Failed to open ticket stub", error))}
                                                                 className="text-xs text-primary hover:underline flex items-center gap-1 mt-0.5"
                                                             >
                                                                 🎟️ View Ticket
-                                                            </a>
+                                                            </button>
                                                         )}
                                                     </div>
                                                 </TableCell>

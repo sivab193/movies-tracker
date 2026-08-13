@@ -2,6 +2,38 @@ import { auth } from "@/lib/firebase";
 
 export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api";
 
+/** Open a protected image in a new tab using the current Firebase ID token. */
+export async function openProtectedAsset(path: string) {
+    const token = await auth?.currentUser?.getIdToken();
+    if (!token) throw new Error("User not authenticated");
+    const apiRoot = API_BASE_URL.replace(/\/api\/?$/, "");
+    const url = path.startsWith("http")
+        ? path
+        : path.startsWith("/api/")
+            ? `${apiRoot}${path}`
+            : `${API_BASE_URL.replace(/\/$/, "")}/${path.replace(/^\//, "")}`;
+    const viewer = window.open("", "_blank");
+    const response = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!response.ok) {
+        viewer?.close();
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error || "Failed to load protected image");
+    }
+    const objectUrl = URL.createObjectURL(await response.blob());
+    if (viewer) {
+        viewer.opener = null;
+        viewer.location.href = objectUrl;
+        viewer.addEventListener("beforeunload", () => URL.revokeObjectURL(objectUrl), { once: true });
+    } else {
+        const link = document.createElement("a");
+        link.href = objectUrl;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        link.click();
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000);
+    }
+}
+
 export async function fetchOmdbPreview(imdbId: string) {
     const token = (await auth?.currentUser?.getIdToken().catch(() => null)) || "anonymous";
     const response = await fetch(`${API_BASE_URL}/movies/fetch-omdb?imdbId=${encodeURIComponent(imdbId)}`, {

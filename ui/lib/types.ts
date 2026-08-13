@@ -10,6 +10,9 @@ export interface Movie {
   createdAt: Date
   submissionCount: number
   averageTimeSeconds: number | null
+  actors?: string[]
+  director?: string | null
+  directors?: string[]
   language?: string
   Language?: string
   released?: string
@@ -201,8 +204,9 @@ export interface Series {
   posterUrl: string | null
   plot: string | null
   genre: string | null
-  actors: string | null
+  actors: string[]
   director: string | null
+  directors?: string[]
   language: string | null
   country: string | null
   imdbRating: number | null

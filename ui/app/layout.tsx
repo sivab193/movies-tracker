@@ -1,6 +1,5 @@
 import React from "react"
 import type { Metadata, Viewport } from "next"
-import { Inter } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { AuthProvider } from "@/contexts/auth-context"
 import { ThemeProvider } from "@/contexts/theme-context"
@@ -8,8 +7,6 @@ import { Footer } from "@/components/footer"
 import { BottomNav } from "@/components/bottom-nav"
 import RegisterServiceWorker from "@/app/register-service-worker"
 import "./globals.css"
-
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" })
 
 export const metadata: Metadata = {
   title: "MediaVerse",
@@ -65,7 +62,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className={`${inter.variable} font-sans antialiased min-h-[100dvh] flex flex-col bg-background`}>
+      <body className="font-sans antialiased min-h-[100dvh] flex flex-col bg-background">
         <ThemeProvider>
           <AuthProvider>
             <div className="min-h-screen flex flex-col flex-1 pb-20 md:pb-0">

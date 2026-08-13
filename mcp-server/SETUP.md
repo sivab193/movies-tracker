@@ -8,7 +8,7 @@ npx movies-tracker-mcp login
 ```
 
 Follow the prompts:
-1. Visit: https://mt.siv19.dev/device
+1. Visit: https://mv.siv19.dev/device
 2. Enter the code shown (e.g., WXYZ-ABCD)
 3. Authorize in your browser
 4. Done! ✓
@@ -142,7 +142,7 @@ npm start test
 {
   "name": "movies-tracker-mcp",
   "version": "1.0.0",
-  "description": "MCP server for Movies Tracker - https://mt.siv19.dev",
+  "description": "MCP server for Movies Tracker - https://mv.siv19.dev",
   "repository": {
     "type": "git",
     "url": "https://github.com/yourusername/movies-tracker.git"
@@ -193,7 +193,7 @@ npx movies-tracker-mcp login
 
 Check if backend is accessible:
 ```bash
-curl https://mt.siv19.dev/api/health
+curl https://mv.siv19.dev/api/health
 ```
 
 Should return:
@@ -229,7 +229,7 @@ npx movies-tracker-mcp login
    ├─> POST /api/auth/device/code
    └─> Returns: userCode (WXYZ-ABCD) & deviceCode (secret)
 
-2. User visits https://mt.siv19.dev/device
+2. User visits https://mv.siv19.dev/device
    ├─> Enters userCode
    ├─> Signs in with Google OAuth (Firebase)
    └─> POST /api/auth/device/verify
@@ -269,6 +269,6 @@ npx movies-tracker-mcp login
 
 ## Support
 
-- **Website:** https://mt.siv19.dev
+- **Website:** https://mv.siv19.dev
 - **Issues:** GitHub Issues
 - **Documentation:** https://github.com/yourusername/movies-tracker-mcp

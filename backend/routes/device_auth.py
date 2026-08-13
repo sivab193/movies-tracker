@@ -4,8 +4,18 @@ from mongo_config import db
 import secrets
 import string
 import datetime
+import os
+import requests
 
 device_auth_bp = Blueprint('device_auth', __name__)
+
+if db is not None:
+    try:
+        db.device_codes.create_index('userCode', unique=True)
+        db.device_codes.create_index('expiresAt', expireAfterSeconds=0)
+        db.device_verification_attempts.create_index('expiresAt', expireAfterSeconds=0)
+    except Exception as e:
+        print(f"Device auth index creation error: {e}")
 
 def generate_device_code():
     """Generate a user-friendly device code like WXYZ-ABCD"""
@@ -21,6 +31,36 @@ def generate_random_token(length=32):
     """Generate a secure random token"""
     return secrets.token_urlsafe(length)
 
+
+def device_verification_allowed():
+    source = request.headers.get('X-Forwarded-For', request.remote_addr or 'unknown').split(',')[0].strip()
+    now = datetime.datetime.now(datetime.timezone.utc)
+    window_start = now.replace(minute=0, second=0, microsecond=0)
+    db.device_verification_attempts.update_one(
+        {'source': source, 'windowStart': window_start},
+        {'$inc': {'count': 1}, '$setOnInsert': {'expiresAt': window_start + datetime.timedelta(hours=2)}},
+        upsert=True,
+    )
+    attempt = db.device_verification_attempts.find_one({'source': source, 'windowStart': window_start})
+    return not attempt or attempt.get('count', 0) <= 10
+
+
+def exchange_custom_token_for_id_token(custom_token):
+    api_key = os.environ.get('FIREBASE_WEB_API_KEY') or os.environ.get('NEXT_PUBLIC_FIREBASE_API_KEY')
+    if not api_key:
+        raise RuntimeError('FIREBASE_WEB_API_KEY must be configured for MCP token refresh')
+    response = requests.post(
+        f'https://identitytoolkit.googleapis.com/v1/accounts:signInWithCustomToken?key={api_key}',
+        json={'token': custom_token, 'returnSecureToken': True},
+        timeout=15,
+    )
+    if response.status_code != 200:
+        raise RuntimeError('Could not exchange Firebase custom token for an ID token')
+    id_token = response.json().get('idToken')
+    if not id_token:
+        raise RuntimeError('Firebase did not return an ID token')
+    return id_token
+
 @device_auth_bp.route('/device/code', methods=['POST'])
 def create_device_code():
     """
@@ -28,6 +68,8 @@ def create_device_code():
     Returns: user_code (display to user) and device_code (for polling)
     """
     user_code = generate_device_code()
+    while db.device_codes.find_one({'userCode': user_code}):
+        user_code = generate_device_code()
     device_code = generate_random_token()
 
     # Store in database with pending status
@@ -172,7 +214,10 @@ def verify_device_code():
         print(f"Error verifying token: {e}")
         return jsonify({"error": "Invalid token"}), 401
 
-    data = request.get_json()
+    if not device_verification_allowed():
+        return jsonify({"error": "Too many verification attempts; please try again later"}), 429
+
+    data = request.get_json(silent=True) or {}
     user_code = data.get('userCode', '').upper().strip()
 
     if not user_code:
@@ -245,6 +290,8 @@ def refresh_access_token():
     # Generate a custom Firebase token for this user
     try:
         custom_token = firebase_auth.create_custom_token(user_id)
+        custom_token = custom_token.decode('utf-8') if isinstance(custom_token, bytes) else custom_token
+        id_token = exchange_custom_token_for_id_token(custom_token)
 
         # Update last used
         db.refresh_tokens.update_one(
@@ -256,7 +303,8 @@ def refresh_access_token():
         user = db.users.find_one({"firebaseUid": user_id})
 
         return jsonify({
-            "customToken": custom_token.decode('utf-8') if isinstance(custom_token, bytes) else custom_token,
+            "customToken": custom_token,
+            "idToken": id_token,
             "expiresIn": 3600,
             "user": {
                 "uid": user_id,

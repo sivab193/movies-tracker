@@ -89,7 +89,7 @@ The `/device` route provides a web interface for authorizing CLI tools and MCP s
 
 **Flow:**
 1. CLI shows user a code (e.g., `WXYZ-ABCD`)
-2. User visits `https://mt.siv19.dev/device`
+2. User visits `https://mv.siv19.dev/device`
 3. User enters code and authorizes
 4. CLI receives long-lived refresh token
 

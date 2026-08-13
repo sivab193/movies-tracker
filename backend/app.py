@@ -12,7 +12,13 @@ load_dotenv()
 
 app = Flask(__name__)
 app.url_map.strict_slashes = False
-CORS(app) # Enable CORS for all routes
+allowed_origins = [
+    origin.strip() for origin in os.environ.get(
+        'ALLOWED_ORIGINS',
+        'http://localhost:3000,https://mv.siv19.dev'
+    ).split(',') if origin.strip()
+]
+CORS(app, resources={r"/api/*": {"origins": allowed_origins}})
 
 @app.route('/api/health')
 def health_check():
@@ -29,6 +35,7 @@ from routes.watch_orders import watch_orders_bp
 from routes.series import series_bp
 from routes.omdb_keys import omdb_keys_bp
 from routes.requests import requests_bp
+from routes.people import people_bp
 
 app.register_blueprint(movies_bp, url_prefix='/api/movies')
 app.register_blueprint(leaderboard_bp, url_prefix='/api/leaderboard')
@@ -41,6 +48,7 @@ app.register_blueprint(watch_orders_bp, url_prefix='/api/watch-orders')
 app.register_blueprint(series_bp, url_prefix='/api/series')
 app.register_blueprint(omdb_keys_bp, url_prefix='/api/omdb-keys')
 app.register_blueprint(requests_bp, url_prefix='/api/requests')
+app.register_blueprint(people_bp, url_prefix='/api/people')
 
 
 if __name__ == '__main__':

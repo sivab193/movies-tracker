@@ -3,7 +3,7 @@
 import { useEffect, useState, useMemo } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
-import { getPublicProfile, getAdminUserProfile, toggleLeaderboardBan, deleteWatchHistory } from "@/services/api"
+import { getPublicProfile, getAdminUserProfile, toggleLeaderboardBan, deleteWatchHistory, openProtectedAsset } from "@/services/api"
 import { AddWatchDialog } from "@/components/add-watch-dialog"
 import { Loader2, Film, Shield, Ban, CheckCircle, Pencil, Trash, ArrowLeft, ArrowUpDown, CreditCard } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -186,14 +186,13 @@ export default function AdminUserDetailsPage() {
                                             <div className="flex flex-col items-end">
                                                 <span className="font-mono">{formatCurrency(entry.ticketCost, entry.currency)}</span>
                                                 {entry.ticketStubUrl && (
-                                                    <a 
-                                                        href={resolveApiUrl(entry.ticketStubUrl)} 
-                                                        target="_blank" 
-                                                        rel="noopener noreferrer" 
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => openProtectedAsset(entry.ticketStubUrl!).catch((error) => console.error("Failed to open ticket stub", error))}
                                                         className="text-xs text-primary hover:underline flex items-center gap-1 mt-0.5"
                                                     >
                                                         🎟️ View Ticket
-                                                    </a>
+                                                    </button>
                                                 )}
                                             </div>
                                         </TableCell>

@@ -202,7 +202,7 @@ graph LR
     StdioTransport <--> MCPServerInstance
     MCPServerInstance --> ToolHandlers
     ToolHandlers --> APIClient
-    APIClient <-->|REST API| BackendAPI["Flask Backend API (mt.siv19.dev)"]
+    APIClient <-->|REST API| BackendAPI["Flask Backend API (mv.siv19.dev)"]
 ```
 
 ---

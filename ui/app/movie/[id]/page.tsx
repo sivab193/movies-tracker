@@ -13,6 +13,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { formatTimeDisplay, formatRuntimeToHHMM, type Movie, type TitleCardSubmission } from "@/lib/types"
 import { useAuth } from "@/contexts/auth-context"
+import { PersonLink } from "@/components/person-link"
+import { creditNames } from "@/lib/people"
 
 export default function MovieDetailPage({
   params,
@@ -276,6 +278,32 @@ export default function MovieDetailPage({
                 </div>
               </div>
             </div>
+
+            {(creditNames(movie.directors || movie.director).length > 0 || creditNames(movie.actors).length > 0) && (
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">People</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm">
+                  {creditNames(movie.directors || movie.director).length > 0 && (
+                    <div className="space-x-1 text-muted-foreground">
+                      <span className="font-medium text-foreground">Director:</span>{" "}
+                      {creditNames(movie.directors || movie.director).map((name, index) => (
+                        <span key={name}>{index > 0 && ", "}<PersonLink name={name} /></span>
+                      ))}
+                    </div>
+                  )}
+                  {creditNames(movie.actors).length > 0 && (
+                    <div className="space-x-1 text-muted-foreground">
+                      <span className="font-medium text-foreground">Cast:</span>{" "}
+                      {creditNames(movie.actors).map((name, index) => (
+                        <span key={name}>{index > 0 && ", "}<PersonLink name={name} /></span>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Stats Card */}
             <Card>
