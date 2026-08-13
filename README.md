@@ -32,6 +32,8 @@ Whether you're a cinephile tracking every minute spent in theaters or competing 
 - **🆔 Custom Profile Usernames (`/u/{username}`)**: Claim a clean, memorable public link for your watch history profile (`5-10 characters`).
 - **🔗 Instant Movie Short Links (`/m/<code>`)**: Generate and share 6-character short URLs that automatically clear after 30 days.
 - **♾️ Infinite Scroll Catalog**: Browse through hundreds of movies with zero UI lag thanks to intersection-observed paginated API endpoints (`20 movies/page`).
+- **🎞️ Movie & People Discovery**: Search the full movie catalog and follow linked actor and director pages to their associated movies and series.
+- **🏛️ Theater Pages & Screen Specs**: Explore each theater’s formats, sound, seating, capacity, amenities, ticket platforms, map, and community activity; admins manage the details.
 - **🛡️ Embedded MongoDB Binary Posters**: Movie posters are downloaded and stored directly inside MongoDB (`movie_posters` collection), guaranteeing permanent availability even if external URLs expire.
 - **⚡ Hybrid Vercel Deployment**: Seamlessly bridges a Next.js frontend with a Python serverless API under one unified domain via `vercel.json`.
 - **🤖 MCP Server Integration**: Connect with Claude AI and other assistants through our Model Context Protocol server - search movies, manage watch history, and view stats via natural language.
