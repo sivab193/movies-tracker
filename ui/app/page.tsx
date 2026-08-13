@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Film, Trophy, List, Share2, ShieldCheck, MessageSquare, Bot, Map, Tv, Sparkles, CreditCard, BarChart3, ListOrdered, LayoutDashboard, Link2 } from "lucide-react"
+import { Film, Trophy, List, Share2, ShieldCheck, MessageSquare, Bot, Map, Tv, Sparkles, CreditCard, BarChart3, ListOrdered, LayoutDashboard, Link2, Building2 } from "lucide-react"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
@@ -38,6 +38,20 @@ const mainFeatures = [
     title: "Curated Watch Orders",
     badge: "New",
     description: "Discover community-curated watch orders that combine movies and series into the perfect viewing sequence.",
+  },
+  {
+    href: "/movies",
+    icon: Film,
+    title: "Movie Discovery",
+    badge: "New",
+    description: "Browse the full movie catalog with search, accurate totals, and direct access to title-card timings and credits.",
+  },
+  {
+    href: "/theaters",
+    icon: Building2,
+    title: "Theater Pages",
+    badge: "New",
+    description: "Compare each cinema’s screens, projection formats, sound, seating, capacity, amenities, booking links, and community activity.",
   },
   {
     href: "/cards",
@@ -128,13 +142,13 @@ export default function HomePage() {
             <div className="mx-auto max-w-2xl text-center">
               <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
                 <Sparkles className="h-4 w-4" />
-                Now with Series Tracking, Watch Orders & AI Integration
+                Now with theater pages, movie discovery & watch orders
               </div>
               <h1 className="text-4xl font-bold tracking-tight sm:text-6xl text-balance">
                 Your Ultimate MediaVerse Tracker
               </h1>
               <p className="mt-6 text-lg leading-8 text-muted-foreground text-pretty">
-                Track every movie and series you watch, analyze your statistics, compete on the global leaderboard, and connect with AI assistants — all in one place.
+                Track what you watch, find the right screen, explore movies and series, and keep every cinema memory in one place.
               </p>
               <div className="mt-10 flex items-center justify-center gap-x-6">
                 <Link href={user ? "/dashboard" : "/auth"}>
@@ -158,7 +172,7 @@ export default function HomePage() {
               Everything you need to track your cinematic journey
             </p>
             <p className="mt-4 text-lg text-muted-foreground">
-              From detailed watch logging to AI-powered integrations — 12 features and counting.
+              From detailed watch logging to cinema-screen discovery — 14 features and counting.
             </p>
           </div>
           <div className="mx-auto mt-12 max-w-2xl sm:mt-16 lg:mt-20 lg:max-w-none">

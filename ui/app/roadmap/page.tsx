@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Bot, Map, Users, Bell, Tv, Volume2, Sparkles, CreditCard, MessageSquare, ListOrdered, Check } from "lucide-react"
+import { Bot, Map, Users, Bell, Tv, Sparkles, CreditCard, MessageSquare, ListOrdered, Check, Film, Building2 } from "lucide-react"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 
@@ -46,6 +46,24 @@ const roadmapSections: { title: string; subtitle: string; features: RoadmapFeatu
         href: "/cards",
         description:
           "Track your credit and debit card cinema offers, log card usage at theaters, and see how much you have saved with detailed savings analytics.",
+      },
+      {
+        icon: Film,
+        title: "Movie Discovery",
+        status: "Shipped ✓",
+        statusClass: "bg-green-500/10 text-green-600 dark:text-green-400",
+        href: "/movies",
+        description:
+          "Browse the complete movie catalog with search, true catalog totals, title-card timing, and linked cast and director pages.",
+      },
+      {
+        icon: Building2,
+        title: "Theater Pages & Screen Specs",
+        status: "Shipped ✓",
+        statusClass: "bg-green-500/10 text-green-600 dark:text-green-400",
+        href: "/theaters",
+        description:
+          "Explore individual theater pages with screen format, sound, seating, capacity, size, venue amenities, ticket platforms, maps, and community watch activity. Admins control every detail.",
       },
     ],
   },
@@ -113,14 +131,6 @@ const roadmapSections: { title: string; subtitle: string; features: RoadmapFeatu
         statusClass: "bg-muted text-muted-foreground",
         description:
           "Never miss opening day again. Get instant push notifications or Telegram alerts the moment bookings open for blockbuster releases at your favorite theaters.",
-      },
-      {
-        icon: Volume2,
-        title: "Cinema Specs & Sound Audit",
-        status: "Planned",
-        statusClass: "bg-muted text-muted-foreground",
-        description:
-          "Rate and discover theater screens by their exact technical specifications: IMAX 70mm vs Dual Laser, Dolby Cinema, 64-channel Atmos audio, screen dimensions, projection brightness, and seat comfort ratings.",
       },
     ],
   },
