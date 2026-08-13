@@ -6,6 +6,71 @@ from routes.movies import is_admin
 
 theaters_bp = Blueprint('theaters', __name__)
 
+SCREEN_FORMATS = {'IMAX', 'Dolby Cinema', '4DX', 'ScreenX', 'Laser', 'Standard'}
+SOUND_FORMATS = {'Dolby Atmos', 'Dolby 7.1', 'Dolby 5.1', 'Auro 3D', 'Standard'}
+SEATING_TYPES = {'Recliner', 'Premium', 'Standard', 'Sofa', 'Wheelchair accessible'}
+
+
+def normalize_theater_details(data):
+    """Validate optional structured details used by public theater pages."""
+    details = {}
+    for field in ('openedYear', 'renovatedYear'):
+        value = data.get(field)
+        if value in (None, ''):
+            continue
+        if not isinstance(value, int) or value < 1800 or value > 2100:
+            raise ValueError(f'{field} must be a valid year')
+        details[field] = value
+    for field in ('notes', 'website'):
+        value = data.get(field)
+        if value is not None:
+            if not isinstance(value, str) or len(value) > 2000:
+                raise ValueError(f'{field} is invalid or too long')
+            details[field] = value.strip()
+    for field in ('amenities',):
+        value = data.get(field)
+        if value is not None:
+            if not isinstance(value, list) or any(not isinstance(item, str) or len(item) > 80 for item in value):
+                raise ValueError(f'{field} must be a list of short labels')
+            details[field] = list(dict.fromkeys(item.strip() for item in value if item.strip()))
+    platforms = data.get('ticketPlatforms')
+    if platforms is not None:
+        if not isinstance(platforms, list):
+            raise ValueError('ticketPlatforms must be a list')
+        cleaned = []
+        for platform in platforms:
+            if not isinstance(platform, dict) or not isinstance(platform.get('name'), str):
+                raise ValueError('Each ticket platform needs a name')
+            name, url = platform['name'].strip(), str(platform.get('url') or '').strip()
+            if not name or len(name) > 80 or len(url) > 2048:
+                raise ValueError('Ticket platform details are invalid')
+            cleaned.append({'name': name, 'url': url})
+        details['ticketPlatforms'] = cleaned
+    screens = data.get('screens')
+    if screens is not None:
+        if not isinstance(screens, list):
+            raise ValueError('screens must be a list')
+        cleaned = []
+        for index, screen in enumerate(screens):
+            if not isinstance(screen, dict) or not isinstance(screen.get('name'), str) or not screen['name'].strip():
+                raise ValueError('Every screen needs a name')
+            capacity = screen.get('capacity')
+            if capacity not in (None, '') and (not isinstance(capacity, int) or capacity < 1 or capacity > 5000):
+                raise ValueError('Screen capacity must be between 1 and 5000')
+            cleaned.append({
+                'id': str(screen.get('id') or f'screen-{index + 1}'),
+                'name': screen['name'].strip(),
+                'format': screen.get('format') if screen.get('format') in SCREEN_FORMATS else 'Standard',
+                'sound': screen.get('sound') if screen.get('sound') in SOUND_FORMATS else 'Standard',
+                'seating': screen.get('seating') if screen.get('seating') in SEATING_TYPES else 'Standard',
+                'capacity': capacity if capacity not in ('', None) else None,
+                'screenSize': str(screen.get('screenSize') or '').strip()[:100],
+                'notes': str(screen.get('notes') or '').strip()[:500],
+                'verified': bool(screen.get('verified', False)),
+            })
+        details['screens'] = cleaned
+    return details
+
 def normalize_theater_location(t):
     loc = (t.get('location') or '').strip()
     name = (t.get('name') or '').strip()
@@ -85,7 +150,7 @@ def add_theater():
     if not is_admin(token):
         return jsonify({"error": "Forbidden: Admin access required"}), 403
 
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     name = data.get('name')
     location = data.get('location', '')
     gmaps_link = data.get('gmapsLink', '')
@@ -110,12 +175,15 @@ def add_theater():
         new_theater = {
             "name": name,
             "location": location,
-            "gmapsLink": gmaps_link
+            "gmapsLink": gmaps_link,
+            **normalize_theater_details(data),
         }
         result = db.theaters.insert_one(new_theater)
         new_theater['id'] = str(result.inserted_id)
         new_theater.pop('_id', None)
         return jsonify({"message": "Theater added successfully", "theater": new_theater})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -135,7 +203,7 @@ def update_theater(theater_id):
     if not ObjectId.is_valid(theater_id):
         return jsonify({"error": "Invalid theater ID"}), 400
 
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     name = data.get('name')
     location = data.get('location', '')
     gmaps_link = data.get('gmapsLink', '')
@@ -152,21 +220,52 @@ def update_theater(theater_id):
         update_data = {
             "name": name,
             "location": location,
-            "gmapsLink": gmaps_link
+            "gmapsLink": gmaps_link,
+            **normalize_theater_details(data),
         }
         result = db.theaters.update_one({"_id": ObjectId(theater_id)}, {"$set": update_data})
         if result.matched_count == 0:
             return jsonify({"error": "Theater not found"}), 404
 
-        updated_theater = {
-            "id": theater_id,
-            "name": name,
-            "location": location,
-            "gmapsLink": gmaps_link
-        }
+        updated_theater = db.theaters.find_one({"_id": ObjectId(theater_id)})
+        updated_theater = serialize_theater(updated_theater)
         return jsonify({"message": "Theater updated successfully", "theater": updated_theater})
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@theaters_bp.route('/<theater_id>', methods=['GET'])
+def get_theater(theater_id):
+    if db is None:
+        return jsonify({'error': 'Database not connected'}), 500
+    if not ObjectId.is_valid(theater_id):
+        return jsonify({'error': 'Invalid theater ID'}), 400
+    theater = db.theaters.find_one({'_id': ObjectId(theater_id)})
+    if not theater:
+        return jsonify({'error': 'Theater not found'}), 404
+    theater = serialize_theater(normalize_theater_location(theater))
+    theater['verified'] = bool(theater.get('verified', False))
+    theater.setdefault('screens', [])
+    theater.setdefault('amenities', [])
+    theater.setdefault('ticketPlatforms', [])
+    stats = {'watchCount': 0, 'uniqueVisitors': 0, 'topMovie': None}
+    movie_counts = {}
+    visitors = set()
+    for user in db.users.find({'watchHistory.theaterId': theater_id}, {'firebaseUid': 1, 'watchHistory': 1}):
+        for entry in user.get('watchHistory', []):
+            if str(entry.get('theaterId')) == theater_id:
+                stats['watchCount'] += 1
+                visitors.add(user.get('firebaseUid'))
+                title = entry.get('movieTitle') or 'Untitled'
+                movie_counts[title] = movie_counts.get(title, 0) + 1
+    stats['uniqueVisitors'] = len(visitors)
+    if movie_counts:
+        title, count = max(movie_counts.items(), key=lambda item: item[1])
+        stats['topMovie'] = {'title': title, 'count': count}
+    theater['stats'] = stats
+    return jsonify(theater)
 
 @theaters_bp.route('/<theater_id>/verify', methods=['POST'])
 def verify_theater(theater_id):

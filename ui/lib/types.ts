@@ -70,6 +70,27 @@ export interface Theater {
   name: string
   location?: string
   gmapsLink?: string
+  verified?: boolean
+  openedYear?: number
+  renovatedYear?: number
+  website?: string
+  notes?: string
+  amenities?: string[]
+  ticketPlatforms?: Array<{ name: string; url: string }>
+  screens?: TheaterScreen[]
+  stats?: { watchCount: number; uniqueVisitors: number; topMovie: { title: string; count: number } | null }
+}
+
+export interface TheaterScreen {
+  id: string
+  name: string
+  format: "IMAX" | "Dolby Cinema" | "4DX" | "ScreenX" | "Laser" | "Standard"
+  sound: "Dolby Atmos" | "Dolby 7.1" | "Dolby 5.1" | "Auro 3D" | "Standard"
+  seating: "Recliner" | "Premium" | "Standard" | "Sofa" | "Wheelchair accessible"
+  capacity: number | null
+  screenSize: string
+  notes: string
+  verified: boolean
 }
 
 // Card offer details

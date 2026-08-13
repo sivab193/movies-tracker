@@ -29,6 +29,14 @@ export async function getAllSeries(search?: string, genre?: string, year?: strin
   return data.map(normalizeSeries)
 }
 
+export async function getSeriesPage(skip = 0, limit = 20): Promise<{ series: Series[]; total: number }> {
+  const params = new URLSearchParams({ paginate: "true", skip: String(skip), limit: String(limit) })
+  const res = await fetch(`${API_BASE_URL}/series?${params}`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || "Failed to fetch series")
+  return { series: (data.series || []).map(normalizeSeries), total: data.total || 0 }
+}
+
 // Public: Get full series detail
 export async function getSeries(id: string): Promise<Series> {
   const res = await fetch(`${API_BASE_URL}/series/${id}`)

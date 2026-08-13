@@ -654,7 +654,7 @@ export default function AdminPage() {
 
                             {/* Movies List */}
                             <CollapsibleSection
-                                title={`Movies (${filteredMovies.length})`}
+                                title={`Movies (${movieTotal})`}
                                 description="All movies in the database"
                                 headerActions={
                                     <Button
@@ -1087,12 +1087,15 @@ export default function AdminPage() {
                                                 </td>
                                                 <td className="py-3 px-2 text-center">
                                                     <div className="flex items-center justify-center gap-1">
+                                                        <Button asChild variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10" title="Manage theater details">
+                                                            <Link href={`/admin/theaters/${t.id}`}><Pencil className="h-4 w-4" /></Link>
+                                                        </Button>
                                                         <Button
                                                             variant="ghost"
                                                             size="sm"
                                                             className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
                                                             onClick={() => openEditTheater(t)}
-                                                            title="Edit Theater"
+                                                            title="Quick edit name, location, or map"
                                                         >
                                                             <Pencil className="h-4 w-4" />
                                                         </Button>

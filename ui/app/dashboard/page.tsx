@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import {
@@ -13,6 +13,7 @@ import {
   ExternalLink,
   IndianRupee,
   DollarSign,
+  Search,
 } from "lucide-react"
 import { Header } from "@/components/header"
 import { AddWatchDialog } from "@/components/add-watch-dialog"
@@ -20,6 +21,7 @@ import { RequestTitleDialog } from "@/components/request-title-dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Input } from "@/components/ui/input"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,6 +43,9 @@ export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth()
   const [history, setHistory] = useState<WatchHistoryEntry[]>([])
   const [loading, setLoading] = useState(true)
+  const [watchSearch, setWatchSearch] = useState("")
+  const [theaterFilter, setTheaterFilter] = useState("all")
+  const [sortBy, setSortBy] = useState("newest")
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -86,6 +91,17 @@ export default function DashboardPage() {
   const totalUSD = history
     .filter((e) => e.currency === "USD")
     .reduce((sum, e) => sum + e.ticketCost, 0)
+
+  const theaters = useMemo(() => Array.from(new Set(history.map((entry) => entry.theaterName).filter((theater): theater is string => Boolean(theater)))).sort(), [history])
+  const visibleHistory = useMemo(() => {
+    const term = watchSearch.trim().toLowerCase()
+    return history.filter((entry) => (!term || [entry.movieTitle, entry.theaterName, entry.movieLanguage].some((value) => value?.toLowerCase().includes(term))) && (theaterFilter === "all" || entry.theaterName === theaterFilter)).sort((a, b) => {
+      if (sortBy === "oldest") return new Date(a.timestamp || a.createdAt).getTime() - new Date(b.timestamp || b.createdAt).getTime()
+      if (sortBy === "title") return a.movieTitle.localeCompare(b.movieTitle)
+      if (sortBy === "cost") return (b.ticketCost + (b.foodCost || 0)) - (a.ticketCost + (a.foodCost || 0))
+      return new Date(b.timestamp || b.createdAt).getTime() - new Date(a.timestamp || a.createdAt).getTime()
+    })
+  }, [history, watchSearch, theaterFilter, sortBy])
 
   if (authLoading) {
     return (
@@ -178,7 +194,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Watch History */}
-        <h2 className="text-xl font-semibold mb-4">Watch History</h2>
+        <div className="mb-4 flex flex-wrap items-end justify-between gap-3"><div><h2 className="text-xl font-semibold">Watch History</h2><p className="text-sm text-muted-foreground">{visibleHistory.length} of {history.length} watches</p></div><div className="flex flex-wrap gap-2"><div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input className="w-52 pl-9" value={watchSearch} onChange={(e) => setWatchSearch(e.target.value)} placeholder="Movie, theater, language" /></div><select className="h-10 rounded-md border bg-background px-3 text-sm" value={theaterFilter} onChange={(e) => setTheaterFilter(e.target.value)}><option value="all">All theaters</option>{theaters.map((theater) => <option key={theater} value={theater}>{theater}</option>)}</select><select className="h-10 rounded-md border bg-background px-3 text-sm" value={sortBy} onChange={(e) => setSortBy(e.target.value)}><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="title">Movie title</option><option value="cost">Highest cost</option></select></div></div>
 
         {loading ? (
           <div className="space-y-4">
@@ -196,9 +212,11 @@ export default function DashboardPage() {
               </p>
             </CardContent>
           </Card>
+        ) : visibleHistory.length === 0 ? (
+          <Card><CardContent className="py-12 text-center"><h3 className="text-lg font-medium">No watches match these filters</h3><Button variant="link" onClick={() => { setWatchSearch(""); setTheaterFilter("all") }}>Clear filters</Button></CardContent></Card>
         ) : (
           <div className="space-y-4">
-            {history.map((entry, idx) => (
+            {visibleHistory.map((entry, idx) => (
               <Card key={entry._id || idx}>
                 <CardContent className="py-4">
                   <div className="flex gap-4">

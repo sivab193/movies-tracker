@@ -29,7 +29,7 @@ import {
     Tv,
 } from "lucide-react"
 import {
-    getAllSeries,
+    getSeriesPage,
     deleteSeries,
     refreshSeriesFromOmdb,
     verifySeries,
@@ -49,6 +49,8 @@ type SeasonState = "pending" | "importing" | "done" | "error"
 
 export function AdminSeries() {
     const [seriesList, setSeriesList] = useState<any[]>([])
+    const [seriesTotal, setSeriesTotal] = useState(0)
+    const [seriesSkip, setSeriesSkip] = useState(0)
     const [loading, setLoading] = useState(true)
     const [deletingId, setDeletingId] = useState<string | null>(null)
     const [refreshingId, setRefreshingId] = useState<string | null>(null)
@@ -79,9 +81,13 @@ export function AdminSeries() {
         else sessionStorage.removeItem(API_KEY_STORAGE)
     }, [apiKey])
 
-    const load = async () => {
+    const load = async (skip = seriesSkip) => {
+        setLoading(true)
         try {
-            setSeriesList((await getAllSeries()) || [])
+            const data = await getSeriesPage(skip, 20)
+            setSeriesList(data.series)
+            setSeriesTotal(data.total)
+            setSeriesSkip(skip)
         } catch (err) {
             console.error("Failed to load series", err)
         } finally {
@@ -185,7 +191,7 @@ export function AdminSeries() {
             }
 
             await importSeriesFinish(preview.imdbId)
-            await load()
+            await load(0)
             setModalOpen(false)
             setImdbId("")
             setPreview(null)
@@ -213,7 +219,7 @@ export function AdminSeries() {
         setDeletingId(id)
         try {
             await deleteSeries(id)
-            setSeriesList((list) => list.filter((s) => s.id !== id))
+            await load(seriesList.length === 1 && seriesSkip > 0 ? seriesSkip - 20 : seriesSkip)
         } catch (err) {
             alert(err instanceof Error ? err.message : "Failed to delete series")
         } finally {
@@ -244,7 +250,7 @@ export function AdminSeries() {
                 title={
                     <>
                         <Tv className="h-5 w-5 text-primary" />
-                        Series ({seriesList.length})
+                        Series ({seriesTotal})
                     </>
                 }
                 description="Manage TV Series in the database"
@@ -433,6 +439,15 @@ export function AdminSeries() {
                             )}
                         </tbody>
                     </table>
+                </div>
+                <div className="mt-4 flex items-center justify-between border-t pt-4">
+                    <span className="text-sm text-muted-foreground">
+                        Showing {seriesList.length ? seriesSkip + 1 : 0} - {Math.min(seriesSkip + 20, seriesTotal)} of {seriesTotal} series
+                    </span>
+                    <div className="flex gap-2">
+                        <Button variant="outline" size="sm" disabled={seriesSkip === 0 || loading} onClick={() => load(Math.max(0, seriesSkip - 20))}>Previous</Button>
+                        <Button variant="outline" size="sm" disabled={seriesSkip + 20 >= seriesTotal || loading} onClick={() => load(seriesSkip + 20)}>Next</Button>
+                    </div>
                 </div>
             </CollapsibleSection>
 

@@ -60,6 +60,13 @@ export const DISCOVER_GROUP: NavGroup = {
   icon: Compass,
   items: [
     {
+      href: "/movies",
+      label: "Movies",
+      description: "Browse the movie catalog and title-card timings",
+      icon: Film,
+      keywords: ["films", "cinema", "catalog"],
+    },
+    {
       href: "/series",
       label: "Series",
       description: "Browse tracked shows and franchises",
@@ -72,6 +79,13 @@ export const DISCOVER_GROUP: NavGroup = {
       description: "Curated viewing orders for big franchises",
       icon: ListOrdered,
       keywords: ["chronological", "release order", "franchise"],
+    },
+    {
+      href: "/theaters",
+      label: "Theaters",
+      description: "Compare cinema screens, formats, and amenities",
+      icon: Map,
+      keywords: ["cinema", "imax", "dolby", "screens"],
     },
   ],
 }

@@ -236,6 +236,13 @@ export async function getTheaters() {
     return data.theaters;
 }
 
+export async function getTheater(id: string) {
+    const response = await fetch(`${API_BASE_URL}/theaters/${id}`)
+    const data = await response.json()
+    if (!response.ok) throw new Error(data.error || "Failed to fetch theater")
+    return data
+}
+
 export async function addTheater(name: string, location?: string, gmapsLink?: string) {
     const token = await auth?.currentUser?.getIdToken();
     if (!token) throw new Error("User not authenticated");
@@ -254,7 +261,13 @@ export async function addTheater(name: string, location?: string, gmapsLink?: st
     return data.theater;
 }
 
-export async function updateTheater(id: string, name: string, location?: string, gmapsLink?: string) {
+export async function updateTheater(
+    id: string,
+    name: string,
+    location?: string,
+    gmapsLink?: string,
+    details: Record<string, unknown> = {}
+) {
     const token = await auth?.currentUser?.getIdToken();
     if (!token) throw new Error("User not authenticated");
 
@@ -264,7 +277,7 @@ export async function updateTheater(id: string, name: string, location?: string,
             "Content-Type": "application/json",
             "Authorization": `Bearer ${token}`
         },
-        body: JSON.stringify({ name, location, gmapsLink })
+        body: JSON.stringify({ name, location, gmapsLink, ...details })
     });
 
     const data = await response.json();

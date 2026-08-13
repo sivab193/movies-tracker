@@ -76,6 +76,10 @@ def _to_int(value, default=0):
 def _to_float(value):
     if value in (None, '', 'N/A'):
         return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
 
 
 def normalize_credit_names(value):
@@ -86,10 +90,6 @@ def normalize_credit_names(value):
     else:
         return []
     return list(dict.fromkeys(name.strip() for name in names if isinstance(name, str) and name.strip()))
-    try:
-        return float(value)
-    except (TypeError, ValueError):
-        return None
 
 
 def _normalize_date(value):
@@ -337,7 +337,7 @@ def format_doc(doc):
 @series_bp.route('/', methods=['GET'])
 def list_series():
     if db is None:
-        return jsonify({"series": []})
+        return jsonify({"series": [], "total": 0}) if request.args.get('paginate') == 'true' else jsonify([])
 
     query = {}
     search = request.args.get('search', '')
@@ -364,10 +364,22 @@ def list_series():
             pass
 
     cursor = db.series.find(query, {"seasons": 0}).sort("title", 1)
+    if request.args.get('paginate') == 'true':
+        try:
+            skip = max(0, int(request.args.get('skip', 0)))
+            limit = min(100, max(1, int(request.args.get('limit', 20))))
+        except ValueError:
+            return jsonify({"error": "skip and limit must be numbers"}), 400
+        total = db.series.count_documents(query)
+        cursor = cursor.skip(skip).limit(limit)
+    else:
+        total = None
     series_list = []
     for doc in cursor:
         series_list.append(format_doc(doc))
 
+    if total is not None:
+        return jsonify({"series": series_list, "total": total})
     return jsonify(series_list)
 
 
