@@ -6,7 +6,7 @@ import { notFound } from "next/navigation"
 import { Header } from "@/components/header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { getWatchOrderBySlug, enrichWatchOrderItems } from "@/services/watch-order-service"
+import { getEnrichedWatchOrderItemsBySlug, getWatchOrderBySlug } from "@/services/watch-order-service"
 import { getSeriesProgress } from "@/services/series-service"
 import { formatRuntimeMinutes, resolveApiUrl } from "@/lib/types"
 import type { EnrichedWatchOrderItem, SeriesProgress, WatchOrder } from "@/lib/types"
@@ -108,7 +108,7 @@ export default function WatchOrderDetailPage({
       try {
         setLoading(true)
         const data = await getWatchOrderBySlug(slug)
-        const items = await enrichWatchOrderItems(data.items || [])
+        const items = await getEnrichedWatchOrderItemsBySlug(slug)
         if (!cancelled) setOrder({ ...data, items } as LoadedOrder)
       } catch (err) {
         console.error("Failed to load watch order", err)

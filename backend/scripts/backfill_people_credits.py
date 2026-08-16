@@ -7,10 +7,46 @@ import argparse
 import os
 import sys
 
+import requests
+from dotenv import load_dotenv
+
+# Load configuration before importing modules that create the MongoDB client.
+load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from mongo_config import db
-from routes.movies import fetch_movie_from_omdb, normalize_credit_names
+from routes.omdb_keys import get_available_api_key, record_omdb_call
+
+
+def normalize_credit_names(value):
+    """Turn OMDb's comma-separated credit strings into searchable arrays."""
+    if isinstance(value, list):
+        names = value
+    elif isinstance(value, str) and value.strip() not in ('', 'N/A'):
+        names = value.split(',')
+    else:
+        return []
+    return list(dict.fromkeys(
+        name.strip() for name in names
+        if isinstance(name, str) and name.strip()
+    ))
+
+
+def fetch_movie_from_omdb(imdb_id):
+    """Fetch one movie without importing the Flask routes or Firebase."""
+    api_key, key_id = get_available_api_key()
+    response = requests.get(
+        'https://www.omdbapi.com/',
+        params={'i': imdb_id, 'apikey': api_key},
+        timeout=30,
+    )
+    response.raise_for_status()
+    data = response.json()
+    if data.get('Error'):
+        raise RuntimeError(data['Error'])
+    record_omdb_call(key_id)
+    return data
 
 
 def main():

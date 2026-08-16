@@ -9,7 +9,19 @@ def get_db():
     
     try:
         # certifi.where() is often needed on Mac for SSL
-        client = MongoClient(mongo_uri, tlsCAFile=certifi.where())
+        client = MongoClient(
+            mongo_uri,
+            tlsCAFile=certifi.where(),
+            serverSelectionTimeoutMS=10000,
+            connectTimeoutMS=10000,
+            # Vercel may run several serverless instances concurrently. Keep
+            # each instance's pool intentionally small to prevent connection
+            # storms during traffic bursts.
+            maxPoolSize=5,
+            maxConnecting=1,
+            maxIdleTimeMS=60000,
+            waitQueueTimeoutMS=10000,
+        )
         # Try to get the default database from the URI path, otherwise fallback
         try:
             db = client.get_default_database()

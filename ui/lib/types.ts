@@ -180,6 +180,15 @@ export interface WatchOrder {
   slug: string // public short link: /w/<slug>, admin editable
   description: string | null
   items: WatchOrderItem[]
+  summary?: {
+    movieCount: number
+    seriesCount: number
+    totalRuntimeMinutes: number
+  }
+  // A custom uploaded cover takes precedence over this generated poster strip.
+  coverPosterUrl?: string | null
+  posterUrls?: string[]
+  posterItemIds?: string[]
   createdAt: string
   updatedAt: string
 }

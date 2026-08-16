@@ -19,6 +19,8 @@ export function AdminWatchOrders() {
   const [draftName, setDraftName] = useState("")
   const [draftSlug, setDraftSlug] = useState("")
   const [draftDescription, setDraftDescription] = useState("")
+  const [draftPosterItemIds, setDraftPosterItemIds] = useState<string[]>([])
+  const [draftCoverImage, setDraftCoverImage] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
@@ -38,12 +40,28 @@ export function AdminWatchOrders() {
     setDraftName(order.name || "")
     setDraftSlug(order.slug || "")
     setDraftDescription(order.description || "")
+    setDraftPosterItemIds(order.posterItemIds || [])
+    setDraftCoverImage(null)
     setError(null)
   }
 
   const cancelEdit = () => {
     setEditingId(null)
     setError(null)
+  }
+
+  const setCoverFile = (file?: File) => {
+    if (!file) return
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type) || file.size > 5 * 1024 * 1024) {
+      setError('Cover image must be a JPEG, PNG, or WebP no larger than 5 MB.')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => {
+      setDraftCoverImage(String(reader.result))
+      setDraftPosterItemIds([])
+    }
+    reader.readAsDataURL(file)
   }
 
   const save = async (order: WatchOrder) => {
@@ -60,6 +78,9 @@ export function AdminWatchOrders() {
         name: draftName.trim(),
         slug,
         description: draftDescription.trim(),
+        posterItemIds: draftPosterItemIds,
+        clearCoverImage: draftPosterItemIds.length > 0,
+        ...(draftCoverImage ? { coverImage: draftCoverImage } : {}),
       })
       setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, ...updated } : o)))
       setEditingId(null)
@@ -144,6 +165,36 @@ export function AdminWatchOrders() {
                         onChange={(e) => setDraftDescription(e.target.value)}
                         className="h-9"
                       />
+                    </div>
+
+                    <div className="space-y-2 rounded-md border border-dashed p-3">
+                      <Label>Card cover</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Upload one custom image, or choose up to five title posters for the saved poster strip.
+                      </p>
+                      <Input
+                        type="file"
+                        accept="image/jpeg,image/png,image/webp"
+                        onChange={(event) => setCoverFile(event.target.files?.[0])}
+                        className="h-9"
+                      />
+                      <select
+                        multiple
+                        value={draftPosterItemIds}
+                        onChange={(event) => {
+                          const values = Array.from(event.currentTarget.selectedOptions).map((option) => option.value).slice(0, 5)
+                          setDraftPosterItemIds(values)
+                          if (values.length) setDraftCoverImage(null)
+                        }}
+                        className="h-28 w-full rounded-md border bg-background p-2 text-sm"
+                      >
+                        {(order.items || []).map((item) => (
+                          <option key={item.id || item.itemId} value={item.itemId}>
+                            {item.title || item.itemId} ({item.year || 'Unknown year'})
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-xs text-muted-foreground">Hold ⌘/Ctrl to select multiple posters.</p>
                     </div>
 
                     {error && <p className="text-sm text-destructive">{error}</p>}

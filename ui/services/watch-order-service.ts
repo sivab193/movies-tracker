@@ -1,6 +1,5 @@
 import { auth } from "@/lib/firebase"
-import { WatchOrder, WatchOrderItem, EnrichedWatchOrderItem } from "@/lib/types"
-import { lookupMovie, lookupSeries } from "@/services/series-service"
+import { WatchOrder, EnrichedWatchOrderItem } from "@/lib/types"
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
 
@@ -43,6 +42,15 @@ export async function getWatchOrderBySlug(slug: string): Promise<WatchOrder> {
   return normalizeWatchOrder(data)
 }
 
+// Resolve all items for one selected order in two catalog queries on the API
+// (one movies query and one series query), rather than one request per item.
+export async function getEnrichedWatchOrderItemsBySlug(slug: string): Promise<EnrichedWatchOrderItem[]> {
+  const res = await fetch(`${API_BASE_URL}/watch-orders/slug/${encodeURIComponent(slug)}/items`)
+  if (!res.ok) throw new Error("Failed to load watch order items")
+  const data = await res.json()
+  return (data.items || []).map((item: any) => ({ ...item, id: item._id || item.id }))
+}
+
 export async function getWatchOrdersForMovie(imdbId: string): Promise<WatchOrder[]> {
   const res = await fetch(`${API_BASE_URL}/watch-orders/movie/${imdbId}`)
   if (!res.ok) throw new Error("Failed to fetch watch orders for movie")
@@ -62,7 +70,12 @@ export async function createWatchOrder(data: Partial<WatchOrder>): Promise<Watch
   return normalizeWatchOrder(json)
 }
 
-export async function updateWatchOrder(id: string, data: Partial<WatchOrder>): Promise<WatchOrder> {
+type WatchOrderUpdate = Partial<WatchOrder> & {
+  coverImage?: string
+  clearCoverImage?: boolean
+}
+
+export async function updateWatchOrder(id: string, data: WatchOrderUpdate): Promise<WatchOrder> {
   const headers = await getAuthHeader()
   const res = await fetch(`${API_BASE_URL}/watch-orders/${id}`, {
     method: "PUT",
@@ -84,43 +97,4 @@ export async function deleteWatchOrder(id: string): Promise<void> {
     headers,
   })
   if (!res.ok) throw new Error("Failed to delete watch order")
-}
-
-// Enrich watch order items with live data from movies/series collections
-export async function enrichWatchOrderItems(items: WatchOrderItem[]): Promise<EnrichedWatchOrderItem[]> {
-  const enriched = await Promise.allSettled(
-    items.map(async (item) => {
-      try {
-        if (item.type === 'series') {
-          const data = await lookupSeries(item.itemId)
-          return {
-            ...item,
-            title: data.title,
-            year: data.year,
-            endYear: data.endYear,
-            posterUrl: data.posterUrl,
-            totalSeasons: data.totalSeasons,
-            totalEpisodes: data.totalEpisodes,
-            totalRuntimeMinutes: data.totalRuntimeMinutes,
-            imdbRating: data.imdbRating,
-            isOngoing: data.isOngoing,
-          }
-        } else {
-          const data = await lookupMovie(item.itemId)
-          return {
-            ...item,
-            title: data.title,
-            year: data.year,
-            posterUrl: data.posterUrl,
-            runtime: data.runtime,
-            imdbRating: data.imdbRating,
-          }
-        }
-      } catch {
-        // Return item with whatever data it has (fallback)
-        return { ...item }
-      }
-    })
-  )
-  return enriched.map(r => r.status === 'fulfilled' ? r.value : (r as any).value || {})
 }
