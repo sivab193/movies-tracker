@@ -6,7 +6,7 @@ import re
 from bson import ObjectId, Binary
 from bson.errors import InvalidId
 from mongo_config import db
-from routes.movies import is_admin
+from routes.movies import is_admin, normalize_watch_providers
 from routes.omdb_keys import get_available_api_key, record_omdb_call
 
 series_bp = Blueprint('series', __name__)
@@ -827,6 +827,8 @@ def update_series(series_id):
 
         # Protect internal fields
         update_data = {k: v for k, v in data.items() if k not in ['_id', 'createdAt', 'lastOmdbSync']}
+        if 'watchProviders' in update_data:
+            update_data['watchProviders'] = normalize_watch_providers(update_data['watchProviders'])
         update_data['updatedAt'] = datetime.datetime.now(datetime.timezone.utc)
 
         result = db.series.update_one(query, {"$set": update_data})

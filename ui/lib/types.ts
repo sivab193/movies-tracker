@@ -1,3 +1,9 @@
+export interface WatchProvider {
+  name: string
+  url: string
+  regions: string[]
+}
+
 // Movie document stored in Firestore
 export interface Movie {
   id: string
@@ -17,6 +23,7 @@ export interface Movie {
   Language?: string
   released?: string
   releaseDate?: string
+  watchProviders?: WatchProvider[]
 }
 
 // Title card submission
@@ -248,6 +255,7 @@ export interface Series {
   createdAt: string
   updatedAt: string
   lastOmdbSync: string | null
+  watchProviders?: WatchProvider[]
 }
 
 // Lightweight series info (from lookup endpoint)

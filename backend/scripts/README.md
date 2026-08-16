@@ -2,6 +2,19 @@
 
 This folder contains backend utility scripts used for universal JSON movie imports, batch data operations, and database maintenance.
 
+## Sun NXT availability seed
+
+To attach the curated Sun NXT links and their India availability to the matching
+movie records, run this once (it is safe to run again):
+
+```bash
+cd backend
+python3 scripts/seed_sunnxt_watch_providers.py
+```
+
+The script matches both title and year, preserves providers from other OTTs, and
+reports titles that are not yet in the catalog.
+
 ## Universal Movie Importer (`import_movies_from_json.py`) ⭐ **RECOMMENDED**
 
 `import_movies_from_json.py` is the primary, universal tool for ingesting any list of movies (including upcoming releases, regional Indian cinema, or custom catalogs) into your MongoDB cluster.

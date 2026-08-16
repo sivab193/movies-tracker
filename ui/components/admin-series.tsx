@@ -24,6 +24,7 @@ import {
     Loader2,
     Plus,
     RefreshCw,
+    Pencil,
     Search,
     Trash2,
     Tv,
@@ -37,6 +38,7 @@ import {
     importSeriesStart,
     importSeriesSeason,
     importSeriesFinish,
+    updateSeries,
     type SeriesPreview,
 } from "@/services/series-service"
 import { formatRuntimeMinutes } from "@/lib/types"
@@ -68,6 +70,9 @@ export function AdminSeries() {
     const [seasonState, setSeasonState] = useState<Record<number, SeasonState>>({})
     const [callsSpent, setCallsSpent] = useState(0)
     const [error, setError] = useState<string | null>(null)
+    const [editingProviders, setEditingProviders] = useState<any | null>(null)
+    const [providersJson, setProvidersJson] = useState("[]")
+    const [savingProviders, setSavingProviders] = useState(false)
 
     // The override key lives in sessionStorage only - it is a stopgap for days
     // when the primary key is rate limited, not a stored credential.
@@ -239,6 +244,21 @@ export function AdminSeries() {
         }
     }
 
+    const saveProviders = async () => {
+        if (!editingProviders) return
+        setSavingProviders(true)
+        try {
+            const watchProviders = JSON.parse(providersJson)
+            const updated = await updateSeries(editingProviders.id, { watchProviders })
+            setSeriesList((list) => list.map((item) => item.id === updated.id ? { ...item, watchProviders: updated.watchProviders } : item))
+            setEditingProviders(null)
+        } catch (err) {
+            alert(err instanceof Error ? err.message : "Watch providers must be valid JSON")
+        } finally {
+            setSavingProviders(false)
+        }
+    }
+
     const doneCount = selectedSeasons.filter((n) => seasonState[n] === "done").length
     const progressPct = selectedSeasons.length
         ? Math.round((doneCount / selectedSeasons.length) * 100)
@@ -386,6 +406,18 @@ export function AdminSeries() {
                                     </td>
                                     <td className="py-3 px-2 text-center">
                                         <div className="flex items-center justify-center gap-1">
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                                onClick={() => {
+                                                    setEditingProviders(series)
+                                                    setProvidersJson(JSON.stringify(series.watchProviders || [], null, 2))
+                                                }}
+                                                title="Edit watch-online providers"
+                                            >
+                                                <Pencil className="h-4 w-4" />
+                                            </Button>
                                             <Button
                                                 variant="ghost"
                                                 size="sm"
@@ -659,6 +691,20 @@ export function AdminSeries() {
                             Import {selectedSeasons.length} season
                             {selectedSeasons.length === 1 ? "" : "s"}
                         </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={!!editingProviders} onOpenChange={(open) => !open && setEditingProviders(null)}>
+                <DialogContent className="sm:max-w-xl">
+                    <DialogHeader>
+                        <DialogTitle>Watch online — {editingProviders?.title}</DialogTitle>
+                        <DialogDescription>Use an array of services with <code>name</code>, full <code>url</code>, and <code>regions</code>.</DialogDescription>
+                    </DialogHeader>
+                    <textarea value={providersJson} onChange={(e) => setProvidersJson(e.target.value)} className="min-h-52 w-full rounded-md border bg-background p-3 font-mono text-xs" />
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setEditingProviders(null)} disabled={savingProviders}>Cancel</Button>
+                        <Button onClick={saveProviders} disabled={savingProviders}>{savingProviders ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}Save providers</Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

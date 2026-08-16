@@ -15,6 +15,7 @@ import { formatTimeDisplay, formatRuntimeToHHMM, type Movie, type TitleCardSubmi
 import { useAuth } from "@/contexts/auth-context"
 import { PersonLink } from "@/components/person-link"
 import { creditNames } from "@/lib/people"
+import { WatchOnlineSection } from "@/components/watch-online-section"
 
 export default function MovieDetailPage({
   params,
@@ -355,6 +356,8 @@ export default function MovieDetailPage({
             </Card>
           </div>
         </div>
+
+        <WatchOnlineSection providers={movie.watchProviders} />
 
         {/* Submissions List */}
         {submissions.length > 0 && (

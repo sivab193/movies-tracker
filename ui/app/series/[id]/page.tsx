@@ -40,6 +40,7 @@ import { type Series, type SeriesProgress, formatRuntimeMinutes, resolveApiUrl }
 import { useAuth } from "@/contexts/auth-context"
 import { PersonLink } from "@/components/person-link"
 import { creditNames } from "@/lib/people"
+import { WatchOnlineSection } from "@/components/watch-online-section"
 
 export default function SeriesDetailPage({
   params,
@@ -428,6 +429,8 @@ export default function SeriesDetailPage({
             )}
           </div>
         </div>
+
+        <WatchOnlineSection providers={series.watchProviders} />
 
         {/* Seasons Section */}
         <div className="mt-12 space-y-4">

@@ -23,6 +23,32 @@ MAX_IMAGE_BYTES = 5 * 1024 * 1024
 ALLOWED_IMAGE_MIME_TYPES = {'image/jpeg', 'image/png', 'image/webp'}
 # Admin check now uses DB only
 
+def normalize_watch_providers(value):
+    """Validate the public streaming links stored on a title."""
+    if not isinstance(value, list):
+        raise ValueError('watchProviders must be a list')
+    providers = []
+    for provider in value:
+        if not isinstance(provider, dict):
+            raise ValueError('Each watch provider must be an object')
+        name = str(provider.get('name') or '').strip()
+        url = str(provider.get('url') or '').strip()
+        regions = provider.get('regions') or []
+        if isinstance(regions, str):
+            regions = [region.strip() for region in regions.split(',') if region.strip()]
+        if not name or not url:
+            raise ValueError('Each watch provider needs a name and URL')
+        if not re.match(r'^https?://', url, re.I):
+            raise ValueError('Watch provider URLs must start with http:// or https://')
+        if not isinstance(regions, list):
+            raise ValueError('Provider regions must be a list')
+        providers.append({
+            'name': name[:80],
+            'url': url[:2000],
+            'regions': list(dict.fromkeys(str(region).strip()[:80] for region in regions if str(region).strip())),
+        })
+    return providers
+
 def is_admin(id_token):
     """Check if user is admin by verifying token and checking DB"""
     if not id_token:
@@ -401,6 +427,7 @@ def add_movie():
             "releaseDate": rel_date,
             "submissionCount": 0,
             "averageTimeSeconds": average_time_seconds,
+            "watchProviders": normalize_watch_providers(data.get('watchProviders', [])),
             "createdAt": datetime.datetime.now(datetime.timezone.utc)
         }
 
@@ -753,6 +780,8 @@ def update_movie(movie_id):
         directors = normalize_credit_names(data.get('directors') or data.get('director') or data.get('Director'))
         update_fields['directors'] = directors
         update_fields['director'] = ', '.join(directors) if directors else None
+    if 'watchProviders' in data:
+        update_fields['watchProviders'] = normalize_watch_providers(data['watchProviders'])
 
     # Handle posterImage (Base64) or posterUrl
     poster_image = data.get('posterImage')
