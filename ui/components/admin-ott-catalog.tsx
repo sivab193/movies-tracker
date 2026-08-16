@@ -38,7 +38,7 @@ export function AdminOttCatalog() {
   const providers = useMemo(() => Array.from(new Set(items.map((item) => item.provider))).sort(), [items])
   const providerItems = items.filter((item) => item.provider === selected)
 
-  return <CollapsibleSection title={<><Tv className="h-5 w-5 text-primary" />OTT catalog</>} description="Browse every title linked to each streaming service" defaultOpen>
+  return <CollapsibleSection title={<><Tv className="h-5 w-5 text-primary" />OTT catalog</>} description="Browse every title linked to each streaming service">
     {loading ? <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Loading availability…</div> : providers.length === 0 ? <p className="py-4 text-sm text-muted-foreground">No OTT links have been added yet.</p> : <div className="space-y-4">
       {partialError && <p className="rounded-md bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400">{partialError}</p>}
       <Select value={selected} onValueChange={setSelected}><SelectTrigger className="w-full sm:w-72"><SelectValue placeholder="Select an OTT" /></SelectTrigger><SelectContent>{providers.map((provider) => <SelectItem key={provider} value={provider}><span className="flex items-center gap-2"><OttMark name={provider} className="h-5 w-5 rounded text-[7px]" />{provider}</span></SelectItem>)}</SelectContent></Select>

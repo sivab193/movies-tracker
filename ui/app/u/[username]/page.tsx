@@ -10,6 +10,7 @@ interface WatchHistoryItem {
     movieId: string
     movieTitle: string
     moviePosterUrl?: string
+    theaterId?: string
     theaterName?: string
     timestamp?: string
     createdAt: string
@@ -160,10 +161,20 @@ export default function CustomUserProfilePage() {
                                                     {item.moviePosterUrl && (
                                                         <img src={item.moviePosterUrl} alt="" className="h-8 w-6 object-cover rounded hidden sm:block" />
                                                     )}
-                                                    <span>{item.movieTitle}</span>
+                                                    <a href={`/movie/${item.movieId}`} target="_blank" rel="noopener noreferrer" className="hover:underline text-primary">
+                                                        {item.movieTitle}
+                                                    </a>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 text-muted-foreground">{item.theaterName || "N/A"}</td>
+                                            <td className="px-6 py-4 text-muted-foreground">
+                                                {item.theaterId ? (
+                                                    <a href={`/theaters/${item.theaterId}`} target="_blank" rel="noopener noreferrer" className="hover:underline text-primary">
+                                                        {item.theaterName || "Unnamed Theater"}
+                                                    </a>
+                                                ) : (
+                                                    item.theaterName || "N/A"
+                                                )}
+                                            </td>
                                             <td className="px-6 py-4 text-primary font-mono">
                                                 {formatDate(item.timestamp || item.createdAt)}
                                             </td>

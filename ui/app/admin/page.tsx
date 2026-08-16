@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
-import { Loader2, Plus, ShieldAlert, Trash2, Search, Users, MapPin, ExternalLink, Pencil, Check, X, ChevronLeft, ChevronRight, BadgeCheck, ClipboardList, Tv, RefreshCw } from "lucide-react"
+import { Loader2, Plus, ShieldAlert, Trash2, Search, Users, MapPin, ExternalLink, Pencil, Check, X, ChevronLeft, ChevronRight, BadgeCheck, ClipboardList, Tv, RefreshCw, Film } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -677,7 +677,12 @@ export default function AdminPage() {
 
                             {/* Movies List */}
                             <CollapsibleSection
-                                title={`Movies (${movieTotal})`}
+                                title={
+                                    <>
+                                        <Film className="h-5 w-5 text-primary" />
+                                        Movies ({movieTotal})
+                                    </>
+                                }
                                 description="All movies in the database"
                                 headerActions={
                                     <Button
@@ -1086,7 +1091,18 @@ export default function AdminPage() {
                                     <tbody>
                                         {paginatedTheaters.map((t) => (
                                             <tr key={t.id} className="border-b hover:bg-muted/50">
-                                                <td className="py-3 px-2 font-medium">{t.name}</td>
+                                                <td className="py-3 px-2 font-medium">
+                                                    <a
+                                                        href={`/theaters/${t.id}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="text-primary hover:underline flex items-center gap-1.5"
+                                                        title="Open Theater Page"
+                                                    >
+                                                        {t.name}
+                                                        <ExternalLink className="h-3 w-3 opacity-70 shrink-0" />
+                                                    </a>
+                                                </td>
                                                 <td className="py-3 px-2 text-muted-foreground">{t.location || "N/A"}</td>
                                                 <td className="py-3 px-2">
                                                     {t.gmapsLink ? (
@@ -1124,15 +1140,6 @@ export default function AdminPage() {
                                                     <div className="flex items-center justify-center gap-1">
                                                         <Button asChild variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10" title="Manage theater details">
                                                             <Link href={`/admin/theaters/${t.id}`}><Pencil className="h-4 w-4" /></Link>
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground hover:bg-muted"
-                                                            onClick={() => openEditTheater(t)}
-                                                            title="Quick edit name, location, or map"
-                                                        >
-                                                            <Pencil className="h-4 w-4" />
                                                         </Button>
                                                         <Button
                                                             variant="ghost"
