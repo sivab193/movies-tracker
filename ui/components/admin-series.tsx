@@ -42,6 +42,8 @@ import {
     type SeriesPreview,
 } from "@/services/series-service"
 import { formatRuntimeMinutes } from "@/lib/types"
+import type { WatchProvider } from "@/lib/types"
+import { WatchProviderEditor } from "@/components/watch-provider-editor"
 
 // OMDb's free tier allows 1000 requests per day
 const DAILY_CALL_LIMIT = 1000
@@ -71,7 +73,7 @@ export function AdminSeries() {
     const [callsSpent, setCallsSpent] = useState(0)
     const [error, setError] = useState<string | null>(null)
     const [editingProviders, setEditingProviders] = useState<any | null>(null)
-    const [providersJson, setProvidersJson] = useState("[]")
+    const [editingProviderValues, setEditingProviderValues] = useState<WatchProvider[]>([])
     const [savingProviders, setSavingProviders] = useState(false)
 
     // The override key lives in sessionStorage only - it is a stopgap for days
@@ -248,12 +250,11 @@ export function AdminSeries() {
         if (!editingProviders) return
         setSavingProviders(true)
         try {
-            const watchProviders = JSON.parse(providersJson)
-            const updated = await updateSeries(editingProviders.id, { watchProviders })
+            const updated = await updateSeries(editingProviders.id, { watchProviders: editingProviderValues })
             setSeriesList((list) => list.map((item) => item.id === updated.id ? { ...item, watchProviders: updated.watchProviders } : item))
             setEditingProviders(null)
         } catch (err) {
-            alert(err instanceof Error ? err.message : "Watch providers must be valid JSON")
+            alert(err instanceof Error ? err.message : "Could not save watch providers")
         } finally {
             setSavingProviders(false)
         }
@@ -412,7 +413,7 @@ export function AdminSeries() {
                                                 className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
                                                 onClick={() => {
                                                     setEditingProviders(series)
-                                                    setProvidersJson(JSON.stringify(series.watchProviders || [], null, 2))
+                                                    setEditingProviderValues(series.watchProviders || [])
                                                 }}
                                                 title="Edit watch-online providers"
                                             >
@@ -699,9 +700,9 @@ export function AdminSeries() {
                 <DialogContent className="sm:max-w-xl">
                     <DialogHeader>
                         <DialogTitle>Watch online — {editingProviders?.title}</DialogTitle>
-                        <DialogDescription>Use an array of services with <code>name</code>, full <code>url</code>, and <code>regions</code>.</DialogDescription>
+                        <DialogDescription>Add each OTT’s direct title link and the regions where it is available.</DialogDescription>
                     </DialogHeader>
-                    <textarea value={providersJson} onChange={(e) => setProvidersJson(e.target.value)} className="min-h-52 w-full rounded-md border bg-background p-3 font-mono text-xs" />
+                    <WatchProviderEditor key={editingProviders?.id} providers={editingProviderValues} onChange={setEditingProviderValues} />
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setEditingProviders(null)} disabled={savingProviders}>Cancel</Button>
                         <Button onClick={saveProviders} disabled={savingProviders}>{savingProviders ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}Save providers</Button>

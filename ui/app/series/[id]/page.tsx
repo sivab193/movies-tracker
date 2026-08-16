@@ -345,6 +345,8 @@ export default function SeriesDetailPage({
                   </div>
                 )}
               </div>
+
+              <WatchOnlineSection providers={series.watchProviders} className="mt-6" />
             </div>
             
             {user && (
@@ -429,8 +431,6 @@ export default function SeriesDetailPage({
             )}
           </div>
         </div>
-
-        <WatchOnlineSection providers={series.watchProviders} />
 
         {/* Seasons Section */}
         <div className="mt-12 space-y-4">

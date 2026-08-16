@@ -306,6 +306,8 @@ export default function MovieDetailPage({
               </Card>
             )}
 
+            <WatchOnlineSection providers={movie.watchProviders} />
+
             {/* Stats Card */}
             <Card>
               <CardHeader className="pb-3">
@@ -356,8 +358,6 @@ export default function MovieDetailPage({
             </Card>
           </div>
         </div>
-
-        <WatchOnlineSection providers={movie.watchProviders} />
 
         {/* Submissions List */}
         {submissions.length > 0 && (

@@ -7,7 +7,6 @@ import { Loader2, Plus, ShieldAlert, Trash2, Search, Users, MapPin, ExternalLink
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
 import { Header } from "@/components/header"
 import { CollapsibleSection } from "@/components/collapsible-section"
 import { AdminWatchOrders } from "@/components/admin-watch-orders"
@@ -15,6 +14,9 @@ import { AdminCards } from "@/components/admin-cards"
 import { AdminSeries } from "@/components/admin-series"
 import { AdminOmdbKeys } from "@/components/admin-omdb-keys"
 import { AdminRequests } from "@/components/admin-requests"
+import { AdminOttCatalog } from "@/components/admin-ott-catalog"
+import { WatchProviderEditor } from "@/components/watch-provider-editor"
+import type { WatchProvider } from "@/lib/types"
 import { getAdminRequests, resolveAdminRequest } from "@/services/user-service"
 import { getMovies, deleteMovie, clearMovieSubmissions, getTheaters, addTheater, updateTheater, deleteTheater, updateMovie, addMovie, fetchOmdbPreview, getTheaterDuplicates, mergeTheaterDuplicates, getMovieDuplicates, mergeMovieDuplicates, verifyTheater, verifyMovie, getMovieDataQuality } from "@/services/api"
 import { formatTimeDisplay, resolveApiUrl, formatRuntimeMinutes } from "@/lib/types"
@@ -93,7 +95,7 @@ export default function AdminPage() {
     const [modalPosterFile, setModalPosterFile] = useState<File | null>(null)
     const [modalPosterPreview, setModalPosterPreview] = useState<string>("")
     const [modalPosterType, setModalPosterType] = useState<"url" | "file">("url")
-    const [modalWatchProvidersJson, setModalWatchProvidersJson] = useState("[]")
+    const [modalWatchProviders, setModalWatchProviders] = useState<WatchProvider[]>([])
     const [savingModalMovie, setSavingModalMovie] = useState(false)
     const [clearingSubmissions, setClearingSubmissions] = useState(false)
     const [modalError, setModalError] = useState<string | null>(null)
@@ -302,7 +304,7 @@ export default function AdminPage() {
         setModalPosterFile(null)
         setModalPosterPreview("")
         setModalPosterType("url")
-        setModalWatchProvidersJson("[]")
+        setModalWatchProviders([])
         setModalStep(1)
         setModalError(null)
         setIsMovieModalOpen(true)
@@ -396,11 +398,7 @@ export default function AdminPage() {
                 posterUrl: modalPosterType === "url" ? modalPosterUrl : undefined,
                 posterImage: base64Image
             }
-            try {
-                payload.watchProviders = JSON.parse(modalWatchProvidersJson)
-            } catch {
-                throw new Error('Watch providers must be valid JSON')
-            }
+            payload.watchProviders = modalWatchProviders
 
             if (modalMode === "add") {
                 payload.imdbId = modalImdbId.trim()
@@ -435,7 +433,7 @@ export default function AdminPage() {
         setModalPosterFile(null)
         setModalPosterPreview("")
         setModalPosterType("url")
-        setModalWatchProvidersJson(JSON.stringify(m.watchProviders || [], null, 2))
+        setModalWatchProviders(m.watchProviders || [])
         setModalStep(2)
         setModalError(null)
         setIsMovieModalOpen(true)
@@ -621,7 +619,7 @@ export default function AdminPage() {
                                     setModalPosterFile(null)
                                     setModalPosterPreview("")
                                     setModalPosterType("url")
-                                    setModalWatchProvidersJson("[]")
+                                    setModalWatchProviders([])
                                     setModalStep(1)
                                     setModalError(null)
                                     setIsMovieModalOpen(true)
@@ -953,6 +951,8 @@ export default function AdminPage() {
 
                     {/* Series Card */}
                     <AdminSeries />
+
+                    <AdminOttCatalog />
 
                     {/* OMDb API Keys Card */}
                     <AdminOmdbKeys />
@@ -1617,16 +1617,8 @@ export default function AdminPage() {
                                 </Tabs>
                             </div>
 
-                            <div className="space-y-2 pt-2 border-t border-border/40">
-                                <Label htmlFor="modalWatchProviders" className="text-base font-semibold">Watch online</Label>
-                                <p className="text-xs text-muted-foreground">One entry per OTT service. Include its name, full URL, and the regions where it is available.</p>
-                                <Textarea
-                                    id="modalWatchProviders"
-                                    value={modalWatchProvidersJson}
-                                    onChange={(e) => setModalWatchProvidersJson(e.target.value)}
-                                    className="min-h-28 font-mono text-xs"
-                                    placeholder={'[\n  {"name":"Sun NXT","url":"https://www.sunnxt.com/...","regions":["India"]}\n]'}
-                                />
+                            <div className="pt-2 border-t border-border/40">
+                                <WatchProviderEditor key={modalMovieId || modalMode} providers={modalWatchProviders} onChange={setModalWatchProviders} />
                             </div>
                         </div>
                     )}
