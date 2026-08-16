@@ -507,6 +507,8 @@ def list_movies():
     missing_poster = request.args.get('missingPoster', '')
     avg_time_filter = request.args.get('avgTimeFilter', '')
     release_filter = request.args.get('releaseFilter', '')
+    watch_available = request.args.get('watchAvailable', '')
+    sort = request.args.get('sort', 'latest')
     
     query = {}
     if title_search:
@@ -567,6 +569,11 @@ def list_movies():
         else:
             query['averageTimeSeconds'] = {"$gt": 0}
             query['submissionCount'] = {"$gt": 0}
+
+    if watch_available == 'true':
+        # `watchProviders.0` only exists when at least one approved OTT link
+        # is present, so pagination and totals stay accurate.
+        query.setdefault('$and', []).append({'watchProviders.0': {'$exists': True}})
     
     now_str = datetime.datetime.utcnow().strftime('%Y-%m-%d')
     if release_filter == 'latest':
@@ -591,8 +598,15 @@ def list_movies():
     # Get total count for pagination
     total = db.movies.count_documents(query)
         
-    sort_order = [("releaseDate", -1), ("year", -1), ("createdAt", -1)]
-    if release_filter == 'upcoming':
+    sort_orders = {
+        'latest': [("releaseDate", -1), ("year", -1), ("createdAt", -1)],
+        'oldest': [("releaseDate", 1), ("year", 1), ("title", 1)],
+        'title_asc': [("title", 1), ("year", -1)],
+        'title_desc': [("title", -1), ("year", -1)],
+        'rating': [("imdbRating", -1), ("title", 1)],
+    }
+    sort_order = sort_orders.get(sort, sort_orders['latest'])
+    if release_filter == 'upcoming' and sort == 'latest':
         sort_order = [("releaseDate", 1), ("year", 1), ("createdAt", -1)]
         
     movies_cursor = db.movies.find(query).sort(sort_order).skip(skip).limit(limit)
@@ -816,6 +830,73 @@ def update_movie(movie_id):
             if updated_doc.get('createdAt') and hasattr(updated_doc['createdAt'], 'isoformat'):
                 updated_doc['createdAt'] = updated_doc['createdAt'].isoformat()
         return jsonify({"message": "Movie updated successfully", "movie": updated_doc or update_fields})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@movies_bp.route('/<movie_id>/refresh-omdb', methods=['POST'])
+def refresh_movie_from_omdb(movie_id):
+    """Refresh catalog metadata without touching title-card or OTT data."""
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({"error": "Unauthorized"}), 401
+    if not is_admin(auth_header.split(' ')[1]):
+        return jsonify({"error": "Forbidden: Admin access required"}), 403
+    if db is None:
+        return jsonify({"error": "Database not connected"}), 500
+
+    try:
+        query = {"$or": [{"id": movie_id}, {"_id": movie_id}, {"imdbId": movie_id}]}
+        if ObjectId.is_valid(movie_id):
+            query["$or"].append({"_id": ObjectId(movie_id)})
+        movie = db.movies.find_one(query)
+        if not movie:
+            return jsonify({"error": "Movie not found"}), 404
+        if not movie.get('imdbId'):
+            return jsonify({"error": "This movie has no IMDb ID to refresh"}), 400
+
+        omdb = fetch_movie_from_omdb(movie['imdbId'])
+        if omdb.get('Error'):
+            return jsonify({"error": omdb['Error']}), 400
+
+        try:
+            year = int(str(omdb.get('Year', ''))[:4])
+        except (TypeError, ValueError):
+            year = movie.get('year')
+        released = omdb.get('Released') if omdb.get('Released') not in (None, '', 'N/A') else movie.get('released')
+        try:
+            rating = float(omdb.get('imdbRating')) if omdb.get('imdbRating') not in (None, '', 'N/A') else None
+        except (TypeError, ValueError):
+            rating = None
+        directors = normalize_credit_names(omdb.get('Director'))
+        language = omdb.get('Language') if omdb.get('Language') not in (None, '', 'N/A') else movie.get('language')
+        updates = {
+            'title': omdb.get('Title') or movie.get('title'),
+            'year': year,
+            'released': released,
+            'releaseDate': parse_release_date_to_iso(released, year),
+            'runtime': omdb.get('Runtime') if omdb.get('Runtime') not in (None, '', 'N/A') else movie.get('runtime'),
+            'language': language,
+            'Language': language,
+            'imdbRating': rating,
+            'actors': normalize_credit_names(omdb.get('Actors')),
+            'directors': directors,
+            'director': ', '.join(directors) if directors else None,
+            'lastOmdbSync': datetime.datetime.now(datetime.timezone.utc),
+        }
+        poster_url = omdb.get('Poster')
+        if poster_url and poster_url != 'N/A':
+            saved_url = save_poster_to_db(str(movie['_id']), poster_url)
+            updates['posterUrl'] = saved_url or poster_url
+
+        # Intentionally exclude submissionCount, averageTimeSeconds, titlecards,
+        # and watchProviders: an OMDb refresh cannot alter community data.
+        db.movies.update_one({'_id': movie['_id']}, {'$set': updates})
+        refreshed = db.movies.find_one({'_id': movie['_id']})
+        refreshed['id'] = str(refreshed.pop('_id'))
+        for field in ('createdAt', 'lastOmdbSync'):
+            if refreshed.get(field) and hasattr(refreshed[field], 'isoformat'):
+                refreshed[field] = refreshed[field].isoformat()
+        return jsonify({"message": "Movie refreshed from OMDb", "movie": refreshed})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

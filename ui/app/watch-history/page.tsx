@@ -50,6 +50,21 @@ import {
     AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
+function watchSortTimestamp(entry: WatchHistoryEntry): number {
+    const watchedOn = new Date(entry.timestamp || entry.createdAt)
+    if (isNaN(watchedOn.getTime())) return 0
+
+    // Watch dates are stored independently from the optional showtime. Normalize
+    // to the calendar day, then layer HH:mm on top so two movies on the same
+    // date read in real chronological order.
+    const dayStart = new Date(watchedOn.getFullYear(), watchedOn.getMonth(), watchedOn.getDate()).getTime()
+    const match = (entry.showTime || "").match(/^(\d{1,2}):(\d{2})$/)
+    if (!match) return watchedOn.getTime()
+    const hours = Number(match[1])
+    const minutes = Number(match[2])
+    return hours < 24 && minutes < 60 ? dayStart + (hours * 60 + minutes) * 60 * 1000 : watchedOn.getTime()
+}
+
 export default function WatchHistoryPage() {
     const { user, userProfile: contextProfile, loading: authLoading } = useAuth()
     const [profile, setProfile] = useState(contextProfile)
@@ -167,10 +182,10 @@ export default function WatchHistoryPage() {
             })
         }
 
-        // Sort by timestamp
+        // Sort by calendar date and then optional show time.
         return [...data].sort((a, b) => {
-            const dateA = new Date(a.timestamp || a.createdAt).getTime()
-            const dateB = new Date(b.timestamp || b.createdAt).getTime()
+            const dateA = watchSortTimestamp(a)
+            const dateB = watchSortTimestamp(b)
             return sortOrder === 'desc' ? dateB - dateA : dateA - dateB
         })
     }, [profile?.watchHistory, searchQuery, yearFilter, monthFilter, cityFilter, sortOrder])

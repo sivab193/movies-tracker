@@ -8,6 +8,7 @@ import { Header } from "@/components/header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -15,8 +16,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Tv, Search, Clock, Filter, X } from "lucide-react";
+import { Loader2, Tv, Search, Clock, Filter, X, SlidersHorizontal } from "lucide-react";
 import { formatRuntimeMinutes, resolveApiUrl, Series, SeriesProgress } from "@/lib/types";
+import { OttMark } from "@/components/ott-provider";
 
 // Common TV genres
 const GENRE_OPTIONS = [
@@ -65,8 +67,10 @@ export default function SeriesPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedGenre, setSelectedGenre] = useState("");
   const [selectedYear, setSelectedYear] = useState("");
+  const [watchAvailable, setWatchAvailable] = useState(false);
+  const [sort, setSort] = useState("title_asc");
 
-  const hasActiveFilters = selectedGenre !== "" || selectedYear !== "";
+  const hasActiveFilters = selectedGenre !== "" || selectedYear !== "" || watchAvailable;
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchTerm), 500);
@@ -80,7 +84,9 @@ export default function SeriesPage() {
         const data = await getAllSeries(
           debouncedSearch || undefined,
           selectedGenre || undefined,
-          selectedYear || undefined
+          selectedYear || undefined,
+          watchAvailable,
+          sort,
         );
         setSeries(data);
       } catch (err) {
@@ -92,7 +98,7 @@ export default function SeriesPage() {
     }
     
     loadData();
-  }, [debouncedSearch, selectedGenre, selectedYear]);
+  }, [debouncedSearch, selectedGenre, selectedYear, watchAvailable, sort]);
 
   useEffect(() => {
     async function loadProgress() {
@@ -116,6 +122,7 @@ export default function SeriesPage() {
   const clearAllFilters = () => {
     setSelectedGenre("");
     setSelectedYear("");
+    setWatchAvailable(false);
   };
 
   return (
@@ -135,7 +142,7 @@ export default function SeriesPage() {
 
         {/* Search & Filters Bar */}
         <div className="mb-8 space-y-3">
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
             {/* Search Input */}
             <div className="relative flex-1 max-w-md">
               <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -152,7 +159,7 @@ export default function SeriesPage() {
 
             {/* Genre Filter */}
             <Select value={selectedGenre} onValueChange={setSelectedGenre}>
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-full sm:w-[160px]">
                 <Filter className="w-4 h-4 mr-1 text-muted-foreground" />
                 <SelectValue placeholder="Genre" />
               </SelectTrigger>
@@ -167,7 +174,7 @@ export default function SeriesPage() {
 
             {/* Year Filter */}
             <Select value={selectedYear} onValueChange={setSelectedYear}>
-              <SelectTrigger className="w-[130px]">
+              <SelectTrigger className="w-full sm:w-[130px]">
                 <Clock className="w-4 h-4 mr-1 text-muted-foreground" />
                 <SelectValue placeholder="Year" />
               </SelectTrigger>
@@ -179,6 +186,24 @@ export default function SeriesPage() {
                 ))}
               </SelectContent>
             </Select>
+
+            <Button type="button" variant={watchAvailable ? "default" : "outline"} onClick={() => setWatchAvailable((current) => !current)} className="gap-2 whitespace-nowrap">
+              <Tv className="h-4 w-4" />Watch online{watchAvailable ? " ✓" : ""}
+            </Button>
+
+            <div className="flex items-center gap-1.5">
+              <SlidersHorizontal className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <Select value={sort} onValueChange={setSort}>
+                <SelectTrigger className="w-full sm:w-[160px]"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="title_asc">Title: A–Z</SelectItem>
+                  <SelectItem value="title_desc">Title: Z–A</SelectItem>
+                  <SelectItem value="latest">Newest series</SelectItem>
+                  <SelectItem value="oldest">Oldest series</SelectItem>
+                  <SelectItem value="rating">Highest rated</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {/* Active Filters Chips */}
@@ -203,6 +228,11 @@ export default function SeriesPage() {
                 >
                   {selectedYear}
                   <X className="w-3 h-3" />
+                </Badge>
+              )}
+              {watchAvailable && (
+                <Badge variant="secondary" className="cursor-pointer gap-1 pr-1.5 hover:bg-destructive/15 hover:text-destructive transition-colors" onClick={() => setWatchAvailable(false)}>
+                  Watch online <X className="w-3 h-3" />
                 </Badge>
               )}
               <button
@@ -267,10 +297,11 @@ export default function SeriesPage() {
                       
                       {/* Details */}
                       <div className="flex flex-col flex-1 p-4">
-                        <div className="flex justify-between items-start mb-1">
+                        <div className="flex justify-between items-start mb-1 gap-2">
                           <h3 className="font-bold text-lg line-clamp-2 group-hover:text-primary transition-colors leading-tight">
                             {s.title}
                           </h3>
+                          {s.watchProviders?.length ? <OttMark name={s.watchProviders[0].name} className="h-7 w-7 rounded-md text-[8px]" /> : null}
                         </div>
                         
                         <div className="text-sm text-muted-foreground mb-2">
@@ -322,4 +353,3 @@ export default function SeriesPage() {
     </div>
   );
 }
-

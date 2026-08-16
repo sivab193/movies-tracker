@@ -186,7 +186,9 @@ export async function getMovies(
     year: string = "",
     missingPoster?: boolean,
     avgTimeFilter?: string,
-    releaseFilter?: string
+    releaseFilter?: string,
+    watchAvailable?: boolean,
+    sort?: string,
 ) {
     let url = `${API_BASE_URL}/movies/?skip=${skip}&limit=${limit}`;
     if (language && language.toLowerCase() !== "all") {
@@ -206,6 +208,12 @@ export async function getMovies(
     }
     if (releaseFilter && releaseFilter.toLowerCase() !== "all") {
         url += `&releaseFilter=${encodeURIComponent(releaseFilter)}`;
+    }
+    if (watchAvailable) {
+        url += `&watchAvailable=true`;
+    }
+    if (sort && sort !== "latest") {
+        url += `&sort=${encodeURIComponent(sort)}`;
     }
     const response = await fetch(url);
     const data = await response.json();
@@ -383,6 +391,18 @@ export async function updateMovie(id: string, updateData: any) {
 
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "Failed to update movie");
+    return data.movie || data;
+}
+
+export async function refreshMovieFromOmdb(id: string) {
+    const token = await auth?.currentUser?.getIdToken();
+    if (!token) throw new Error("User not authenticated");
+    const response = await fetch(`${API_BASE_URL}/movies/${id}/refresh-omdb`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` },
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Failed to refresh movie from OMDb");
     return data.movie || data;
 }
 

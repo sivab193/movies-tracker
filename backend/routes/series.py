@@ -363,7 +363,18 @@ def list_series():
         except ValueError:
             pass
 
-    cursor = db.series.find(query, {"seasons": 0}).sort("title", 1)
+    if request.args.get('watchAvailable') == 'true':
+        query.setdefault('$and', []).append({'watchProviders.0': {'$exists': True}})
+
+    sort_orders = {
+        'latest': [('year', -1), ('title', 1)],
+        'oldest': [('year', 1), ('title', 1)],
+        'title_asc': [('title', 1)],
+        'title_desc': [('title', -1)],
+        'rating': [('imdbRating', -1), ('title', 1)],
+    }
+    sort = request.args.get('sort', 'title_asc')
+    cursor = db.series.find(query, {"seasons": 0}).sort(sort_orders.get(sort, sort_orders['title_asc']))
     if request.args.get('paginate') == 'true':
         try:
             skip = max(0, int(request.args.get('skip', 0)))

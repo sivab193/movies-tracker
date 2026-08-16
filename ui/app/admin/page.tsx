@@ -18,7 +18,7 @@ import { AdminOttCatalog } from "@/components/admin-ott-catalog"
 import { WatchProviderEditor } from "@/components/watch-provider-editor"
 import type { WatchProvider } from "@/lib/types"
 import { getAdminRequests, resolveAdminRequest } from "@/services/user-service"
-import { getMovies, deleteMovie, clearMovieSubmissions, getTheaters, addTheater, updateTheater, deleteTheater, updateMovie, addMovie, fetchOmdbPreview, getTheaterDuplicates, mergeTheaterDuplicates, getMovieDuplicates, mergeMovieDuplicates, verifyTheater, verifyMovie, getMovieDataQuality } from "@/services/api"
+import { getMovies, deleteMovie, clearMovieSubmissions, getTheaters, addTheater, updateTheater, deleteTheater, updateMovie, addMovie, fetchOmdbPreview, getTheaterDuplicates, mergeTheaterDuplicates, getMovieDuplicates, mergeMovieDuplicates, verifyTheater, verifyMovie, getMovieDataQuality, refreshMovieFromOmdb } from "@/services/api"
 import { formatTimeDisplay, resolveApiUrl, formatRuntimeMinutes } from "@/lib/types"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -127,6 +127,7 @@ export default function AdminPage() {
     // Verification + data quality states
     const [verifyingTheaterId, setVerifyingTheaterId] = useState<string | null>(null)
     const [verifyingMovieId, setVerifyingMovieId] = useState<string | null>(null)
+    const [refreshingMovieId, setRefreshingMovieId] = useState<string | null>(null)
     const [showUnverifiedTheatersOnly, setShowUnverifiedTheatersOnly] = useState(false)
     const [dataQuality, setDataQuality] = useState<any | null>(null)
     const [scanningDataQuality, setScanningDataQuality] = useState(false)
@@ -237,6 +238,20 @@ export default function AdminPage() {
             alert(err instanceof Error ? err.message : "Failed to verify movie")
         } finally {
             setVerifyingMovieId(null)
+        }
+    }
+
+    const handleRefreshMovie = async (m: any) => {
+        const id = m.id || m.imdbId
+        setRefreshingMovieId(id)
+        try {
+            const updated = await refreshMovieFromOmdb(id)
+            setMovies(prev => prev.map(item => (item.id || item.imdbId) === id ? { ...item, ...updated } : item))
+            setFilteredMovies(prev => prev.map(item => (item.id || item.imdbId) === id ? { ...item, ...updated } : item))
+        } catch (err) {
+            alert(err instanceof Error ? err.message : "Failed to refresh movie from OMDb")
+        } finally {
+            setRefreshingMovieId(null)
         }
     }
 
@@ -888,6 +903,16 @@ export default function AdminPage() {
                                                                         title={movie.verified ? "Verified — click to unverify" : "Mark as verified (all details correct)"}
                                                                     >
                                                                         {verifyingMovieId === (movie.id || movie.imdbId) ? <Loader2 className="h-4 w-4 animate-spin" /> : <BadgeCheck className="h-4 w-4" />}
+                                                                    </Button>
+                                                                    <Button
+                                                                        variant="ghost"
+                                                                        size="sm"
+                                                                        className="h-8 w-8 p-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                                                        onClick={() => handleRefreshMovie(movie)}
+                                                                        disabled={refreshingMovieId === (movie.id || movie.imdbId)}
+                                                                        title="Refresh metadata from OMDb (keeps title cards)"
+                                                                    >
+                                                                        {refreshingMovieId === (movie.id || movie.imdbId) ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
                                                                     </Button>
                                                                     <Button
                                                                         variant="ghost"
