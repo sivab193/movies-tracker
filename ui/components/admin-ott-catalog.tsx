@@ -18,7 +18,7 @@ export function AdminOttCatalog() {
   const [partialError, setPartialError] = useState("")
 
   useEffect(() => {
-    Promise.allSettled([getMovies(0, 500), getAllSeries()]).then(([movieResult, seriesResult]) => {
+    Promise.allSettled([getMovies(0, 500, "", "", "", undefined, undefined, undefined, true), getAllSeries(undefined, undefined, undefined, true)]).then(([movieResult, seriesResult]) => {
       const toItems = (titles: any[], type: "movie" | "series") => titles.flatMap((title) =>
         (title.watchProviders || []).map((provider: any) => ({ id: title.id, type, title: title.title, year: title.year, url: provider.url, regions: provider.regions || [], provider: provider.name }))
       )

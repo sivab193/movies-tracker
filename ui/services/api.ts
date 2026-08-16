@@ -226,13 +226,12 @@ export async function getMovies(
 }
 
 export async function searchMovies(query: string, year?: string, language?: string, upcoming?: string) {
-    const url = new URL(`${API_BASE_URL}/movies/search-discover`);
-    url.searchParams.append("s", query || '*');
-    if (year) url.searchParams.append("y", year);
-    if (language && language !== 'all') url.searchParams.append("language", language);
-    if (upcoming && upcoming !== 'all') url.searchParams.append("upcoming", upcoming);
+    let urlStr = `${API_BASE_URL}/movies/search-discover?s=${encodeURIComponent(query || '*')}`;
+    if (year) urlStr += `&y=${encodeURIComponent(year)}`;
+    if (language && language !== 'all') urlStr += `&language=${encodeURIComponent(language)}`;
+    if (upcoming && upcoming !== 'all') urlStr += `&upcoming=${encodeURIComponent(upcoming)}`;
 
-    const response = await fetch(url.toString());
+    const response = await fetch(urlStr);
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "Search failed");
     return data;

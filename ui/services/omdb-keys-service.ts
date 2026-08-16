@@ -60,9 +60,9 @@ export async function deleteOmdbKey(id: string): Promise<void> {
 
 export async function getOmdbKeyUsage(days?: number): Promise<any> {
     const headers = await getAuthHeader()
-    const url = new URL(`${API_BASE_URL}/omdb-keys/usage`)
-    if (days) url.searchParams.set("days", days.toString())
-    const res = await fetch(url.toString(), { headers })
+    let url = `${API_BASE_URL}/omdb-keys/usage`
+    if (days) url += `?days=${days}`
+    const res = await fetch(url, { headers })
     if (!res.ok) {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.error || "Failed to fetch OMDb key usage")
