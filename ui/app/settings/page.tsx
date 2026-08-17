@@ -40,10 +40,13 @@ export default function SettingsPage() {
     const [isAdminState, setIsAdminState] = useState(false)
     const [adminRequestStatus, setAdminRequestStatus] = useState("NONE")
     const [displayName, setDisplayName] = useState("")
+    const [savedDisplayName, setSavedDisplayName] = useState("")
     const [editingName, setEditingName] = useState(false)
     const [customUrl, setCustomUrl] = useState("")
+    const [savedCustomUrl, setSavedCustomUrl] = useState("")
     const [editingCustomUrl, setEditingCustomUrl] = useState(false)
     const [customUrlError, setCustomUrlError] = useState<string | null>(null)
+    const [saveError, setSaveError] = useState<string | null>(null)
     const [copiedUrl, setCopiedUrl] = useState(false)
     const [showLeaderboardConfirm, setShowLeaderboardConfirm] = useState(false)
 
@@ -66,7 +69,9 @@ export default function SettingsPage() {
             setIsAdminState(settings.isAdmin || false)
             setAdminRequestStatus(settings.adminRequestStatus || "NONE")
             setDisplayName(settings.displayName || user?.displayName || "")
+            setSavedDisplayName(settings.displayName || user?.displayName || "")
             setCustomUrl(settings.customUrl || "")
+            setSavedCustomUrl(settings.customUrl || "")
         } catch (error) {
             console.error("Error loading settings:", error)
         } finally {
@@ -80,8 +85,13 @@ export default function SettingsPage() {
         setSuccess(false)
         try {
             const cleanUrl = customUrl.trim().toLowerCase()
+            if (!cleanUrl) {
+                setCustomUrlError("Enter a username to save your public URL")
+                return
+            }
             await updateUserSettings({ customUrl: cleanUrl })
             setCustomUrl(cleanUrl)
+            setSavedCustomUrl(cleanUrl)
             setSuccess(true)
             setEditingCustomUrl(false)
             setTimeout(() => setSuccess(false), 3000)
@@ -93,32 +103,62 @@ export default function SettingsPage() {
     }
 
     const handleCopyProfileUrl = () => {
-        const urlToCopy = customUrl
-            ? `${window.location.origin}/u/${customUrl}`
+        const urlToCopy = savedCustomUrl
+            ? `${window.location.origin}/u/${savedCustomUrl}`
             : `${window.location.origin}/u/${user?.uid}`
         navigator.clipboard.writeText(urlToCopy)
         setCopiedUrl(true)
         setTimeout(() => setCopiedUrl(false), 2000)
     }
 
-    async function handleSave() {
+    async function saveSettings(settings: Parameters<typeof updateUserSettings>[0]) {
         setSaving(true)
         setSuccess(false)
+        setSaveError(null)
         try {
-            await updateUserSettings({
-                isPublic,
-                publicFields,
-                hiddenMovies,
-                displayName,
-                joinedLeaderboard: joinedLeaderboard
-            })
+            await updateUserSettings(settings)
             setSuccess(true)
-            setEditingName(false)
             setTimeout(() => setSuccess(false), 3000)
         } catch (error) {
             console.error("Error saving settings:", error)
+            setSaveError(error instanceof Error ? error.message : "Failed to save changes")
+            throw error
         } finally {
             setSaving(false)
+        }
+    }
+
+    async function handleDisplayNameSave() {
+        try {
+            await saveSettings({ displayName })
+            setDisplayName(displayName.trim())
+            setSavedDisplayName(displayName.trim())
+            setEditingName(false)
+        } catch {
+            // Keep the editor open so the user can correct the value.
+        }
+    }
+
+    async function handlePublicVisibilityChange(checked: boolean) {
+        const previous = isPublic
+        setIsPublic(checked)
+        try {
+            await saveSettings({ isPublic: checked })
+        } catch {
+            setIsPublic(previous)
+        }
+    }
+
+    async function handlePublicFieldChange(fieldId: string, checked: boolean) {
+        const previous = publicFields
+        const next = checked
+            ? [...publicFields, fieldId]
+            : publicFields.filter((field) => field !== fieldId)
+        setPublicFields(next)
+        try {
+            await saveSettings({ publicFields: next })
+        } catch {
+            setPublicFields(previous)
         }
     }
 
@@ -126,9 +166,7 @@ export default function SettingsPage() {
         setJoinedLeaderboard(true)
         setShowLeaderboardConfirm(false)
         try {
-            await updateUserSettings({ joinedLeaderboard: true })
-            setSuccess(true)
-            setTimeout(() => setSuccess(false), 3000)
+            await saveSettings({ joinedLeaderboard: true })
         } catch (error) {
             console.error("Error joining leaderboard:", error)
             setJoinedLeaderboard(false)
@@ -138,9 +176,7 @@ export default function SettingsPage() {
     async function handleQuitLeaderboard() {
         setJoinedLeaderboard(false)
         try {
-            await updateUserSettings({ joinedLeaderboard: false })
-            setSuccess(true)
-            setTimeout(() => setSuccess(false), 3000)
+            await saveSettings({ joinedLeaderboard: false })
         } catch (error) {
             console.error("Error quitting leaderboard:", error)
             setJoinedLeaderboard(true)
@@ -158,11 +194,16 @@ export default function SettingsPage() {
         }
     }
 
-    const toggleHiddenMovie = (imdbId: string) => {
-        if (hiddenMovies.includes(imdbId)) {
-            setHiddenMovies(hiddenMovies.filter(id => id !== imdbId))
-        } else {
-            setHiddenMovies([...hiddenMovies, imdbId])
+    const toggleHiddenMovie = async (imdbId: string) => {
+        const previous = hiddenMovies
+        const next = hiddenMovies.includes(imdbId)
+            ? hiddenMovies.filter(id => id !== imdbId)
+            : [...hiddenMovies, imdbId]
+        setHiddenMovies(next)
+        try {
+            await saveSettings({ hiddenMovies: next })
+        } catch {
+            setHiddenMovies(previous)
         }
     }
 
@@ -200,10 +241,17 @@ export default function SettingsPage() {
                     <h1 className="text-3xl font-bold tracking-tight">Account Settings</h1>
                 </div>
 
+                {(success || saveError) && (
+                    <div className={`mb-6 flex items-center gap-2 text-sm font-medium ${saveError ? "text-destructive" : "text-green-500"}`} role="status">
+                        {saveError ? <AlertCircle className="h-4 w-4" /> : <CheckCircle2 className="h-4 w-4" />}
+                        {saveError || "Changes saved"}
+                    </div>
+                )}
+
                 <div className="grid gap-8">
                     {/* Display Name Section */}
                     <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-                        <div className="flex items-center justify-between">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                                 <h2 className="text-xl font-semibold">Display Name</h2>
                                 <p className="text-sm text-muted-foreground">This name will be shown on the leaderboard</p>
@@ -216,14 +264,15 @@ export default function SettingsPage() {
                                     </Button>
                                 </div>
                             ) : (
-                                <div className="flex items-center gap-2">
+                                <div className="flex w-full items-center gap-2 sm:w-auto">
                                     <Input
                                         value={displayName}
                                         onChange={(e) => setDisplayName(e.target.value)}
                                         className="w-48"
                                         placeholder="Enter display name"
                                     />
-                                    <Button size="sm" onClick={() => setEditingName(false)}>Done</Button>
+                                    <Button size="sm" onClick={handleDisplayNameSave} disabled={saving}>Save</Button>
+                                    <Button variant="outline" size="sm" onClick={() => { setDisplayName(savedDisplayName); setEditingName(false) }} disabled={saving}>Cancel</Button>
                                 </div>
                             )}
                         </div>
@@ -232,7 +281,7 @@ export default function SettingsPage() {
                     {/* Custom Profile URL / Username Section */}
                     <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
                         <div className="flex flex-col gap-4">
-                            <div className="flex items-center justify-between">
+                            <div>
                                 <div>
                                     <h2 className="text-xl font-semibold flex items-center gap-2">
                                         <LinkIcon className="h-5 w-5 text-primary" />
@@ -242,8 +291,8 @@ export default function SettingsPage() {
                                         Claim a short, clean username (5-10 characters) for your public profile link
                                     </p>
                                 </div>
-                                {!customUrl && !editingCustomUrl ? (
-                                    <div className="rounded-xl border border-primary/30 bg-primary/5 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 w-full mt-2">
+                                {!savedCustomUrl && !editingCustomUrl ? (
+                                    <div className="mt-4 flex w-full flex-col items-start justify-between gap-4 rounded-xl border border-primary/30 bg-primary/5 p-4 sm:flex-row sm:items-center">
                                         <div>
                                             <h3 className="font-semibold text-foreground text-sm flex items-center gap-1.5">
                                                 ✨ Claim your short profile URL now!
@@ -257,17 +306,17 @@ export default function SettingsPage() {
                                         </Button>
                                     </div>
                                 ) : !editingCustomUrl ? (
-                                    <div className="flex items-center gap-3">
+                                    <div className="mt-4 flex items-center gap-3">
                                         <span className="font-mono font-medium text-primary">
-                                            /u/{customUrl}
+                                            /u/{savedCustomUrl}
                                         </span>
                                         <Button variant="ghost" size="sm" onClick={() => { setEditingCustomUrl(true); setCustomUrlError(null); }}>
                                             <Pencil className="h-4 w-4" />
                                         </Button>
                                     </div>
                                 ) : (
-                                    <div className="flex flex-col gap-2 items-end w-full sm:w-auto mt-2 sm:mt-0">
-                                        <div className="flex items-center gap-2">
+                                    <div className="mt-4 flex w-full flex-col gap-2">
+                                        <div className="flex flex-wrap items-center gap-2">
                                             <span className="text-sm font-mono text-muted-foreground">/u/</span>
                                             <Input
                                                 value={customUrl}
@@ -279,7 +328,7 @@ export default function SettingsPage() {
                                             <Button size="sm" onClick={handleSaveCustomUrl} disabled={saving}>
                                                 {saving ? "Saving..." : "Save"}
                                             </Button>
-                                            <Button variant="outline" size="sm" onClick={() => { setEditingCustomUrl(false); setCustomUrlError(null); }}>
+                                            <Button variant="outline" size="sm" onClick={() => { setCustomUrl(savedCustomUrl); setEditingCustomUrl(false); setCustomUrlError(null); }} disabled={saving}>
                                                 Cancel
                                             </Button>
                                         </div>
@@ -292,11 +341,11 @@ export default function SettingsPage() {
                                     <span>{customUrlError}</span>
                                 </div>
                             )}
-                            <div className="flex items-center justify-between pt-3 border-t border-border/40 text-xs text-muted-foreground">
-                                {customUrl ? (
+                            <div className="flex flex-col gap-3 border-t border-border/40 pt-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+                                {savedCustomUrl ? (
                                     <>
                                         <span className="truncate">
-                                            Public Link: <strong className="font-mono text-foreground">{typeof window !== "undefined" ? window.location.origin : ""}/u/{customUrl}</strong>
+                                            Profile Link: <strong className="font-mono text-foreground">{typeof window !== "undefined" ? window.location.origin : ""}/u/{savedCustomUrl}</strong>
                                         </span>
                                         <Button
                                             variant="outline"
@@ -314,6 +363,9 @@ export default function SettingsPage() {
                                     </span>
                                 )}
                             </div>
+                            {savedCustomUrl && !isPublic && (
+                                <p className="text-xs text-amber-500/90">Your profile is private until you enable Public Profile below.</p>
+                            )}
                         </div>
                     </section>
 
@@ -330,6 +382,7 @@ export default function SettingsPage() {
                                         ? "You are currently participating in the global runtime leaderboard. Your display name and total runtime are ranked against other users." 
                                         : "Compare your movie watch stats with other users. Once you join, your name and total runtime will be visible on the leaderboard."}
                                 </p>
+                                <p className="mt-2 text-xs text-muted-foreground">Your display name and runtime are always visible on the leaderboard while you participate; profile controls apply to your direct profile.</p>
                             </div>
                             {joinedLeaderboard ? (
                                 <Button variant="outline" onClick={handleQuitLeaderboard} className="rounded-full px-6 border-destructive/30 text-destructive hover:bg-destructive/10">
@@ -345,7 +398,7 @@ export default function SettingsPage() {
 
                     {!isAdminState && (
                         <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-                            <div className="flex items-center justify-between">
+                            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                                 <div>
                                     <h2 className="text-xl font-semibold">Admin Access</h2>
                                     <p className="text-sm text-muted-foreground">{adminRequestStatus === 'PENDING' ? 'Your request is pending approval.' : 'Request access to manage movies and database.'}</p>
@@ -363,10 +416,10 @@ export default function SettingsPage() {
 
                     {/* Privacy Section */}
                     <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-                        <div className="mb-6 flex items-center justify-between">
+                        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                             <div>
                                 <h2 className="text-xl font-semibold">Public Profile Visibility</h2>
-                                <p className="text-sm text-muted-foreground">Control who can see your cinematic journey.</p>
+                                <p className="text-sm text-muted-foreground">Publish a profile that can be opened from the leaderboard or a direct link.</p>
                             </div>
                             <div className="flex items-center gap-2 rounded-full bg-muted px-3 py-1">
                                 {isPublic ? <Eye className="h-4 w-4 text-green-500" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}
@@ -375,16 +428,17 @@ export default function SettingsPage() {
                         </div>
 
                         <div className="space-y-6">
-                            <div className="flex items-center justify-between gap-4">
+                            <div className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-center sm:justify-between">
                                 <Label htmlFor="public-toggle" className="flex flex-col gap-1 text-left cursor-pointer">
                                     <span className="text-base font-semibold">Enable Public Profile</span>
-                                    <span className="font-normal text-muted-foreground">Allow others to view your profile via the leaderboard or direct link.</span>
+                                    <span className="font-normal text-muted-foreground">Allow others to open your profile from the leaderboard or a direct link.</span>
                                 </Label>
                                 <Switch
                                     id="public-toggle"
                                     checked={isPublic}
-                                    onCheckedChange={setIsPublic}
+                                    onCheckedChange={handlePublicVisibilityChange}
                                     className="shrink-0"
+                                    disabled={saving}
                                 />
                             </div>
 
@@ -397,13 +451,8 @@ export default function SettingsPage() {
                                                 <Checkbox
                                                     id={field.id}
                                                     checked={publicFields.includes(field.id)}
-                                                    onCheckedChange={(checked) => {
-                                                        if (checked) {
-                                                            setPublicFields([...publicFields, field.id])
-                                                        } else {
-                                                            setPublicFields(publicFields.filter(f => f !== field.id))
-                                                        }
-                                                    }}
+                                                    onCheckedChange={(checked) => handlePublicFieldChange(field.id, checked === true)}
+                                                    disabled={saving}
                                                 />
                                                 <Label htmlFor={field.id} className="cursor-pointer font-medium">{field.label}</Label>
                                             </div>
@@ -427,26 +476,26 @@ export default function SettingsPage() {
                                 <p className="text-muted-foreground">No movies in your history yet.</p>
                             </div>
                         ) : (
-                            <div className="grid gap-2 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                            <div className="grid max-h-[400px] gap-2 overflow-y-auto pr-2 [scrollbar-color:var(--muted-foreground)_transparent] [scrollbar-width:thin]">
                                 {watchHistory.map((movie) => (
-                                    <div key={movie.imdbId} className="flex items-center justify-between p-3 rounded-lg border bg-muted/30">
+                                    <div key={movie._id || `${movie.imdbId}-${movie.createdAt}`} className="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 p-3">
                                         <div className="flex items-center gap-3">
                                             <div className="h-8 w-6 rounded bg-muted flex items-center justify-center overflow-hidden">
-                                                {movie.posterUrl ? <img src={movie.posterUrl} alt="" className="h-full w-full object-cover" /> : <Film className="h-4 w-4 opacity-30" />}
+                                                {movie.moviePosterUrl ? <img src={movie.moviePosterUrl} alt="" className="h-full w-full object-cover" /> : <Film className="h-4 w-4 opacity-30" />}
                                             </div>
                                             <div>
-                                                <p className="text-sm font-medium leading-none">{movie.title}</p>
-                                                <p className="text-xs text-muted-foreground mt-1">{movie.year}</p>
+                                                <p className="text-sm font-medium leading-none">{movie.movieTitle || "Unknown movie"}</p>
+                                                {movie.timestamp && <p className="mt-1 text-xs text-muted-foreground">Watched {new Date(movie.timestamp).toLocaleDateString()}</p>}
                                             </div>
                                         </div>
                                         <div className="flex items-center gap-2">
                                             {hiddenMovies.includes(movie.imdbId) ? (
-                                                <Button variant="outline" size="sm" className="h-8 px-3 gap-1.5 text-muted-foreground" onClick={() => toggleHiddenMovie(movie.imdbId)}>
+                                                <Button variant="outline" size="sm" className="h-8 px-3 gap-1.5 text-muted-foreground" onClick={() => toggleHiddenMovie(movie.imdbId)} disabled={saving}>
                                                     <EyeOff className="h-3.5 w-3.5" />
                                                     Hidden
                                                 </Button>
                                             ) : (
-                                                <Button variant="ghost" size="sm" className="h-8 px-3 gap-1.5" onClick={() => toggleHiddenMovie(movie.imdbId)}>
+                                                <Button variant="ghost" size="sm" className="h-8 px-3 gap-1.5" onClick={() => toggleHiddenMovie(movie.imdbId)} disabled={saving}>
                                                     <Eye className="h-3.5 w-3.5" />
                                                     Visible
                                                 </Button>
@@ -458,24 +507,6 @@ export default function SettingsPage() {
                         )}
                     </section>
 
-                    <div className="sticky bottom-4 z-10 flex items-center justify-between gap-4 rounded-2xl border bg-card/80 p-4 shadow-lg backdrop-blur md:relative md:bottom-0 md:bg-transparent md:p-0 md:shadow-none md:backdrop-blur-none">
-                        <div className="flex items-center gap-2">
-                            {success && (
-                                <span className="flex items-center gap-2 text-sm font-medium text-green-500">
-                                    <CheckCircle2 className="h-4 w-4" />
-                                    Changes saved
-                                </span>
-                            )}
-                        </div>
-                        <Button
-                            size="lg"
-                            className="rounded-full px-12"
-                            onClick={handleSave}
-                            disabled={saving}
-                        >
-                            {saving ? "Saving..." : "Save All Changes"}
-                        </Button>
-                    </div>
                 </div>
             </main>
 
@@ -485,7 +516,7 @@ export default function SettingsPage() {
                     <AlertDialogHeader>
                         <AlertDialogTitle>Join the Leaderboard?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Once you join the leaderboard, you cannot leave. Your display name and total watch runtime will be visible to everyone.
+                            Your display name and total watch runtime will be visible to everyone while you participate. You can leave at any time.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

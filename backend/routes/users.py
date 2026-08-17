@@ -11,6 +11,7 @@ users_bp = Blueprint('users', __name__)
 
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
 ALLOWED_IMAGE_MIME_TYPES = {'image/jpeg', 'image/png', 'image/webp'}
+PUBLIC_PROFILE_FIELDS = {'movieCount', 'totalRuntime', 'moviesList'}
 
 
 def decode_image_data_url(value):
@@ -611,14 +612,29 @@ def update_settings():
     firebase_uid = decoded_token['uid']
     data = request.get_json()
     
+    if not isinstance(data, dict):
+        return jsonify({"error": "A JSON object is required"}), 400
+
     update_data = {}
     if 'isPublic' in data:
+        if not isinstance(data['isPublic'], bool):
+            return jsonify({"error": "isPublic must be a boolean"}), 400
         update_data['isPublic'] = data['isPublic']
     if 'publicFields' in data:
-        update_data['publicFields'] = data['publicFields']
+        fields = data['publicFields']
+        if (not isinstance(fields, list)
+                or any(not isinstance(field, str) or field not in PUBLIC_PROFILE_FIELDS for field in fields)):
+            return jsonify({"error": "publicFields contains an invalid field"}), 400
+        update_data['publicFields'] = list(dict.fromkeys(fields))
     if 'hiddenMovies' in data:
-        update_data['hiddenMovies'] = data['hiddenMovies']
+        hidden_movies = data['hiddenMovies']
+        if (not isinstance(hidden_movies, list)
+                or any(not isinstance(movie_id, str) or not movie_id.strip() or len(movie_id) > 32 for movie_id in hidden_movies)):
+            return jsonify({"error": "hiddenMovies must contain valid movie IDs"}), 400
+        update_data['hiddenMovies'] = list(dict.fromkeys(hidden_movies))
     if 'joinedLeaderboard' in data:
+        if not isinstance(data['joinedLeaderboard'], bool):
+            return jsonify({"error": "joinedLeaderboard must be a boolean"}), 400
         user = db.users.find_one({"firebaseUid": firebase_uid})
         if data['joinedLeaderboard']:
             if user and user.get('isBannedFromLeaderboard', False):
@@ -627,7 +643,10 @@ def update_settings():
         else:
             update_data['joinedLeaderboard'] = False
     if 'displayName' in data:
-        update_data['displayName'] = data['displayName']
+        display_name = data['displayName']
+        if not isinstance(display_name, str) or not display_name.strip() or len(display_name.strip()) > 80:
+            return jsonify({"error": "Display name must be between 1 and 80 characters"}), 400
+        update_data['displayName'] = display_name.strip()
     if 'customUrl' in data and data['customUrl']:
         custom_url = str(data['customUrl']).strip().lower()
         if not re.match(r'^[a-zA-Z0-9_-]{5,10}$', custom_url):
@@ -713,7 +732,9 @@ def get_public_profile(user_id):
     if not user:
         return jsonify({"error": "User not found"}), 404
     
-    if not user.get('isPublic', False) and not user.get('joinedLeaderboard', False) and not is_admin:
+    # A leaderboard entry is a limited disclosure (name and rank), not consent to
+    # make the full profile or watch history reachable through a direct URL.
+    if not user.get('isPublic', False) and not is_admin:
         return jsonify({"error": "This profile is private"}), 403
 
     public_fields = user.get('publicFields', ['totalRuntime', 'movieCount'])
@@ -749,9 +770,8 @@ def get_public_profile(user_id):
             history_to_return.append(public_entry)
                 
         profile['watchHistory'] = history_to_return
-        profile['privateMoviesCount'] = len(full_history) - len(history_to_return) if not is_admin else 0
-    else:
-        profile['privateMoviesCount'] = user.get('totalMoviesWatched', 0)
+        # Do not expose the number of hidden entries: it would reveal a movie
+        # count even when the owner chose not to publish it.
 
     if is_admin:
         profile['email'] = user.get('email') # Show email to admin
