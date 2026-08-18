@@ -167,6 +167,9 @@ export default function StatsPage() {
                                 </CardHeader>
                                 <CardContent>
                                     <div className="text-2xl font-bold">{stats?.totalMovies ?? 0}</div>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                        {stats?.totalMoviesWithLinks ?? 0} with online links
+                                    </p>
                                 </CardContent>
                             </Card>
 

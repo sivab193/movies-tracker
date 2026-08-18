@@ -603,7 +603,6 @@ def list_movies():
         'oldest': [("releaseDate", 1), ("year", 1), ("title", 1)],
         'title_asc': [("title", 1), ("year", -1)],
         'title_desc': [("title", -1), ("year", -1)],
-        'rating': [("imdbRating", -1), ("title", 1)],
     }
     sort_order = sort_orders.get(sort, sort_orders['latest'])
     if release_filter == 'upcoming' and sort == 'latest':

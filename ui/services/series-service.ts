@@ -17,11 +17,12 @@ function normalizeSeries(raw: any): Series {
 }
 
 // Public: List all series
-export async function getAllSeries(search?: string, genre?: string, year?: string, watchAvailable?: boolean, sort?: string): Promise<Series[]> {
+export async function getAllSeries(search?: string, genre?: string, year?: string, watchAvailable?: boolean, sort?: string, language?: string): Promise<Series[]> {
   const params = new URLSearchParams()
   if (search) params.set('search', search)
   if (genre) params.set('genre', genre)
   if (year) params.set('year', year)
+  if (language && language !== 'all') params.set('language', language)
   if (watchAvailable) params.set('watchAvailable', 'true')
   if (sort && sort !== 'title_asc') params.set('sort', sort)
   const qs = params.toString()

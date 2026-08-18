@@ -23,7 +23,6 @@ export default async function Image({ params }: { params: Promise<{ id: string }
   const runtime = formatMinutes(parseRuntimeMinutes(movie.runtime))
   const facts = [
     runtime && `⏱ ${runtime}`,
-    movie.imdbRating ? `⭐ ${movie.imdbRating}` : "",
   ].filter(Boolean) as string[]
 
   return mediaCard({

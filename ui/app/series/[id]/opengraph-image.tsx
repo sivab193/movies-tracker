@@ -20,7 +20,6 @@ export default async function Image({ params }: { params: Promise<{ id: string }
     series.totalSeasons ? `${series.totalSeasons} season${series.totalSeasons === 1 ? "" : "s"}` : "",
     series.totalEpisodes ? `${series.totalEpisodes} episodes` : "",
     runtime && `⏱ ${runtime}`,
-    series.imdbRating ? `⭐ ${series.imdbRating}` : "",
   ].filter(Boolean) as string[]
 
   const years = series.endYear

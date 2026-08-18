@@ -33,7 +33,7 @@ export default async function Image({ params }: { params: Promise<{ code: string
     kind: "Movie",
     title: movie.title,
     subtitle: [movie.year, movie.genre].filter(Boolean).join(" · "),
-    facts: [runtime && `⏱ ${runtime}`, movie.imdbRating ? `⭐ ${movie.imdbRating}` : ""].filter(
+    facts: [runtime && `⏱ ${runtime}`].filter(
       Boolean,
     ) as string[],
     detail: movie.director && movie.director !== "N/A" ? `Dir. ${movie.director}` : undefined,

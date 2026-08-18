@@ -130,11 +130,23 @@ def list_theaters():
         return jsonify({"theaters": []})
     try:
         theaters = list(db.theaters.find({}))
+        
+        # Aggregate visit counts efficiently
+        pipeline = [
+            {"$unwind": "$watchHistory"},
+            {"$match": {"watchHistory.theaterId": {"$ne": None, "$exists": True}}},
+            {"$group": {"_id": "$watchHistory.theaterId", "visitCount": {"$sum": 1}}}
+        ]
+        visit_counts = {str(item['_id']): item['visitCount'] for item in db.users.aggregate(pipeline)}
+        
         for t in theaters:
             normalize_theater_location(t)
-            t['id'] = str(t.pop('_id'))
+            t_id = str(t.pop('_id'))
+            t['id'] = t_id
             t.setdefault('gmapsLink', '')
             t['verified'] = bool(t.get('verified', False))
+            t['visitCount'] = visit_counts.get(t_id, 0)
+            t.setdefault('ticketPlatforms', [])
         return jsonify({"theaters": theaters})
     except Exception as e:
         print(f"Error fetching theaters: {e}")

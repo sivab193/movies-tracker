@@ -86,6 +86,7 @@ export interface Theater {
   ticketPlatforms?: Array<{ name: string; url: string }>
   screens?: TheaterScreen[]
   stats?: { watchCount: number; uniqueVisitors: number; topMovie: { title: string; count: number } | null }
+  visitCount?: number
 }
 
 export interface TheaterScreen {

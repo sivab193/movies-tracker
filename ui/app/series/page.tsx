@@ -19,6 +19,7 @@ import {
 import { Loader2, Tv, Search, Clock, Filter, X, SlidersHorizontal } from "lucide-react";
 import { formatRuntimeMinutes, resolveApiUrl, Series, SeriesProgress } from "@/lib/types";
 import { OttMark } from "@/components/ott-provider";
+import { RequestTitleDialog } from "@/components/request-title-dialog";
 
 // Common TV genres
 const GENRE_OPTIONS = [
@@ -66,11 +67,12 @@ export default function SeriesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [selectedGenre, setSelectedGenre] = useState("");
+  const [selectedLanguage, setSelectedLanguage] = useState("all");
   const [selectedYear, setSelectedYear] = useState("");
   const [watchAvailable, setWatchAvailable] = useState(false);
   const [sort, setSort] = useState("title_asc");
 
-  const hasActiveFilters = selectedGenre !== "" || selectedYear !== "" || watchAvailable;
+  const hasActiveFilters = selectedGenre !== "" || selectedLanguage !== "all" || selectedYear !== "" || watchAvailable;
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchTerm), 500);
@@ -87,6 +89,7 @@ export default function SeriesPage() {
           selectedYear || undefined,
           watchAvailable,
           sort,
+          selectedLanguage
         );
         setSeries(data);
       } catch (err) {
@@ -98,7 +101,7 @@ export default function SeriesPage() {
     }
     
     loadData();
-  }, [debouncedSearch, selectedGenre, selectedYear, watchAvailable, sort]);
+  }, [debouncedSearch, selectedGenre, selectedLanguage, selectedYear, watchAvailable, sort]);
 
   useEffect(() => {
     async function loadProgress() {
@@ -121,6 +124,7 @@ export default function SeriesPage() {
 
   const clearAllFilters = () => {
     setSelectedGenre("");
+    setSelectedLanguage("all");
     setSelectedYear("");
     setWatchAvailable(false);
   };
@@ -130,14 +134,19 @@ export default function SeriesPage() {
       <Header />
       
       <main className="flex-1 container max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold flex items-center gap-2 mb-2">
-            <Tv className="w-8 h-8 text-primary" />
-            Series
-          </h1>
-          <p className="text-muted-foreground">
-            Explore TV series, track seasons, and see total runtimes.
-          </p>
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold flex items-center gap-2 mb-2">
+              <Tv className="w-8 h-8 text-primary" />
+              Series
+            </h1>
+            <p className="text-muted-foreground">
+              Explore TV series, track seasons, and see total runtimes.
+            </p>
+          </div>
+          <div>
+            <RequestTitleDialog />
+          </div>
         </div>
 
         {/* Search & Filters Bar */}
@@ -157,9 +166,26 @@ export default function SeriesPage() {
               />
             </div>
 
+            {/* Language Filter */}
+            <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+              <SelectTrigger className="w-full sm:w-[140px]">
+                <SelectValue placeholder="Language" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All languages</SelectItem>
+                <SelectItem value="English">English</SelectItem>
+                <SelectItem value="Tamil">Tamil</SelectItem>
+                <SelectItem value="Hindi">Hindi</SelectItem>
+                <SelectItem value="Malayalam">Malayalam</SelectItem>
+                <SelectItem value="Telugu">Telugu</SelectItem>
+                <SelectItem value="Kannada">Kannada</SelectItem>
+                <SelectItem value="Korean">Korean</SelectItem>
+              </SelectContent>
+            </Select>
+
             {/* Genre Filter */}
             <Select value={selectedGenre} onValueChange={setSelectedGenre}>
-              <SelectTrigger className="w-full sm:w-[160px]">
+              <SelectTrigger className="w-full sm:w-[150px]">
                 <Filter className="w-4 h-4 mr-1 text-muted-foreground" />
                 <SelectValue placeholder="Genre" />
               </SelectTrigger>
@@ -174,7 +200,7 @@ export default function SeriesPage() {
 
             {/* Year Filter */}
             <Select value={selectedYear} onValueChange={setSelectedYear}>
-              <SelectTrigger className="w-full sm:w-[130px]">
+              <SelectTrigger className="w-full sm:w-[110px]">
                 <Clock className="w-4 h-4 mr-1 text-muted-foreground" />
                 <SelectValue placeholder="Year" />
               </SelectTrigger>
@@ -194,13 +220,12 @@ export default function SeriesPage() {
             <div className="flex items-center gap-1.5">
               <SlidersHorizontal className="h-4 w-4 shrink-0 text-muted-foreground" />
               <Select value={sort} onValueChange={setSort}>
-                <SelectTrigger className="w-full sm:w-[160px]"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="w-full sm:w-[150px]"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="title_asc">Title: A–Z</SelectItem>
                   <SelectItem value="title_desc">Title: Z–A</SelectItem>
                   <SelectItem value="latest">Newest series</SelectItem>
                   <SelectItem value="oldest">Oldest series</SelectItem>
-                  <SelectItem value="rating">Highest rated</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -210,6 +235,16 @@ export default function SeriesPage() {
           {hasActiveFilters && (
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs text-muted-foreground font-medium">Active filters:</span>
+              {selectedLanguage !== "all" && (
+                <Badge
+                  variant="secondary"
+                  className="cursor-pointer gap-1 pr-1.5 hover:bg-destructive/15 hover:text-destructive transition-colors"
+                  onClick={() => setSelectedLanguage("all")}
+                >
+                  {selectedLanguage}
+                  <X className="w-3 h-3" />
+                </Badge>
+              )}
               {selectedGenre && (
                 <Badge
                   variant="secondary"

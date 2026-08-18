@@ -13,6 +13,7 @@ def get_stats_summary():
     total_users = db.users.count_documents({})
     total_movies = db.movies.count_documents({})
     total_theaters = db.theaters.count_documents({})
+    total_movies_with_links = db.movies.count_documents({"watchProviders": {"$exists": True, "$not": {"$size": 0}}})
 
     watch_counts = Counter()
     location_counts = Counter()
@@ -139,5 +140,6 @@ def get_stats_summary():
         "totalCatalogRuntimeMinutes": total_catalog_runtime_minutes,
         "communityWatchTimeSeconds": community_watch_time_seconds,
         "topGenre": top_genre,
+        "totalMoviesWithLinks": total_movies_with_links,
         "insights": insights,
     })

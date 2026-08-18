@@ -28,7 +28,7 @@ def main():
     parser.add_argument("--file", default="theaters.txt", help="Path to theaters text file (default: theaters.txt)")
     args = parser.parse_args()
 
-    file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), args.file)
+    file_path = os.path.abspath(args.file)
 
     if not os.path.exists(file_path):
         print(f"⚠️  File '{args.file}' not found. Creating a sample '{args.file}'...")

@@ -350,6 +350,10 @@ def list_series():
         safe_genre = re.escape(genre)
         query['genre'] = {'$regex': safe_genre, '$options': 'i'}
 
+    language = request.args.get('language', '')
+    if language and language != 'all':
+        query['language'] = {'$regex': re.escape(language), '$options': 'i'}
+
     year = request.args.get('year', '')
     if year:
         try:
@@ -371,7 +375,6 @@ def list_series():
         'oldest': [('year', 1), ('title', 1)],
         'title_asc': [('title', 1)],
         'title_desc': [('title', -1)],
-        'rating': [('imdbRating', -1), ('title', 1)],
     }
     sort = request.args.get('sort', 'title_asc')
     cursor = db.series.find(query, {"seasons": 0}).sort(sort_orders.get(sort, sort_orders['title_asc']))
