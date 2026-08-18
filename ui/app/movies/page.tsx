@@ -20,6 +20,7 @@ export default function MoviesPage() {
   const [skip, setSkip] = useState(0)
   const [search, setSearch] = useState("")
   const [language, setLanguage] = useState("all")
+  const [releaseStatus, setReleaseStatus] = useState("latest")
   const [watchAvailable, setWatchAvailable] = useState(false)
   const [sort, setSort] = useState("latest")
   const [loading, setLoading] = useState(true)
@@ -28,7 +29,7 @@ export default function MoviesPage() {
     const timer = setTimeout(async () => {
       setLoading(true)
       try {
-        const data = await getMovies(skip, PAGE_SIZE, language, search, "", false, "", "", watchAvailable, sort)
+        const data = await getMovies(skip, PAGE_SIZE, language, search, "", false, "", releaseStatus, watchAvailable, sort)
         setMovies(data.movies || [])
         setTotal(data.total || 0)
       } finally {
@@ -36,7 +37,7 @@ export default function MoviesPage() {
       }
     }, 300)
     return () => clearTimeout(timer)
-  }, [skip, search, language, watchAvailable, sort])
+  }, [skip, search, language, watchAvailable, sort, releaseStatus])
 
   const toggleWatchAvailable = () => {
     setWatchAvailable((current) => !current)
@@ -53,9 +54,10 @@ export default function MoviesPage() {
         <RequestTitleDialog />
       </div>
     </div>
-    <div className="mb-7 flex flex-col gap-3 rounded-xl border bg-card p-3 sm:flex-row sm:items-center">
+    <div className="mb-7 flex flex-col gap-3 rounded-xl border bg-card p-3 sm:flex-row sm:items-center sm:flex-wrap">
       <div className="relative min-w-0 flex-1"><Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" /><Input value={search} onChange={(event) => { setSearch(event.target.value); setSkip(0) }} className="pl-9" placeholder="Search movies" /></div>
       <Select value={language} onValueChange={(value) => { setLanguage(value); setSkip(0) }}><SelectTrigger className="w-full sm:w-36"><SelectValue placeholder="Language" /></SelectTrigger><SelectContent><SelectItem value="all">All languages</SelectItem><SelectItem value="Tamil">Tamil</SelectItem><SelectItem value="English">English</SelectItem><SelectItem value="Hindi">Hindi</SelectItem><SelectItem value="Malayalam">Malayalam</SelectItem><SelectItem value="Telugu">Telugu</SelectItem><SelectItem value="Kannada">Kannada</SelectItem></SelectContent></Select>
+      <Select value={releaseStatus} onValueChange={(value) => { setReleaseStatus(value); setSkip(0) }}><SelectTrigger className="w-full sm:w-36"><SelectValue placeholder="Release Status" /></SelectTrigger><SelectContent><SelectItem value="all">All releases</SelectItem><SelectItem value="latest">Released</SelectItem><SelectItem value="upcoming">Upcoming</SelectItem></SelectContent></Select>
       <Button type="button" variant={watchAvailable ? "default" : "outline"} onClick={toggleWatchAvailable} className="gap-2 whitespace-nowrap"><Tv className="h-4 w-4" />Watch online{watchAvailable ? " ✓" : ""}</Button>
       <div className="flex items-center gap-2"><SlidersHorizontal className="h-4 w-4 shrink-0 text-muted-foreground" /><Select value={sort} onValueChange={(value) => { setSort(value); setSkip(0) }}><SelectTrigger className="w-full sm:w-44"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="latest">Newest releases</SelectItem><SelectItem value="oldest">Oldest releases</SelectItem><SelectItem value="title_asc">Title: A–Z</SelectItem><SelectItem value="title_desc">Title: Z–A</SelectItem></SelectContent></Select></div>
     </div>
