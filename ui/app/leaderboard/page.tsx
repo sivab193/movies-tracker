@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import { Header } from "@/components/header"
 import { getLeaderboard, getSeriesLeaderboard } from "@/services/api"
-import { Trophy, Clock, Loader2, Tv } from "lucide-react"
+import { Trophy, Clock, Loader2 } from "lucide-react"
 import Link from "next/link"
 
 interface LeaderboardUser {
@@ -74,21 +74,21 @@ export default function LeaderboardPage() {
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-500 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-500"></span>
                         </span>
-                        <span className="text-sm font-semibold tracking-wide uppercase">Winner gets a free movie ticket! 🎟️</span>
+                        <span className="text-sm font-semibold tracking-wide uppercase">{activeBoard === "series" ? "Just for fun · No prizes" : "Winner gets a free movie ticket! 🎟️"}</span>
                     </div>
 
                     <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                         <div className="text-left">
                             <h1 className="text-3xl font-bold flex items-center gap-3">
                                 <Trophy className="h-8 w-8 text-yellow-500" />
-                                {new Date().getFullYear()} Annual Leaderboard
+                                {activeBoard === "series" ? "Series Watch Time" : `${new Date().getFullYear()} Annual Leaderboard`}
                             </h1>
-                            <p className="text-muted-foreground text-sm">Winners will be announced every quarter</p>
+                            <p className="text-muted-foreground text-sm">{activeBoard === "series" ? "Every rewatch counts toward your total." : "Winners will be announced every quarter"}</p>
                         </div>
 
                         <div className="flex items-center gap-2 rounded-lg border px-3 py-1.5 bg-muted/30">
                             <Clock className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm font-medium">Full Year {new Date().getFullYear()}</span>
+                            <span className="text-sm font-medium">{activeBoard === "series" ? "All time" : `Full Year ${new Date().getFullYear()}`}</span>
                         </div>
                     </div>
                 </div>
