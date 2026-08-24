@@ -16,7 +16,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Tv, Search, Clock, Filter, X, SlidersHorizontal } from "lucide-react";
+import { Loader2, Tv, Search, Clock, Filter, X, SlidersHorizontal, Check } from "lucide-react";
 import { formatRuntimeMinutes, resolveApiUrl, Series, SeriesProgress } from "@/lib/types";
 import { OttMark } from "@/components/ott-provider";
 import { RequestTitleDialog } from "@/components/request-title-dialog";
