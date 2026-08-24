@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { Header } from "@/components/header"
-import { getLeaderboard } from "@/services/api"
-import { Trophy, Clock, Loader2 } from "lucide-react"
+import { getLeaderboard, getSeriesLeaderboard } from "@/services/api"
+import { Trophy, Clock, Loader2, Tv } from "lucide-react"
 import Link from "next/link"
 
 interface LeaderboardUser {
@@ -15,16 +15,31 @@ interface LeaderboardUser {
     isPublic: boolean
 }
 
+interface SeriesLeaderboardUser {
+    userId: string
+    displayName: string
+    photoURL?: string
+    totalRuntimeMinutes: number
+    totalSeriesWatched: number
+    isPublic: boolean
+}
+
 export default function LeaderboardPage() {
     const [users, setUsers] = useState<LeaderboardUser[]>([])
+    const [seriesUsers, setSeriesUsers] = useState<SeriesLeaderboardUser[]>([])
+    const [activeBoard, setActiveBoard] = useState<"movies" | "series">("movies")
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
         async function fetchLeaderboard() {
             try {
-                const data = await getLeaderboard()
-                setUsers(data)
+                const [movieData, seriesData] = await Promise.all([
+                    getLeaderboard(),
+                    getSeriesLeaderboard(),
+                ])
+                setUsers(movieData)
+                setSeriesUsers(seriesData)
             } catch (err: any) {
                 setError(err.message || "Failed to load leaderboard")
             } finally {
@@ -40,6 +55,13 @@ export default function LeaderboardPage() {
         const hours = Math.floor(seconds / 3600)
         const minutes = Math.floor((seconds % 3600) / 60)
         return `${hours}h ${minutes}m`
+    }
+
+    const formatSeriesRuntime = (minutes: number) => {
+        if (minutes === undefined || minutes === null || isNaN(minutes)) return "0h 0m"
+        const hours = Math.floor(minutes / 60)
+        const remainingMinutes = minutes % 60
+        return `${hours}h ${remainingMinutes}m`
     }
 
     return (
@@ -71,6 +93,80 @@ export default function LeaderboardPage() {
                     </div>
                 </div>
 
+                <div className="mb-6 flex justify-center">
+                    <div className="inline-flex rounded-lg border bg-muted/30 p-1">
+                        <button
+                            type="button"
+                            onClick={() => setActiveBoard("movies")}
+                            className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${activeBoard === "movies" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                        >
+                            🎟️ Movies
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => setActiveBoard("series")}
+                            className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${activeBoard === "series" ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"}`}
+                        >
+                            📺 Series
+                        </button>
+                    </div>
+                </div>
+
+                {activeBoard === "series" ? (
+                    <div>
+                        <div className="mb-6 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-center text-sm text-muted-foreground">
+                            Just for fun — rewatches count, and there are no prizes.
+                        </div>
+                        {loading ? (
+                            <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                        ) : error ? (
+                            <div className="text-center text-destructive py-8">{error}</div>
+                        ) : (
+                            <div className="rounded-xl border bg-card shadow-sm overflow-hidden">
+                                <div className="grid grid-cols-12 gap-2 md:gap-4 border-b bg-muted/50 px-4 py-3 font-medium text-xs uppercase tracking-wider text-muted-foreground">
+                                    <div className="col-span-2 md:col-span-1 text-center">Rank</div>
+                                    <div className="col-span-6 md:col-span-8">User</div>
+                                    <div className="col-span-4 md:col-span-3 text-right">Series time</div>
+                                </div>
+                                {seriesUsers.map((user, index) => (
+                                    <div key={user.userId} className="grid grid-cols-12 gap-2 md:gap-4 px-4 py-3 items-center hover:bg-muted/50 transition-colors border-b last:border-0">
+                                        <div className="col-span-2 md:col-span-1 text-center font-bold text-lg">
+                                            {index + 1 === 1 ? '🥇' : index + 1 === 2 ? '🥈' : index + 1 === 3 ? '🥉' : <span className="text-muted-foreground text-sm">#{index + 1}</span>}
+                                        </div>
+                                        <div className="col-span-6 md:col-span-8 overflow-hidden">
+                                            {user.isPublic ? (
+                                                <Link href={`/u/${user.userId}`} className="flex items-center gap-3 group truncate">
+                                                    <div className="h-8 w-8 shrink-0 rounded-full bg-secondary flex items-center justify-center overflow-hidden">
+                                                        {user.photoURL ? <img src={user.photoURL} alt={user.displayName} className="h-full w-full object-cover" /> : <span className="text-xs font-bold">{user.displayName?.[0]?.toUpperCase() || 'U'}</span>}
+                                                    </div>
+                                                    <div className="flex flex-col md:flex-row md:items-center md:gap-2 truncate">
+                                                        <span className="font-medium group-hover:text-primary transition-colors underline-offset-4 group-hover:underline truncate">{user.displayName || 'Anonymous'}</span>
+                                                        <span className="hidden md:inline text-xs text-muted-foreground">• {user.totalSeriesWatched} series tracked</span>
+                                                    </div>
+                                                </Link>
+                                            ) : (
+                                                <div className="flex items-center gap-3 truncate" title="This user has kept their profile private">
+                                                    <div className="h-8 w-8 shrink-0 rounded-full bg-secondary flex items-center justify-center overflow-hidden">
+                                                        {user.photoURL ? <img src={user.photoURL} alt={user.displayName} className="h-full w-full object-cover" /> : <span className="text-xs font-bold">{user.displayName?.[0]?.toUpperCase() || 'U'}</span>}
+                                                    </div>
+                                                    <div className="flex flex-col md:flex-row md:items-center md:gap-2 truncate">
+                                                        <span className="font-medium truncate">{user.displayName || 'Anonymous'}</span>
+                                                        <span className="hidden md:inline text-xs text-muted-foreground">• Profile private</span>
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="col-span-4 md:col-span-3 text-right font-mono font-medium text-primary text-sm md:text-base">
+                                            {formatSeriesRuntime(user.totalRuntimeMinutes)}
+                                            <div className="md:hidden text-[10px] text-muted-foreground">{user.totalSeriesWatched} series tracked</div>
+                                        </div>
+                                    </div>
+                                ))}
+                                {seriesUsers.length === 0 && <div className="p-8 text-center text-muted-foreground">No series watch time recorded yet.</div>}
+                            </div>
+                        )}
+                    </div>
+                ) : (
                 {loading ? (
                     <div className="flex justify-center py-12">
                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -98,7 +194,8 @@ export default function LeaderboardPage() {
                                             ) : (
                                                 <span className="text-xs font-bold">{user.displayName?.[0]?.toUpperCase() || 'U'}</span>
                                             )}
-                                        </div>
+ 
+                )}                                       </div>
                                         <div className="flex flex-col md:flex-row md:items-center md:gap-2 truncate">
                                             <span className="font-medium group-hover:text-primary transition-colors underline-offset-4 group-hover:underline truncate">{user.displayName || 'Anonymous'}</span>
                                             <span className="hidden md:inline-flex text-xs text-muted-foreground items-center gap-1 shrink-0">
