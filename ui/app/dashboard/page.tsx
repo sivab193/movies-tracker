@@ -524,7 +524,7 @@ export default function DashboardPage() {
                             <Clock className="h-8 w-8 text-primary" />
                             Your Dashboard
                         </h1>
-                        <p className="text-muted-foreground mt-1">Track your cinematic journey.</p>
+                        <p className="text-muted-foreground mt-1">Your complete cinematic journey.</p>
                     </div>
 
                     {user && (
