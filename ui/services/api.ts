@@ -353,6 +353,13 @@ export async function getMovieDataQuality() {
     return data;
 }
 
+export async function getSeriesLeaderboard() {
+    const response = await fetch(`${API_BASE_URL}/leaderboard/series`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Failed to fetch series leaderboard");
+    return data.leaderboard;
+}
+
 export async function getLeaderboard() {
     const response = await fetch(`${API_BASE_URL}/leaderboard/`);
     const data = await response.json();
