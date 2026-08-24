@@ -6,7 +6,6 @@ import {
   ListOrdered,
   Trophy,
   BarChart3,
-  Clock,
   CreditCard,
   LayoutDashboard,
   Settings,
@@ -121,18 +120,10 @@ export const PERSONAL_GROUP: NavGroup = {
     {
       href: "/dashboard",
       label: "Dashboard",
-      description: "Your watch summary at a glance",
+      description: "Your complete cinematic journey",
       icon: LayoutDashboard,
       authOnly: true,
-      keywords: ["overview", "me", "profile"],
-    },
-    {
-      href: "/watch-history",
-      label: "Watch History",
-      description: "Every movie you have logged",
-      icon: Clock,
-      authOnly: true,
-      keywords: ["log", "diary", "tickets", "theaters"],
+      keywords: ["overview", "history", "log", "diary", "tickets", "theaters", "me", "profile"],
     },
     {
       href: "/series-history",
