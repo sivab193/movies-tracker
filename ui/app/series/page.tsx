@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type MouseEvent } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
 import { getAllSeries, getSeriesProgress, watchEntireSeries, unwatchEntireSeries } from "@/services/series-service";
@@ -123,7 +123,7 @@ export default function SeriesPage() {
     return progress.find(p => p.imdbId === imdbId);
   };
 
-  const toggleSeriesWatched = async (event: React.MouseEvent, seriesItem: Series) => {
+  const toggleSeriesWatched = async (event: MouseEvent, seriesItem: Series) => {
     event.preventDefault();
     event.stopPropagation();
     if (!user || updatingSeries === seriesItem.imdbId) return;
