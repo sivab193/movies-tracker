@@ -14,6 +14,7 @@ import {
   Compass,
   Users,
   Tv2,
+  PanelsTopLeft,
 } from "lucide-react"
 
 export type NavItem = {
@@ -85,6 +86,13 @@ export const DISCOVER_GROUP: NavGroup = {
       description: "Compare cinema screens, formats, and amenities",
       icon: Map,
       keywords: ["cinema", "imax", "dolby", "screens"],
+    },
+    {
+      href: "/screens",
+      label: "Screens",
+      description: "A visual guide to cinema formats and technology",
+      icon: PanelsTopLeft,
+      keywords: ["imax", "dolby", "laser", "aspect ratio", "projection", "sound"],
     },
   ],
 }
