@@ -1,351 +1,895 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import {
-  Film,
-  MapPin,
-  Calendar,
-  Ticket,
-  Trash2,
-  Edit2,
-  ExternalLink,
-  IndianRupee,
-  DollarSign,
-  Search,
-} from "lucide-react"
+import { useState, useMemo, useEffect } from "react"
 import { Header } from "@/components/header"
-import { AddWatchDialog } from "@/components/add-watch-dialog"
-import { RequestTitleDialog } from "@/components/request-title-dialog"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from "@/components/ui/table"
+import {
+    Clock,
+    Film,
+    Ticket,
+    Search,
+    Calendar,
+    MapPin,
+    ArrowUpDown,
+    CreditCard,
+    Pencil,
+    Trash,
+    ExternalLink,
+    RotateCcw,
+    Building2,
+    Map as MapIcon,
+    Trophy,
+    CalendarDays,
+    Popcorn
+} from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
-import { type WatchHistoryEntry } from "@/lib/types"
-import { deleteWatchHistory, openProtectedAsset } from "@/services/api"
+import { AddWatchDialog } from "@/components/add-watch-dialog"
+import { ShareStats, type WrappedStats } from "@/components/share-stats"
+import { formatTimeDisplay, type WatchHistoryEntry } from "@/lib/types"
 import { getMySettings } from "@/services/user-service"
+import { deleteWatchHistory, openProtectedAsset } from "@/services/api"
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+
+function watchSortTimestamp(entry: WatchHistoryEntry): number {
+    const watchedOn = new Date(entry.timestamp || entry.createdAt)
+    if (isNaN(watchedOn.getTime())) return 0
+
+    // Watch dates are stored independently from the optional showtime. Normalize
+    // to the calendar day, then layer HH:mm on top so two movies on the same
+    // date read in real chronological order.
+    const dayStart = new Date(watchedOn.getFullYear(), watchedOn.getMonth(), watchedOn.getDate()).getTime()
+    const match = (entry.showTime || "").match(/^(\d{1,2}):(\d{2})$/)
+    if (!match) return watchedOn.getTime()
+    const hours = Number(match[1])
+    const minutes = Number(match[2])
+    return hours < 24 && minutes < 60 ? dayStart + (hours * 60 + minutes) * 60 * 1000 : watchedOn.getTime()
+}
 
 export default function DashboardPage() {
-  const router = useRouter()
-  const { user, loading: authLoading } = useAuth()
-  const [history, setHistory] = useState<WatchHistoryEntry[]>([])
-  const [loading, setLoading] = useState(true)
-  const [watchSearch, setWatchSearch] = useState("")
-  const [theaterFilter, setTheaterFilter] = useState("all")
-  const [sortBy, setSortBy] = useState("newest")
+    const { user, userProfile: contextProfile, loading: authLoading } = useAuth()
+    const [profile, setProfile] = useState(contextProfile)
+    const [searchQuery, setSearchQuery] = useState("")
+    const [yearFilter, setYearFilter] = useState("All")
+    const [monthFilter, setMonthFilter] = useState("All")
+    const [cityFilter, setCityFilter] = useState("All")
+    const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc')
+    const [editingEntry, setEditingEntry] = useState<WatchHistoryEntry | null>(null)
+    const [rewatchingEntry, setRewatchingEntry] = useState<WatchHistoryEntry | null>(null)
+    const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!authLoading && !user) {
-      router.push("/auth")
+    // Keep local profile in sync with context initially, then manage updates
+    useEffect(() => {
+        if (contextProfile) setProfile(contextProfile)
+    }, [contextProfile])
+
+    const refreshData = async () => {
+        if (!user) return
+        try {
+            const data = await getMySettings()
+            setProfile(data)
+        } catch (err) {
+            console.error("Failed to refresh profile", err)
+        }
     }
-  }, [user, authLoading, router])
 
-  const fetchHistory = async () => {
-    if (!user) return
-
-    try {
-      const data = await getMySettings()
-      if (data.watchHistory) {
-        setHistory(data.watchHistory)
-      }
-    } catch (error) {
-      console.error("Failed to fetch history:", error)
-    } finally {
-      setLoading(false)
+    const confirmDelete = async () => {
+        if (!user || !deletingId) return
+        try {
+            await deleteWatchHistory(user.uid, deletingId)
+            await refreshData()
+        } catch (err) {
+            console.error("Delete failed", err)
+        } finally {
+            setDeletingId(null)
+        }
     }
-  }
 
-  useEffect(() => {
-    if (user) {
-      fetchHistory()
+    const uniqueYears = useMemo(() => {
+        const years = new Set<string>()
+        profile?.watchHistory?.forEach(h => {
+            const d = new Date(h.timestamp || h.createdAt)
+            if (!isNaN(d.getTime())) {
+                years.add(d.getFullYear().toString())
+            }
+        })
+        return Array.from(years).sort().reverse()
+    }, [profile?.watchHistory])
+
+    const uniqueCities = useMemo(() => {
+        const cities = new Set<string>()
+        profile?.watchHistory?.forEach(h => {
+            const loc = (h.theaterLocation || "").trim()
+            if (loc && !loc.startsWith("http")) {
+                const city = loc.split(",")[0].replace(/\s+(Indiana|Illinois|IN|IL)$/i, "").trim()
+                if (city) cities.add(city)
+            }
+        })
+        return Array.from(cities).sort()
+    }, [profile?.watchHistory])
+
+    const monthsList = [
+        { value: "All", label: "All Months" },
+        { value: "0", label: "Jan" },
+        { value: "1", label: "Feb" },
+        { value: "2", label: "Mar" },
+        { value: "3", label: "Apr" },
+        { value: "4", label: "May" },
+        { value: "5", label: "Jun" },
+        { value: "6", label: "Jul" },
+        { value: "7", label: "Aug" },
+        { value: "8", label: "Sep" },
+        { value: "9", label: "Oct" },
+        { value: "10", label: "Nov" },
+        { value: "11", label: "Dec" }
+    ]
+
+    const history = useMemo(() => {
+        let data = profile?.watchHistory || []
+
+        // Filter by Search Query
+        if (searchQuery) {
+            const lower = searchQuery.toLowerCase()
+            data = data.filter(item =>
+                (item.movieTitle || "").toLowerCase().includes(lower) ||
+                (item.theaterName || "").toLowerCase().includes(lower) ||
+                (item.theaterLocation || "").toLowerCase().includes(lower)
+            )
+        }
+
+        // Filter by Year
+        if (yearFilter !== "All") {
+            data = data.filter(item => {
+                const d = new Date(item.timestamp || item.createdAt)
+                return !isNaN(d.getTime()) && d.getFullYear().toString() === yearFilter
+            })
+        }
+
+        // Filter by Month
+        if (monthFilter !== "All") {
+            data = data.filter(item => {
+                const d = new Date(item.timestamp || item.createdAt)
+                return !isNaN(d.getTime()) && d.getMonth().toString() === monthFilter
+            })
+        }
+
+        // Filter by City
+        if (cityFilter !== "All") {
+            data = data.filter(item => {
+                const loc = (item.theaterLocation || "").trim()
+                if (!loc || loc.startsWith("http")) return false
+                const city = loc.split(",")[0].replace(/\s+(Indiana|Illinois|IN|IL)$/i, "").trim()
+                return city.toLowerCase() === cityFilter.toLowerCase()
+            })
+        }
+
+        // Sort by calendar date and then optional show time.
+        return [...data].sort((a, b) => {
+            const dateA = watchSortTimestamp(a)
+            const dateB = watchSortTimestamp(b)
+            return sortOrder === 'desc' ? dateB - dateA : dateA - dateB
+        })
+    }, [profile?.watchHistory, searchQuery, yearFilter, monthFilter, cityFilter, sortOrder])
+
+    // Stats
+    const stats: any = useMemo(() => {
+        const totalRuntime = profile?.totalRuntimeSeconds || 0
+        const totalMovies = profile?.totalMoviesWatched || 0
+
+        let costINR = 0
+        let costUSD = 0
+        let foodINR = 0
+        let foodUSD = 0
+
+        const now = new Date()
+        const currentYear = now.getFullYear()
+        let thisYearCount = 0
+
+        const theaterCounts = new Map<string, number>()
+        const cityset = new Set<string>()
+        const movieCounts = new Map<string, number>()
+        const movieLatestDate = new Map<string, number>() // track most recent watch timestamp per movie
+        const monthCounts = new Array(12).fill(0)
+        
+        const languageSet = new Set<string>()
+        const monthYearCounts = new Map<string, number>()
+        const dayCounts = new Map<string, number>()
+
+        profile?.watchHistory?.forEach(h => {
+            if (h.currency === 'INR') {
+                costINR += h.ticketCost
+                foodINR += h.foodCost || 0
+            } else if (h.currency === 'USD') {
+                costUSD += h.ticketCost
+                foodUSD += h.foodCost || 0
+            }
+
+            const d = new Date(h.timestamp || h.createdAt)
+            if (!isNaN(d.getTime())) {
+                if (d.getFullYear() === currentYear) thisYearCount++
+                monthCounts[d.getMonth()]++
+                
+                const monthYearKey = `${d.getFullYear()}-${d.getMonth()}`
+                monthYearCounts.set(monthYearKey, (monthYearCounts.get(monthYearKey) || 0) + 1)
+                
+                const dateKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`
+                dayCounts.set(dateKey, (dayCounts.get(dateKey) || 0) + 1)
+            }
+
+            if (h.movieLanguage && h.movieLanguage !== "N/A") {
+                const langs = h.movieLanguage.split(',').map(l => l.trim()).filter(Boolean)
+                langs.forEach(l => languageSet.add(l))
+            }
+
+            const theater = (h.theaterName || "").trim()
+            if (theater && theater !== "N/A") {
+                theaterCounts.set(theater, (theaterCounts.get(theater) || 0) + 1)
+            }
+
+            const loc = (h.theaterLocation || "").trim()
+            if (loc && !loc.startsWith("http")) {
+                const city = loc.split(",")[0].replace(/\s+(Indiana|Illinois|IN|IL)$/i, "").trim()
+                if (city) cityset.add(city)
+            }
+
+            const title = (h.movieTitle || "").trim()
+            if (title) {
+                movieCounts.set(title, (movieCounts.get(title) || 0) + 1)
+                // Track the latest watch date for tie-breaking
+                const watchDate = new Date(h.timestamp || h.createdAt).getTime()
+                if (!isNaN(watchDate)) {
+                    const prev = movieLatestDate.get(title) || 0
+                    if (watchDate > prev) movieLatestDate.set(title, watchDate)
+                }
+            }
+        })
+
+        function topEntry<T>(map: Map<T, number>): { key: T; count: number } | null {
+            let bestKey: T | null = null
+            let bestCount = 0
+            map.forEach((count, key) => {
+                if (bestKey === null || count > bestCount) {
+                    bestKey = key
+                    bestCount = count
+                }
+            })
+            return bestKey === null ? null : { key: bestKey, count: bestCount }
+        }
+
+        const topTheaterEntry = topEntry(theaterCounts)
+
+        // For movies, break ties by most recently watched
+        let topMovieEntry: { key: string; count: number } | null = null
+        {
+            let bestKey: string | null = null
+            let bestCount = 0
+            let bestDate = 0
+            movieCounts.forEach((count, key) => {
+                const latestDate = movieLatestDate.get(key) || 0
+                if (bestKey === null || count > bestCount || (count === bestCount && latestDate > bestDate)) {
+                    bestKey = key
+                    bestCount = count
+                    bestDate = latestDate
+                }
+            })
+            topMovieEntry = bestKey === null ? null : { key: bestKey, count: bestCount }
+        }
+
+        // Calculate total rewatches (extra viewings beyond the first)
+        let totalRewatches = 0
+        movieCounts.forEach((count) => {
+            if (count > 1) totalRewatches += count - 1
+        })
+
+        let maxWatchesInMonth = 0
+        monthYearCounts.forEach(count => {
+            if (count > maxWatchesInMonth) maxWatchesInMonth = count
+        })
+
+        let maxWatchesInDay = 0
+        dayCounts.forEach(count => {
+            if (count > maxWatchesInDay) maxWatchesInDay = count
+        })
+
+        const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        let busiestMonthIdx = -1
+        monthCounts.forEach((c, i) => {
+            if (busiestMonthIdx === -1 || c > monthCounts[busiestMonthIdx]) busiestMonthIdx = i
+        })
+        const busiestMonth = busiestMonthIdx >= 0 && monthCounts[busiestMonthIdx] > 0 ? monthNames[busiestMonthIdx] : null
+
+        const totalHours = Math.round(totalRuntime / 3600)
+
+        // Find most recently watched movie
+        let lastWatched: { title: string; date: string } | null = null
+        let latestTimestamp = 0
+        profile?.watchHistory?.forEach(h => {
+            const title = (h.movieTitle || "").trim()
+            if (!title) return
+            const d = new Date(h.timestamp || h.createdAt)
+            const t = d.getTime()
+            if (!isNaN(t) && t > latestTimestamp) {
+                latestTimestamp = t
+                lastWatched = {
+                    title,
+                    date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                }
+            }
+        })
+
+        return {
+            totalRuntime,
+            totalMovies,
+            totalHours,
+            costINR,
+            costUSD,
+            foodINR,
+            foodUSD,
+            thisYearCount,
+            theatersVisited: theaterCounts.size,
+            citiesExplored: cityset.size,
+            topTheater: topTheaterEntry ? { name: topTheaterEntry.key as string, count: topTheaterEntry.count } : null,
+            topMovie: topMovieEntry ? { title: topMovieEntry.key as string, count: topMovieEntry.count } : null,
+            busiestMonth,
+            currentYear,
+            totalRewatches,
+            lastWatched,
+            languagesCount: languageSet.size,
+            maxWatchesInMonth,
+            maxWatchesInDay,
+        }
+    }, [profile])
+
+    // Compact spent label for the share image (single line)
+    const spentLabel = useMemo(() => {
+        const inr = stats.costINR + stats.foodINR
+        const usd = stats.costUSD + stats.foodUSD
+        const parts: string[] = []
+        if (inr > 0) parts.push(`₹${Math.round(inr).toLocaleString('en-IN')}`)
+        if (usd > 0) parts.push(`$${Math.round(usd).toLocaleString('en-US')}`)
+        return parts.length ? parts.join(" + ") : "—"
+    }, [stats])
+
+    const wrappedStats: WrappedStats = useMemo(() => ({
+        displayName: profile?.displayName || user?.displayName || "",
+        totalMovies: stats.totalMovies,
+        totalHours: stats.totalHours,
+        totalRuntimeLabel: formatTimeDisplay(stats.totalRuntime),
+        spentLabel,
+        theatersVisited: stats.theatersVisited,
+        citiesExplored: stats.citiesExplored,
+        topMovie: stats.topMovie,
+        topTheater: stats.topTheater,
+        lastWatched: stats.lastWatched,
+        thisYearCount: stats.thisYearCount,
+        totalRewatches: stats.totalRewatches,
+        year: stats.currentYear,
+        languagesCount: stats.languagesCount,
+        maxWatchesInMonth: stats.maxWatchesInMonth,
+        maxWatchesInDay: stats.maxWatchesInDay,
+    }), [profile, user, stats, spentLabel])
+
+
+    const formatCurrency = (amount: number, currency: string) => {
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: currency
+        }).format(amount)
     }
-  }, [user])
 
-  const handleDelete = async (entryId: string) => {
-    if (!user) return
-    try {
-      await deleteWatchHistory(user.uid, entryId)
-      setHistory((prev) => prev.filter((entry) => entry._id !== entryId))
-    } catch (error) {
-      console.error("Failed to delete entry:", error)
+    const formatDate = (dateStr: string | Date) => {
+        return new Date(dateStr).toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+        })
     }
-  }
 
-  // Calculate totals
-  const totalINR = history
-    .filter((e) => e.currency === "INR")
-    .reduce((sum, e) => sum + e.ticketCost, 0)
-  const totalUSD = history
-    .filter((e) => e.currency === "USD")
-    .reduce((sum, e) => sum + e.ticketCost, 0)
+    // Show skeletons while auth resolves or the profile (stats source) is still loading,
+    // otherwise the stat cards flash zeros before the real numbers arrive.
+    const isLoading = authLoading || (!!user && !profile)
 
-  const theaters = useMemo(() => Array.from(new Set(history.map((entry) => entry.theaterName).filter((theater): theater is string => Boolean(theater)))).sort(), [history])
-  const visibleHistory = useMemo(() => {
-    const term = watchSearch.trim().toLowerCase()
-    return history.filter((entry) => (!term || [entry.movieTitle, entry.theaterName, entry.movieLanguage].some((value) => value?.toLowerCase().includes(term))) && (theaterFilter === "all" || entry.theaterName === theaterFilter)).sort((a, b) => {
-      if (sortBy === "oldest") return new Date(a.timestamp || a.createdAt).getTime() - new Date(b.timestamp || b.createdAt).getTime()
-      if (sortBy === "title") return a.movieTitle.localeCompare(b.movieTitle)
-      if (sortBy === "cost") return (b.ticketCost + (b.foodCost || 0)) - (a.ticketCost + (a.foodCost || 0))
-      return new Date(b.timestamp || b.createdAt).getTime() - new Date(a.timestamp || a.createdAt).getTime()
-    })
-  }, [history, watchSearch, theaterFilter, sortBy])
+    if (isLoading) {
+        return (
+            <div className="min-h-screen bg-background pb-12">
+                <Header />
+                <main className="container py-8 max-w-6xl mx-auto px-4">
+                    {/* Header Section */}
+                    <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8">
+                        <div>
+                            <h1 className="text-3xl font-bold flex items-center gap-3">
+                                <Clock className="h-8 w-8 text-primary" />
+                                Your Dashboard
+                            </h1>
+                            <p className="text-muted-foreground mt-1">Your complete cinematic journey.</p>
+                        </div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                            <Skeleton className="h-9 w-28" />
+                            <Skeleton className="h-9 w-32" />
+                        </div>
+                    </div>
 
-  if (authLoading) {
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                        {Array.from({ length: 6 }).map((_, i) => (
+                            <Card key={i}>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <Skeleton className="h-4 w-28" />
+                                    <Skeleton className="h-4 w-4 rounded-full" />
+                                </CardHeader>
+                                <CardContent>
+                                    <Skeleton className="h-7 w-20 mb-2" />
+                                    <Skeleton className="h-3 w-24" />
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+
+                    {/* Highlights */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+                        {Array.from({ length: 2 }).map((_, i) => (
+                            <Card key={i}>
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <Skeleton className="h-4 w-28" />
+                                    <Skeleton className="h-4 w-4 rounded-full" />
+                                </CardHeader>
+                                <CardContent>
+                                    <Skeleton className="h-6 w-40 mb-2" />
+                                    <Skeleton className="h-3 w-28" />
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+
+                    {/* Filters & Table */}
+                    <Card>
+                        <CardHeader>
+                            <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+                                <CardTitle>History Log</CardTitle>
+                                <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+                                    <Skeleton className="h-9 w-full sm:w-56" />
+                                    <Skeleton className="h-9 w-24" />
+                                    <Skeleton className="h-9 w-24" />
+                                    <Skeleton className="h-9 w-24" />
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="rounded-md border divide-y">
+                                {Array.from({ length: 6 }).map((_, i) => (
+                                    <div key={i} className="flex items-center gap-4 p-4">
+                                        <Skeleton className="h-4 w-24 shrink-0" />
+                                        <Skeleton className="h-4 flex-1" />
+                                        <Skeleton className="h-4 w-32 hidden sm:block" />
+                                        <Skeleton className="h-4 w-16 shrink-0" />
+                                    </div>
+                                ))}
+                            </div>
+                        </CardContent>
+                    </Card>
+                </main>
+            </div>
+        )
+    }
+
+    if (!user) {
+        return (
+            <div className="min-h-screen bg-background pb-12">
+                <Header />
+                <main className="container py-16 max-w-lg mx-auto px-4 text-center">
+                    <Card className="p-8 border-dashed">
+                        <CardHeader className="p-0 mb-4">
+                            <Clock className="h-12 w-12 text-primary mx-auto mb-2" />
+                            <CardTitle className="text-2xl">Your Personal Movie Log</CardTitle>
+                        </CardHeader>
+                        <CardContent className="p-0 text-muted-foreground space-y-4">
+                            <p>
+                                Sign in to start logging your watched movies, tracking ticket expenses across currencies (INR / USD), and analyzing your personal cinema stats!
+                            </p>
+                        </CardContent>
+                    </Card>
+                </main>
+            </div>
+        )
+    }
+
     return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <main className="mx-auto max-w-4xl px-4 py-8">
-          <Skeleton className="h-10 w-48 mb-8" />
-          <div className="grid gap-4 md:grid-cols-3 mb-8">
-            <Skeleton className="h-24" />
-            <Skeleton className="h-24" />
-            <Skeleton className="h-24" />
-          </div>
-        </main>
-      </div>
-    )
-  }
+        <div className="min-h-screen bg-background pb-12">
+            <Header />
+            <main className="container py-8 max-w-6xl mx-auto px-4">
 
-  if (!user) {
-    return null
-  }
+                {/* Header Section */}
+                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 mb-8">
+                    <div>
+                        <h1 className="text-3xl font-bold flex items-center gap-3">
+                            <Clock className="h-8 w-8 text-primary" />
+                            Your Dashboard
+                        </h1>
+                        <p className="text-muted-foreground mt-1">Track your cinematic journey.</p>
+                    </div>
 
-  return (
-    <div className="min-h-screen bg-background">
-      <Header />
+                    {user && (
+                        <>
+                            <div className="flex items-center gap-2 flex-wrap">
+                                <ShareStats stats={wrappedStats} />
+                                <AddWatchDialog
+                                    uid={user.uid}
+                                    onWatchAdded={refreshData}
+                                />
+                            </div>
 
-      <main className="mx-auto max-w-4xl px-4 py-8">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-bold">Your Dashboard</h1>
-            <p className="text-muted-foreground">
-              Track your movie watches and spending
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <RequestTitleDialog />
-            <AddWatchDialog uid={user.uid} onWatchAdded={fetchHistory} />
-          </div>
-        </div>
+                            {/* Edit Dialog - Hidden Trigger */}
+                            <AddWatchDialog
+                                uid={user.uid}
+                                initialData={editingEntry || undefined}
+                                open={!!editingEntry}
+                                onOpenChange={(open) => !open && setEditingEntry(null)}
+                                onWatchAdded={() => {
+                                    refreshData()
+                                    setEditingEntry(null)
+                                }}
+                                hideTrigger={true}
+                            />
 
-        {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-3 mb-8">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Movies Watched
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2">
-                <Film className="h-5 w-5 text-primary" />
-                <span className="text-2xl font-bold">{history.length}</span>
-              </div>
-            </CardContent>
-          </Card>
+                            {/* Rewatch Dialog - Hidden Trigger */}
+                            <AddWatchDialog
+                                uid={user.uid}
+                                rewatchData={rewatchingEntry || undefined}
+                                open={!!rewatchingEntry}
+                                onOpenChange={(open) => !open && setRewatchingEntry(null)}
+                                onWatchAdded={() => {
+                                    refreshData()
+                                    setRewatchingEntry(null)
+                                }}
+                                hideTrigger={true}
+                            />
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Spent (INR)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2">
-                <IndianRupee className="h-5 w-5 text-primary" />
-                <span className="text-2xl font-bold">
-                  {totalINR.toLocaleString("en-IN")}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
+                            {/* Delete Alert */}
+                            <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This action cannot be undone. This will permanently delete this watch log.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction onClick={confirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                            Delete
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        </>
+                    )}
+                </div>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                Total Spent (USD)
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5 text-primary" />
-                <span className="text-2xl font-bold">
-                  {totalUSD.toLocaleString("en-US", {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+                {/* Stats Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Movies Watched</CardTitle>
+                            <Film className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{stats.totalMovies}</div>
+                            <p className="text-xs text-muted-foreground">Lifetime total</p>
+                        </CardContent>
+                    </Card>
 
-        {/* Watch History */}
-        <div className="mb-4 flex flex-wrap items-end justify-between gap-3"><div><h2 className="text-xl font-semibold">Watch History</h2><p className="text-sm text-muted-foreground">{visibleHistory.length} of {history.length} watches</p></div><div className="flex flex-wrap gap-2"><div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input className="w-52 pl-9" value={watchSearch} onChange={(e) => setWatchSearch(e.target.value)} placeholder="Movie, theater, language" /></div><select className="h-10 rounded-md border bg-background px-3 text-sm" value={theaterFilter} onChange={(e) => setTheaterFilter(e.target.value)}><option value="all">All theaters</option>{theaters.map((theater) => <option key={theater} value={theater}>{theater}</option>)}</select><select className="h-10 rounded-md border bg-background px-3 text-sm" value={sortBy} onChange={(e) => setSortBy(e.target.value)}><option value="newest">Newest first</option><option value="oldest">Oldest first</option><option value="title">Movie title</option><option value="cost">Highest cost</option></select></div></div>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total Runtime</CardTitle>
+                            <Clock className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{formatTimeDisplay(stats.totalRuntime)}</div>
+                            <p className="text-xs text-muted-foreground">≈ {stats.totalHours} hrs in cinema</p>
+                        </CardContent>
+                    </Card>
 
-        {loading ? (
-          <div className="space-y-4">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <Skeleton key={i} className="h-32" />
-            ))}
-          </div>
-        ) : history.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <div className="text-4xl mb-4">🎬</div>
-              <h3 className="text-lg font-medium">No watches logged yet</h3>
-              <p className="text-muted-foreground mt-1">
-                Start tracking your movie experiences!
-              </p>
-            </CardContent>
-          </Card>
-        ) : visibleHistory.length === 0 ? (
-          <Card><CardContent className="py-12 text-center"><h3 className="text-lg font-medium">No watches match these filters</h3><Button variant="link" onClick={() => { setWatchSearch(""); setTheaterFilter("all") }}>Clear filters</Button></CardContent></Card>
-        ) : (
-          <div className="space-y-4">
-            {visibleHistory.map((entry, idx) => (
-              <Card key={entry._id || idx}>
-                <CardContent className="py-4">
-                  <div className="flex gap-4">
-                    {/* Poster thumbnail */}
-                    <div className="w-16 shrink-0">
-                      <div className="aspect-[2/3] overflow-hidden rounded-md bg-muted">
-                        {entry.moviePosterUrl ? (
-                          <img
-                            src={entry.moviePosterUrl || "/placeholder.svg"}
-                            alt=""
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center text-xl">
-                            🎬
-                          </div>
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Total Spent</CardTitle>
+                            <CreditCard className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">
+                                {(stats.costINR + stats.foodINR) > 0 && <span>{formatCurrency(stats.costINR + stats.foodINR, 'INR')}</span>}
+                                {(stats.costINR + stats.foodINR) > 0 && (stats.costUSD + stats.foodUSD) > 0 && <span className="mx-2">+</span>}
+                                {(stats.costUSD + stats.foodUSD) > 0 && <span>{formatCurrency(stats.costUSD + stats.foodUSD, 'USD')}</span>}
+                                {(stats.costINR + stats.foodINR) === 0 && (stats.costUSD + stats.foodUSD) === 0 && "0.00"}
+                            </div>
+                            <p className="text-xs text-muted-foreground">Tickets + Food</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Theaters Visited</CardTitle>
+                            <Building2 className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{stats.theatersVisited}</div>
+                            <p className="text-xs text-muted-foreground truncate">
+                                {stats.topTheater ? `Top: ${stats.topTheater.name}` : "Unique venues"}
+                            </p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Cities Explored</CardTitle>
+                            <MapIcon className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{stats.citiesExplored}</div>
+                            <p className="text-xs text-muted-foreground">Across your journey</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Rewatches</CardTitle>
+                            <RotateCcw className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{stats.totalRewatches}</div>
+                            <p className="text-xs text-muted-foreground">Movies seen again</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Watched in {stats.currentYear}</CardTitle>
+                            <CalendarDays className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{stats.thisYearCount}</div>
+                            <p className="text-xs text-muted-foreground">
+                                {stats.busiestMonth ? `Busiest: ${stats.busiestMonth}` : "This year"}
+                            </p>
+                        </CardContent>
+                    </Card>
+                </div>
+
+                {/* Highlights */}
+                {(stats.topMovie || stats.topTheater || stats.lastWatched) && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
+                        {stats.topMovie && (
+                            <Card className="bg-gradient-to-r from-amber-500/10 to-rose-500/10 border-amber-500/20">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Most Watched</CardTitle>
+                                    <Popcorn className="h-4 w-4 text-amber-500" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-xl font-bold truncate">{stats.topMovie.title}</div>
+                                    <p className="text-xs text-muted-foreground">
+                                        Watched {stats.topMovie.count} {stats.topMovie.count === 1 ? "time" : "times"}
+                                    </p>
+                                </CardContent>
+                            </Card>
                         )}
-                      </div>
+                        {stats.topTheater && (
+                            <Card className="bg-gradient-to-r from-rose-500/10 to-amber-500/10 border-rose-500/20">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Favorite Theater</CardTitle>
+                                    <Trophy className="h-4 w-4 text-rose-500" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-xl font-bold truncate">{stats.topTheater.name}</div>
+                                    <p className="text-xs text-muted-foreground">
+                                        {stats.topTheater.count} {stats.topTheater.count === 1 ? "visit" : "visits"}
+                                    </p>
+                                </CardContent>
+                            </Card>
+                        )}
+                        {stats.lastWatched && (
+                            <Card className="bg-gradient-to-r from-blue-500/10 to-violet-500/10 border-blue-500/20">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Last Watched</CardTitle>
+                                    <Film className="h-4 w-4 text-blue-500" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-xl font-bold truncate">{stats.lastWatched.title}</div>
+                                    <p className="text-xs text-muted-foreground">{stats.lastWatched.date}</p>
+                                </CardContent>
+                            </Card>
+                        )}
                     </div>
+                )}
 
-                    {/* Details */}
-                    <div className="flex-1 min-w-0">
-                      <Link
-                        href={`/movie/${entry.movieId}`}
-                        className="font-semibold hover:text-primary transition-colors"
-                      >
-                        {entry.movieTitle}
-                      </Link>
-
-                      <div className="mt-2 space-y-1 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="h-3.5 w-3.5" />
-                          <span>{entry.theaterName}</span>
-                          {entry.theaterLocation && !entry.theaterLocation.startsWith("http") && (
-                            <span className="text-muted-foreground">({entry.theaterLocation})</span>
-                          )}
-                          {(entry.theaterGmapsLink || entry.theaterLocation) && (
-                            <a
-                              href={
-                                entry.theaterGmapsLink
-                                  ? entry.theaterGmapsLink
-                                  : entry.theaterLocation?.startsWith("http")
-                                  ? entry.theaterLocation
-                                  : `https://maps.google.com/?q=${encodeURIComponent(
-                                      `${entry.theaterName || ""} ${entry.theaterLocation || ""}`.trim()
-                                    )}`
-                              }
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-primary hover:underline inline-flex items-center"
-                              title="View on Google Maps"
-                            >
-                              <ExternalLink className="h-3.5 w-3.5" />
-                            </a>
-                          )}
+                {/* Filters & Table */}
+                <Card>
+                    <CardHeader>
+                        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+                            <CardTitle>History Log</CardTitle>
+                            <div className="flex flex-wrap items-center gap-2 w-full lg:w-auto">
+                                <div className="relative flex-1 sm:flex-none sm:w-56">
+                                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                    <Input
+                                        placeholder="Search logs..."
+                                        className="pl-8 h-9 text-sm"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                    />
+                                </div>
+                                <select
+                                    className="h-9 rounded-md border border-input bg-background px-2 py-1 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary"
+                                    value={yearFilter}
+                                    onChange={(e) => setYearFilter(e.target.value)}
+                                >
+                                    <option value="All">All Years</option>
+                                    {uniqueYears.map(y => (
+                                        <option key={y} value={y}>{y}</option>
+                                    ))}
+                                </select>
+                                <select
+                                    className="h-9 rounded-md border border-input bg-background px-2 py-1 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-primary"
+                                    value={monthFilter}
+                                    onChange={(e) => setMonthFilter(e.target.value)}
+                                >
+                                    {monthsList.map(m => (
+                                        <option key={m.value} value={m.value}>{m.label}</option>
+                                    ))}
+                                </select>
+                                <select
+                                    className="h-9 rounded-md border border-input bg-background px-2 py-1 text-xs font-medium max-w-[140px] truncate focus:outline-none focus:ring-2 focus:ring-primary"
+                                    value={cityFilter}
+                                    onChange={(e) => setCityFilter(e.target.value)}
+                                >
+                                    <option value="All">All Cities</option>
+                                    {uniqueCities.map(c => (
+                                        <option key={c} value={c}>{c}</option>
+                                    ))}
+                                </select>
+                            </div>
                         </div>
-
-                        <div className="flex items-center gap-2">
-                          <Calendar className="h-3.5 w-3.5" />
-                          <span>
-                            {new Date(entry.timestamp || entry.createdAt).toLocaleDateString("en-US", {
-                              weekday: "short",
-                              year: "numeric",
-                              month: "short",
-                              day: "numeric",
-                            })}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center gap-4">
-                          <div className="flex items-center gap-2">
-                            <Ticket className="h-3.5 w-3.5" />
-                            <span>
-                              {entry.currency === "INR" ? "₹" : "$"}
-                              {entry.ticketCost.toLocaleString()}
-                            </span>
-                          </div>
-                          {entry.ticketStubUrl && (
-                            <button
-                              type="button"
-                              onClick={() => openProtectedAsset(entry.ticketStubUrl!).catch((error) => console.error("Failed to open ticket stub", error))}
-                              className="text-xs text-primary hover:underline flex items-center gap-1"
-                            >
-                              🎟️ View Ticket
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-start gap-1">
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Delete watch entry?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will permanently remove this watch entry from your
-                              history. This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => entry._id && handleDelete(entry._id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Delete
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </main>
-    </div>
-  )
+                    </CardHeader>
+                    <CardContent>
+                        {history.length === 0 ? (
+                            <div className="text-center py-12 text-muted-foreground">
+                                <Film className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                                <p>No watch logs match your filters.</p>
+                                <p className="text-sm mt-1">Try clearing filters or log a new watch!</p>
+                            </div>
+                        ) : (
+                            <div className="rounded-md border">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="w-[140px] cursor-pointer hover:text-foreground transition-colors" onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}>
+                                                <div className="flex items-center gap-1.5 font-semibold">
+                                                    Date <ArrowUpDown className="h-3.5 w-3.5 text-primary" />
+                                                </div>
+                                            </TableHead>
+                                            <TableHead>Movie</TableHead>
+                                            <TableHead>Theater</TableHead>
+                                            <TableHead className="text-right">Cost</TableHead>
+                                            <TableHead className="w-[130px]"></TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {history.map((entry, i) => (
+                                            <TableRow key={entry._id || i}>
+                                                <TableCell className="font-medium text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
+                                                    <div>{formatDate(entry.timestamp || entry.createdAt)}</div>
+                                                    {entry.showTime && (
+                                                        <div className="text-xs text-muted-foreground/70 flex items-center gap-1 mt-0.5">
+                                                            <Clock className="h-3 w-3" />
+                                                            {entry.showTime}
+                                                        </div>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="font-semibold">{entry.movieTitle}</div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <span className="font-medium">{entry.theaterName || "N/A"}</span>
+                                                        {(entry.theaterGmapsLink || entry.theaterLocation) && (
+                                                            <a
+                                                                href={
+                                                                    entry.theaterGmapsLink
+                                                                        ? entry.theaterGmapsLink
+                                                                        : entry.theaterLocation?.startsWith("http")
+                                                                        ? entry.theaterLocation
+                                                                        : `https://maps.google.com/?q=${encodeURIComponent(
+                                                                              `${entry.theaterName || ""} ${entry.theaterLocation || ""}`.trim()
+                                                                          )}`
+                                                                }
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="text-xs text-primary hover:underline inline-flex items-center gap-1"
+                                                            >
+                                                                <MapPin className="h-3 w-3" />
+                                                                <span>{entry.theaterLocation && !entry.theaterLocation.startsWith("http") ? entry.theaterLocation : "View Map"}</span>
+                                                                <ExternalLink className="h-2.5 w-2.5" />
+                                                            </a>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex flex-col items-end">
+                                                        <span className="font-mono">{formatCurrency(entry.ticketCost, entry.currency)}</span>
+                                                        {(entry.foodCost != null && entry.foodCost > 0) && (
+                                                            <span className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                                                                🍿 {formatCurrency(entry.foodCost, entry.currency)}
+                                                            </span>
+                                                        )}
+                                                        {entry.ticketStubUrl && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => openProtectedAsset(entry.ticketStubUrl!).catch((error) => console.error("Failed to open ticket stub", error))}
+                                                                className="text-xs text-primary hover:underline flex items-center gap-1 mt-0.5"
+                                                            >
+                                                                🎟️ View Ticket
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-primary hover:text-primary"
+                                                            title={`Log a rewatch of ${entry.movieTitle}`}
+                                                            aria-label={`Log a rewatch of ${entry.movieTitle}`}
+                                                            onClick={() => setRewatchingEntry(entry)}
+                                                        >
+                                                            <RotateCcw className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8" title="Edit this log" onClick={() => setEditingEntry(entry)}>
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-destructive hover:text-destructive"
+                                                            onClick={() => {
+                                                                console.log("Delete clicked for entry:", entry)
+                                                                if (!entry._id) {
+                                                                    console.error("Entry missing _id:", entry)
+                                                                    alert("Cannot delete: entry has no ID")
+                                                                    return
+                                                                }
+                                                                setDeletingId(entry._id)
+                                                            }}
+                                                        >
+                                                            <Trash className="h-4 w-4" />
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </main>
+        </div>
+    )
 }
