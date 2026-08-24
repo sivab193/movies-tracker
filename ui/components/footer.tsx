@@ -49,7 +49,7 @@ export function Footer() {
 
             <div className="w-full max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-6 text-center border-t border-border pt-6">
                 <p className="text-xs md:text-sm text-muted-foreground text-center font-medium">
-                    Build open source and Automate
+                    Build • Automate • Open Source
                 </p>
                 <div className="flex flex-row items-center justify-center gap-4 text-xs md:text-sm">
                     <a
