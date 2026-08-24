@@ -195,7 +195,6 @@ export default function LeaderboardPage() {
                                                 <span className="text-xs font-bold">{user.displayName?.[0]?.toUpperCase() || 'U'}</span>
                                             )}
  
-                                            )}
                                         </div>
                                         <div className="flex flex-col md:flex-row md:items-center md:gap-2 truncate">
                                             <span className="font-medium group-hover:text-primary transition-colors underline-offset-4 group-hover:underline truncate">{user.displayName || 'Anonymous'}</span>
