@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth-context";
-import { getAllSeries, getSeriesProgress } from "@/services/series-service";
+import { getAllSeries, getSeriesProgress, watchEntireSeries, unwatchEntireSeries } from "@/services/series-service";
 import { Header } from "@/components/header";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -71,6 +71,7 @@ export default function SeriesPage() {
   const [selectedYear, setSelectedYear] = useState("");
   const [watchAvailable, setWatchAvailable] = useState(false);
   const [sort, setSort] = useState("title_asc");
+  const [updatingSeries, setUpdatingSeries] = useState<string | null>(null);
 
   const hasActiveFilters = selectedGenre !== "" || selectedLanguage !== "all" || selectedYear !== "" || watchAvailable;
 
@@ -120,6 +121,30 @@ export default function SeriesPage() {
   // Helper to find user progress for a series
   const getProgressForSeries = (imdbId: string) => {
     return progress.find(p => p.imdbId === imdbId);
+  };
+
+  const toggleSeriesWatched = async (event: React.MouseEvent, seriesItem: Series) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!user || updatingSeries === seriesItem.imdbId) return;
+
+    const existing = getProgressForSeries(seriesItem.imdbId);
+    const completed = !!existing && existing.watchedSeasons.length >= seriesItem.totalSeasons;
+    setUpdatingSeries(seriesItem.imdbId);
+    try {
+      const result = completed
+        ? await unwatchEntireSeries(seriesItem.imdbId)
+        : await watchEntireSeries(seriesItem.imdbId);
+      setProgress((current) => {
+        const withoutCurrent = current.filter((item) => item.imdbId !== seriesItem.imdbId);
+        return result.seriesProgress ? [...withoutCurrent, result.seriesProgress] : withoutCurrent;
+      });
+    } catch (err) {
+      console.error("Failed to update series progress", err);
+      setError("Could not update watched status. Please try again.");
+    } finally {
+      setUpdatingSeries(null);
+    }
   };
 
   const clearAllFilters = () => {
@@ -359,11 +384,25 @@ export default function SeriesPage() {
                             {s.totalSeasons} season{s.totalSeasons !== 1 && 's'} · {s.totalEpisodes} episode{s.totalEpisodes !== 1 && 's'}
                           </div>
                           
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between gap-2">
                             <div className="text-sm font-bold text-primary flex items-center gap-1.5 bg-primary/10 px-2 py-1 rounded-md w-fit">
                               <Clock className="w-3.5 h-3.5" />
                               {formatRuntimeMinutes(s.totalRuntimeMinutes)}
                             </div>
+                            {user && (
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant={userProgress && userProgress.watchedSeasons.length >= s.totalSeasons ? "secondary" : "outline"}
+                                className="h-8 gap-1.5 text-xs shrink-0"
+                                disabled={updatingSeries === s.imdbId}
+                                onClick={(event) => toggleSeriesWatched(event, s)}
+                                aria-label={userProgress && userProgress.watchedSeasons.length >= s.totalSeasons ? `Mark ${s.title} unwatched` : `Mark ${s.title} watched`}
+                              >
+                                {updatingSeries === s.imdbId ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                                {userProgress && userProgress.watchedSeasons.length >= s.totalSeasons ? "Watched" : "Mark watched"}
+                              </Button>
+                            )}
                           </div>
                         </div>
                       </div>
