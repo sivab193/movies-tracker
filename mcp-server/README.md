@@ -103,7 +103,7 @@ Once configured, you can ask Claude:
 - "Update my last watch entry to fix the theater name"
 - "How many hours of movies have I watched total?"
 
-**Live at:** https://media-verse.in
+**Live at:** https://www.media-verse.in
 
 ## How It Works
 
@@ -170,7 +170,7 @@ npm start
 ### Environment Variables
 
 The MCP server automatically uses production API by default:
-- `API_BASE_URL`: https://media-verse.in/api
+- `API_BASE_URL`: https://www.media-verse.in/api
 
 For local development against your backend:
 ```bash
