@@ -4,7 +4,7 @@
 export const OG_SIZE = { width: 1200, height: 630 }
 
 /** Canonical production origin, matching metadataBase in app/layout.tsx. */
-const CANONICAL_ORIGIN = "https://media-verse.in"
+const CANONICAL_ORIGIN = "https://www.media-verse.in"
 
 /**
  * Absolute origin usable from a server render.
