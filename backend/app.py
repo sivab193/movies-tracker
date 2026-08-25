@@ -15,7 +15,7 @@ app.url_map.strict_slashes = False
 allowed_origins = [
     origin.strip() for origin in os.environ.get(
         'ALLOWED_ORIGINS',
-        'http://localhost:3000,https://mv.siv19.dev'
+        'http://localhost:3000,https://media-verse.in'
     ).split(',') if origin.strip()
 ]
 CORS(app, resources={r"/api/*": {"origins": allowed_origins}})
