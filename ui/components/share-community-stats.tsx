@@ -27,7 +27,7 @@ export interface CommunityStats {
     totalTheaters: number
 }
 
-const SITE = "media-verse.in"
+const SITE = "www.media-verse.in"
 const INSTA = "@media.verse.tv"
 
 function roundRect(
