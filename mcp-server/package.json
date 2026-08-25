@@ -7,7 +7,7 @@
     "type": "git",
     "url": "https://github.com/sivab/movies-tracker.git"
   },
-  "homepage": "https://www.www.media-verse.in",
+  "homepage": "https://www.media-verse.in",
   "main": "dist/index.js",
   "bin": {
     "movies-tracker-mcp": "dist/cli.js"
