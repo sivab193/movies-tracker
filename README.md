@@ -14,7 +14,7 @@
 **A high-performance, full-stack movie watch history tracker, TitleCard timer, and community leaderboard.**  
 Built with **Next.js 16 App Router**, **Python Flask**, **MongoDB Atlas**, and **Firebase Google OAuth**.
 
-🌐 **Live:** [media-verse.in](https://media-verse.in)
+🌐 **Live:** [www.media-verse.in](https://www.media-verse.in)
 
 [Explore API Docs](./docs/API_DOCS.md) · [OpenAPI Spec](./docs/openapi.yaml) · [Architecture Reference](./docs/ARCHITECTURE.md) · [MCP Server](./mcp-server/README.md) · [Frontend Guide](./ui/README.md) · [Backend Guide](./backend/README.md)
 
@@ -196,4 +196,4 @@ See **[MCP Server Documentation](./mcp-server/README.md)** for full setup guide.
 ## 👨‍💻 Connect
 
 Built by **Siva B**.  
-Live at **[media-verse.in](https://media-verse.in)**
+Live at **[www.media-verse.in](https://www.media-verse.in)**
