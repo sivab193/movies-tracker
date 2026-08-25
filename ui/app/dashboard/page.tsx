@@ -35,6 +35,7 @@ import {
 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { AddWatchDialog } from "@/components/add-watch-dialog"
+import { BulkWatchDialog } from "@/components/bulk-watch-dialog"
 import { ShareStats, type WrappedStats } from "@/components/share-stats"
 import { formatTimeDisplay, type WatchHistoryEntry } from "@/lib/types"
 import { getMySettings } from "@/services/user-service"
@@ -531,6 +532,7 @@ export default function DashboardPage() {
                         <>
                             <div className="flex items-center gap-2 flex-wrap">
                                 <ShareStats stats={wrappedStats} />
+                                <BulkWatchDialog onWatchAdded={refreshData} />
                                 <AddWatchDialog
                                     uid={user.uid}
                                     onWatchAdded={refreshData}
