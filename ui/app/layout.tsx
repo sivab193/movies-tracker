@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   title: "MediaVerse",
   description:
     "Track your movie watch history, see your stats, and compete on the leaderboard.",
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://www.www.media-verse.in"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://www.media-verse.in"),
   icons: {
     icon: [
       { url: "/favicon-96x96.png", sizes: "96x96", type: "image/png" },
