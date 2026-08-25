@@ -33,7 +33,7 @@ export interface WrappedStats {
     maxWatchesInDay: number
 }
 
-const SITE = "media-verse.in"
+const SITE = "www.media-verse.in"
 const INSTA = "@media.verse.tv"
 
 // Rounded rectangle path helper
