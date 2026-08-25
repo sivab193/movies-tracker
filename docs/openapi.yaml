@@ -7,7 +7,7 @@ info:
     name: Siva B
     url: https://github.com/sivab193/movies-tracker
 servers:
-  - url: https://mv.siv19.dev/api
+  - url: https://media-verse.in/api
     description: Production Vercel Deployment
   - url: http://localhost:8000/api
     description: Local Development Server
