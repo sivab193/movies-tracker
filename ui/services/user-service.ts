@@ -9,11 +9,33 @@ async function getAuthHeader(user?: any): Promise<Record<string, string>> {
     return { "Authorization": `Bearer ${token}` }
 }
 
+function normalizeWatchHistoryTimestamps(data: any) {
+    if (!Array.isArray(data?.watchHistory)) return data
+
+    return {
+        ...data,
+        watchHistory: data.watchHistory.map((entry: any) => {
+            const watchedOn = new Date(entry.timestamp || entry.createdAt)
+            const match = (entry.showTime || "").match(/^(\d{1,2}):(\d{2})$/)
+            if (isNaN(watchedOn.getTime()) || !match) return entry
+
+            const hours = Number(match[1])
+            const minutes = Number(match[2])
+            if (hours >= 24 || minutes >= 60) return entry
+
+            const watchedAt = new Date(watchedOn)
+            watchedAt.setHours(hours, minutes, 0, 0)
+            return { ...entry, timestamp: watchedAt.toISOString() }
+        })
+    }
+}
+
 export async function getMySettings(user?: any) {
     const headers = await getAuthHeader(user)
     const response = await fetch(`${API_BASE_URL}/users/me`, { headers })
     if (!response.ok) throw new Error("Failed to fetch settings")
-    return response.json()
+    const data = await response.json()
+    return normalizeWatchHistoryTimestamps(data)
 }
 
 export async function getMySession(user?: any) {
