@@ -268,6 +268,20 @@ export async function addTheater(name: string, location?: string, gmapsLink?: st
     return data.theater;
 }
 
+export async function bulkAddTheaters(location: string, theaters: Array<{ name: string; gmapsLink?: string }>) {
+    const token = await auth?.currentUser?.getIdToken();
+    if (!token) throw new Error("User not authenticated");
+
+    const response = await fetch(`${API_BASE_URL}/theaters/bulk`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ location, theaters })
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Failed to bulk add theaters");
+    return data as { created: any[]; skipped: Array<{ name: string; reason: string }>; invalid: Array<{ index: number; reason: string }> };
+}
+
 export async function updateTheater(
     id: string,
     name: string,
