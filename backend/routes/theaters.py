@@ -199,6 +199,64 @@ def add_theater():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
+@theaters_bp.route('/bulk', methods=['POST'])
+def bulk_add_theaters():
+    """Create multiple theaters in one city, skipping duplicates safely."""
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({"error": "Unauthorized"}), 401
+    if not is_admin(auth_header.split(' ')[1]):
+        return jsonify({"error": "Forbidden: Admin access required"}), 403
+    if db is None:
+        return jsonify({"error": "Database not connected"}), 500
+
+    data = request.get_json(silent=True) or {}
+    location = data.get('location', '')
+    entries = data.get('theaters')
+    if not isinstance(location, str) or not location.strip():
+        return jsonify({"error": "City / location is required"}), 400
+    if not isinstance(entries, list) or not entries:
+        return jsonify({"error": "Add at least one theater"}), 400
+    if len(entries) > 100:
+        return jsonify({"error": "A bulk import can contain at most 100 theaters"}), 400
+
+    created, skipped, invalid = [], [], []
+    for index, entry in enumerate(entries, 1):
+        if not isinstance(entry, dict):
+            invalid.append({"index": index, "reason": "Invalid theater entry"})
+            continue
+        name = entry.get('name')
+        gmaps_link = entry.get('gmapsLink', '')
+        if not isinstance(name, str) or not name.strip() or len(name.strip()) > 200:
+            invalid.append({"index": index, "reason": "Theater name is required"})
+            continue
+        if not isinstance(gmaps_link, str) or len(gmaps_link.strip()) > 2048:
+            invalid.append({"index": index, "reason": "Google Maps link is invalid"})
+            continue
+
+        normalized = {"name": name.strip(), "location": location.strip()}
+        normalize_theater_location(normalized)
+        existing = db.theaters.find_one({
+            "name": {"$regex": f"^{re.escape(normalized['name'])}$", "$options": "i"},
+            "location": {"$regex": f"^{re.escape(normalized['location'])}$", "$options": "i"},
+        })
+        if existing:
+            # Preserve the better Maps data when the venue was already present.
+            if gmaps_link.strip() and not existing.get('gmapsLink'):
+                db.theaters.update_one({"_id": existing['_id']}, {"$set": {"gmapsLink": gmaps_link.strip()}})
+                skipped.append({"name": normalized['name'], "reason": "Already existed; Google Maps link added"})
+            else:
+                skipped.append({"name": normalized['name'], "reason": "Already exists"})
+            continue
+
+        theater = {"name": normalized['name'], "location": normalized['location'], "gmapsLink": gmaps_link.strip()}
+        result = db.theaters.insert_one(theater)
+        theater['id'] = str(result.inserted_id)
+        created.append(theater)
+
+    return jsonify({"created": created, "skipped": skipped, "invalid": invalid})
+
 @theaters_bp.route('/<theater_id>', methods=['PUT'])
 def update_theater(theater_id):
     auth_header = request.headers.get('Authorization')
