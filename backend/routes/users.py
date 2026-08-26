@@ -227,6 +227,61 @@ def get_my_settings():
     user = serialize_mongo_doc(user)
     return jsonify(user)
 
+
+@users_bp.route('/session', methods=['GET'])
+def get_my_session():
+    """Return only the account data needed to initialize the signed-in UI.
+
+    Keep watch history out of this response: the header and route guards only
+    need identity and access flags, while history is loaded by pages that use it.
+    """
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    decoded_token = get_user_from_token(auth_header.split(' ')[1])
+    if not decoded_token:
+        return jsonify({"error": "Invalid token"}), 401
+
+    firebase_uid = decoded_token['uid']
+    fields = {
+        "_id": 0, "firebaseUid": 1, "email": 1, "displayName": 1,
+        "photoURL": 1, "isAdmin": 1, "adminRequestStatus": 1,
+        "isBannedFromLeaderboard": 1,
+    }
+    user = db.users.find_one({"firebaseUid": firebase_uid}, fields)
+    if not user:
+        email = decoded_token.get('email', '')
+        allowed_domains = [d.strip() for d in os.environ.get('ALLOWED_EMAIL_DOMAINS', '').split(',') if d.strip()]
+        if allowed_domains and email.split('@')[-1] not in allowed_domains:
+            return jsonify({"error": f"Email domain not allowed. Allowed: {', '.join(allowed_domains)}"}), 403
+        user = {
+            "firebaseUid": firebase_uid,
+            "email": email,
+            "displayName": decoded_token.get('name', 'Anonymous'),
+            "photoURL": decoded_token.get('picture'),
+            "isPublic": False,
+            "isAdmin": False,
+            "adminRequestStatus": "NONE",
+            "joinedLeaderboard": False,
+            "publicFields": ["totalRuntime", "movieCount"],
+            "hiddenMovies": [],
+            "totalRuntimeSeconds": 0,
+            "totalMoviesWatched": 0,
+            "watchHistory": []
+        }
+        db.users.insert_one(user)
+
+    return jsonify({
+        "uid": user.get("firebaseUid", firebase_uid),
+        "email": user.get("email", decoded_token.get("email", "")),
+        "displayName": user.get("displayName"),
+        "photoURL": user.get("photoURL"),
+        "isAdmin": bool(user.get("isAdmin", False)),
+        "adminRequestStatus": user.get("adminRequestStatus", "NONE"),
+        "isBannedFromLeaderboard": bool(user.get("isBannedFromLeaderboard", False)),
+    })
+
 @users_bp.route('/request-admin', methods=['POST'])
 def request_admin():
     auth_header = request.headers.get('Authorization')
