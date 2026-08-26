@@ -277,7 +277,13 @@ export async function bulkAddTheaters(location: string, theaters: Array<{ name: 
         headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ location, theaters })
     });
-    const data = await response.json();
+    const body = await response.text();
+    let data: { error?: string; created?: any[]; skipped?: Array<{ name: string; reason: string }>; invalid?: Array<{ index: number; reason: string }> };
+    try {
+        data = JSON.parse(body);
+    } catch {
+        throw new Error("The bulk import API returned a page instead of data. Please wait for the backend deployment to finish, then try again.");
+    }
     if (!response.ok) throw new Error(data.error || "Failed to bulk add theaters");
     return data as { created: any[]; skipped: Array<{ name: string; reason: string }>; invalid: Array<{ index: number; reason: string }> };
 }
