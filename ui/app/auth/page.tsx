@@ -235,7 +235,7 @@ export default function AuthPage() {
 
       <div className="flex-1 flex items-center justify-center p-4">
         <Card className="w-full max-w-md border-muted/40 shadow-xl">
-          <CardHeader className="text-center pb-2">
+          <CardHeader className={`text-center pb-2 ${showDeviceCode ? "hidden" : ""}`}>
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/20">
               <Film className="h-7 w-7" />
             </div>
@@ -244,10 +244,10 @@ export default function AuthPage() {
               Sign in to continue tracking your watch history
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className={showDeviceCode ? "py-8" : undefined}>
             <Button
               variant="outline"
-              className="w-full mb-6 bg-transparent"
+              className={`w-full mb-6 bg-transparent ${showDeviceCode ? "hidden" : ""}`}
               onClick={handleGoogleSignIn}
               disabled={loading}
             >
@@ -276,7 +276,7 @@ export default function AuthPage() {
               Continue with Google
             </Button>
 
-            <div className="relative mb-6">
+            <div className={`relative mb-6 ${showDeviceCode ? "hidden" : ""}`}>
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t" />
               </div>
@@ -287,7 +287,7 @@ export default function AuthPage() {
               </div>
             </div>
 
-            <Tabs defaultValue="signin" className="w-full">
+            <Tabs defaultValue="signin" className={`w-full ${showDeviceCode ? "hidden" : ""}`}>
               <TabsList className="grid w-full grid-cols-2 mb-6">
                 <TabsTrigger value="signin">Sign In</TabsTrigger>
                 <TabsTrigger value="signup">Sign Up</TabsTrigger>
@@ -510,7 +510,7 @@ export default function AuthPage() {
             </Tabs>
 
             {/* Device Code / QR Login Section */}
-            <div className="relative mt-6 mb-2">
+            <div className={`relative mt-6 mb-2 ${showDeviceCode ? "hidden" : ""}`}>
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t" />
               </div>
