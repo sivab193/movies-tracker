@@ -16,6 +16,13 @@ export async function getMySettings(user?: any) {
     return response.json()
 }
 
+export async function getMySession(user?: any) {
+    const headers = await getAuthHeader(user)
+    const response = await fetch(`${API_BASE_URL}/users/session`, { headers })
+    if (!response.ok) throw new Error("Failed to fetch signed-in session")
+    return response.json()
+}
+
 export async function requestAdminAccess() {
     const headers = await getAuthHeader()
     const response = await fetch(`${API_BASE_URL}/users/request-admin`, {
