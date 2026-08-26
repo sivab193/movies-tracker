@@ -11,6 +11,7 @@ import { getSeriesProgress } from "@/services/series-service"
 import { formatRuntimeMinutes, resolveApiUrl } from "@/lib/types"
 import type { EnrichedWatchOrderItem, SeriesProgress, WatchOrder } from "@/lib/types"
 import { useAuth } from "@/contexts/auth-context"
+import { getMySettings } from "@/services/user-service"
 import {
   ArrowLeft,
   Check,
@@ -91,12 +92,13 @@ export default function WatchOrderDetailPage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = use(params)
-  const { user, userProfile, loading: authLoading } = useAuth()
+  const { user, loading: authLoading } = useAuth()
 
   const [order, setOrder] = useState<LoadedOrder | null>(null)
   const [loading, setLoading] = useState(true)
   const [missing, setMissing] = useState(false)
   const [seriesProgressList, setSeriesProgressList] = useState<SeriesProgress[]>([])
+  const [watchedImdbIds, setWatchedImdbIds] = useState<Set<string>>(new Set())
   const [copied, setCopied] = useState(false)
 
   const timelineRef = useRef<HTMLDivElement>(null)
@@ -134,15 +136,22 @@ export default function WatchOrderDetailPage({
       })
   }, [authLoading, user])
 
+  useEffect(() => {
+    if (authLoading || !user) return
+    getMySettings()
+      .then((profile) => setWatchedImdbIds(new Set((profile.watchHistory || []).map((entry: any) => entry.imdbId).filter(Boolean))))
+      .catch((err) => console.error("Failed to load watched movies", err))
+  }, [authLoading, user])
+
   useScrollReveal(!loading && !!order)
   const timelineProgress = useTimelineProgress(timelineRef, !loading && !!order)
 
   const hasWatchedMovie = useCallback(
     (imdbId?: string) => {
-      if (!imdbId || !userProfile?.watchHistory) return false
-      return userProfile.watchHistory.some((entry: any) => entry.imdbId === imdbId)
+      if (!imdbId) return false
+      return watchedImdbIds.has(imdbId)
     },
-    [userProfile]
+    [watchedImdbIds]
   )
 
   const isSeriesComplete = useCallback(
