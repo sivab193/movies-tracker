@@ -7,6 +7,7 @@ import { Loader2, Plus, ShieldAlert, Trash2, Search, Users, MapPin, ExternalLink
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Header } from "@/components/header"
 import { CollapsibleSection } from "@/components/collapsible-section"
 import { AdminWatchOrders } from "@/components/admin-watch-orders"
@@ -18,7 +19,7 @@ import { AdminOttCatalog } from "@/components/admin-ott-catalog"
 import { WatchProviderEditor } from "@/components/watch-provider-editor"
 import type { WatchProvider } from "@/lib/types"
 import { getAdminRequests, resolveAdminRequest } from "@/services/user-service"
-import { getMovies, deleteMovie, clearMovieSubmissions, getTheaters, addTheater, updateTheater, deleteTheater, updateMovie, addMovie, fetchOmdbPreview, getTheaterDuplicates, mergeTheaterDuplicates, getMovieDuplicates, mergeMovieDuplicates, verifyTheater, verifyMovie, getMovieDataQuality, refreshMovieFromOmdb } from "@/services/api"
+import { getMovies, deleteMovie, clearMovieSubmissions, getTheaters, addTheater, bulkAddTheaters, updateTheater, deleteTheater, updateMovie, addMovie, fetchOmdbPreview, getTheaterDuplicates, mergeTheaterDuplicates, getMovieDuplicates, mergeMovieDuplicates, verifyTheater, verifyMovie, getMovieDataQuality, refreshMovieFromOmdb } from "@/services/api"
 import { formatTimeDisplay, resolveApiUrl, formatRuntimeMinutes } from "@/lib/types"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -53,6 +54,9 @@ export default function AdminPage() {
     const [newTheaterLoc, setNewTheaterLoc] = useState("")
     const [newTheaterGmapsLink, setNewTheaterGmapsLink] = useState("")
     const [addingTheater, setAddingTheater] = useState(false)
+    const [bulkTheaterCity, setBulkTheaterCity] = useState("")
+    const [bulkTheaterEntries, setBulkTheaterEntries] = useState("")
+    const [bulkAddingTheaters, setBulkAddingTheaters] = useState(false)
     const [localLoading, setLocalLoading] = useState(true)
     
     // Global movie filter states
@@ -505,6 +509,32 @@ export default function AdminPage() {
             alert(err instanceof Error ? err.message : "Failed to add theater")
         } finally {
             setAddingTheater(false)
+        }
+    }
+
+    const handleBulkAddTheaters = async (e: React.FormEvent) => {
+        e.preventDefault()
+        const theaters = bulkTheaterEntries.split("\n").map((line) => {
+            const [name, ...linkParts] = line.split("|")
+            return { name: name.trim(), gmapsLink: linkParts.join("|").trim() || undefined }
+        }).filter((theater) => theater.name)
+        if (!bulkTheaterCity.trim() || !theaters.length) return
+        setBulkAddingTheaters(true)
+        try {
+            const result = await bulkAddTheaters(bulkTheaterCity.trim(), theaters)
+            setTheaters((current) => [...current, ...result.created])
+            setBulkTheaterEntries("")
+            const notes = [
+                result.created.length ? `${result.created.length} added` : "",
+                result.skipped.length ? `${result.skipped.length} already existed` : "",
+                result.invalid.length ? `${result.invalid.length} invalid` : "",
+            ].filter(Boolean).join(", ")
+            alert(`Bulk import complete: ${notes || "nothing changed"}.`)
+        } catch (err) {
+            console.error("Failed to bulk add theaters", err)
+            alert(err instanceof Error ? err.message : "Failed to bulk add theaters")
+        } finally {
+            setBulkAddingTheaters(false)
         }
     }
 
@@ -1030,6 +1060,21 @@ export default function AdminPage() {
                                 </div>
                                 <Button type="submit" disabled={addingTheater || !newTheaterName.trim()} className="shrink-0">
                                     {addingTheater ? <Loader2 className="h-4 w-4 animate-spin" /> : "Add Theater"}
+                                </Button>
+                            </form>
+
+                            <form onSubmit={handleBulkAddTheaters} className="grid gap-3 rounded-lg border border-dashed p-4 md:grid-cols-[minmax(12rem,1fr)_minmax(0,2fr)_auto] md:items-end">
+                                <div className="space-y-2">
+                                    <Label htmlFor="bulk-theater-city">City / location</Label>
+                                    <Input id="bulk-theater-city" placeholder="Tiruppur" value={bulkTheaterCity} onChange={(e) => setBulkTheaterCity(e.target.value)} disabled={bulkAddingTheaters} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="bulk-theaters">Bulk import</Label>
+                                    <Textarea id="bulk-theaters" rows={4} placeholder={"One theater per line: Name | Google Maps URL\nSri Sakthi Cinemas | https://maps.google.com/..."} value={bulkTheaterEntries} onChange={(e) => setBulkTheaterEntries(e.target.value)} disabled={bulkAddingTheaters} />
+                                    <p className="text-xs text-muted-foreground">The city applies to every line. Existing theaters are skipped, and a missing Maps link is filled in when available.</p>
+                                </div>
+                                <Button type="submit" disabled={bulkAddingTheaters || !bulkTheaterCity.trim() || !bulkTheaterEntries.trim()} className="shrink-0">
+                                    {bulkAddingTheaters ? <Loader2 className="h-4 w-4 animate-spin" /> : "Bulk add theaters"}
                                 </Button>
                             </form>
 
