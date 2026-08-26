@@ -56,6 +56,7 @@ export default function AdminPage() {
     const [addingTheater, setAddingTheater] = useState(false)
     const [bulkTheaterCity, setBulkTheaterCity] = useState("")
     const [bulkTheaterEntries, setBulkTheaterEntries] = useState("")
+    const [bulkTheaterPreview, setBulkTheaterPreview] = useState<Array<{ name: string; gmapsLink?: string }>>([])
     const [bulkAddingTheaters, setBulkAddingTheaters] = useState(false)
     const [localLoading, setLocalLoading] = useState(true)
     
@@ -512,18 +513,24 @@ export default function AdminPage() {
         }
     }
 
-    const handleBulkAddTheaters = async (e: React.FormEvent) => {
+    const parseBulkTheaters = (e: React.FormEvent) => {
         e.preventDefault()
         const theaters = bulkTheaterEntries.split("\n").map((line) => {
             const [name, ...linkParts] = line.split("|")
             return { name: name.trim(), gmapsLink: linkParts.join("|").trim() || undefined }
         }).filter((theater) => theater.name)
         if (!bulkTheaterCity.trim() || !theaters.length) return
+        setBulkTheaterPreview(theaters)
+    }
+
+    const handleBulkAddTheaters = async () => {
+        if (!bulkTheaterCity.trim() || !bulkTheaterPreview.length) return
         setBulkAddingTheaters(true)
         try {
-            const result = await bulkAddTheaters(bulkTheaterCity.trim(), theaters)
+            const result = await bulkAddTheaters(bulkTheaterCity.trim(), bulkTheaterPreview)
             setTheaters((current) => [...current, ...result.created])
             setBulkTheaterEntries("")
+            setBulkTheaterPreview([])
             const notes = [
                 result.created.length ? `${result.created.length} added` : "",
                 result.skipped.length ? `${result.skipped.length} already existed` : "",
@@ -1063,20 +1070,30 @@ export default function AdminPage() {
                                 </Button>
                             </form>
 
-                            <form onSubmit={handleBulkAddTheaters} className="grid gap-3 rounded-lg border border-dashed p-4 md:grid-cols-[minmax(12rem,1fr)_minmax(0,2fr)_auto] md:items-end">
+                            <form onSubmit={parseBulkTheaters} className="grid gap-3 rounded-lg border border-dashed p-4 md:grid-cols-[minmax(12rem,1fr)_minmax(0,2fr)_auto] md:items-end">
                                 <div className="space-y-2">
                                     <Label htmlFor="bulk-theater-city">City / location</Label>
-                                    <Input id="bulk-theater-city" placeholder="Tiruppur" value={bulkTheaterCity} onChange={(e) => setBulkTheaterCity(e.target.value)} disabled={bulkAddingTheaters} />
+                                    <Input id="bulk-theater-city" placeholder="Tiruppur" value={bulkTheaterCity} onChange={(e) => { setBulkTheaterCity(e.target.value); setBulkTheaterPreview([]) }} disabled={bulkAddingTheaters} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="bulk-theaters">Bulk import</Label>
-                                    <Textarea id="bulk-theaters" rows={4} placeholder={"One theater per line: Name | Google Maps URL\nSri Sakthi Cinemas | https://maps.google.com/..."} value={bulkTheaterEntries} onChange={(e) => setBulkTheaterEntries(e.target.value)} disabled={bulkAddingTheaters} />
+                                    <Textarea id="bulk-theaters" rows={4} placeholder={"One theater per line: Name | Google Maps URL\nSri Sakthi Cinemas | https://maps.google.com/..."} value={bulkTheaterEntries} onChange={(e) => { setBulkTheaterEntries(e.target.value); setBulkTheaterPreview([]) }} disabled={bulkAddingTheaters} />
                                     <p className="text-xs text-muted-foreground">The city applies to every line. Existing theaters are skipped, and a missing Maps link is filled in when available.</p>
                                 </div>
                                 <Button type="submit" disabled={bulkAddingTheaters || !bulkTheaterCity.trim() || !bulkTheaterEntries.trim()} className="shrink-0">
-                                    {bulkAddingTheaters ? <Loader2 className="h-4 w-4 animate-spin" /> : "Bulk add theaters"}
+                                    Preview import
                                 </Button>
                             </form>
+
+                            {bulkTheaterPreview.length > 0 && (
+                                <div className="overflow-hidden rounded-lg border bg-card">
+                                    <div className="flex flex-col gap-2 border-b bg-muted/30 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <div><p className="font-medium">Review {bulkTheaterPreview.length} theaters</p><p className="text-xs text-muted-foreground">All entries will be added to {bulkTheaterCity.trim()}.</p></div>
+                                        <div className="flex gap-2"><Button type="button" variant="ghost" size="sm" onClick={() => setBulkTheaterPreview([])} disabled={bulkAddingTheaters}>Edit list</Button><Button type="button" size="sm" onClick={handleBulkAddTheaters} disabled={bulkAddingTheaters}>{bulkAddingTheaters && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Confirm & add</Button></div>
+                                    </div>
+                                    <div className="max-h-72 overflow-auto"><table className="w-full text-sm"><thead className="sticky top-0 bg-card"><tr className="border-b text-left"><th className="px-4 py-2 font-medium">#</th><th className="px-4 py-2 font-medium">Theater</th><th className="px-4 py-2 font-medium">City</th><th className="px-4 py-2 font-medium">Maps</th></tr></thead><tbody>{bulkTheaterPreview.map((theater, index) => <tr key={`${theater.name}-${index}`} className="border-b last:border-0"><td className="px-4 py-2 text-muted-foreground">{index + 1}</td><td className="px-4 py-2 font-medium">{theater.name}</td><td className="px-4 py-2 text-muted-foreground">{bulkTheaterCity.trim()}</td><td className="px-4 py-2">{theater.gmapsLink ? <a href={theater.gmapsLink} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Open map</a> : <span className="text-muted-foreground">No link</span>}</td></tr>)}</tbody></table></div>
+                                </div>
+                            )}
 
                             {/* Theater Filters */}
                             <div className="flex flex-col sm:flex-row items-center gap-3 pt-2">
