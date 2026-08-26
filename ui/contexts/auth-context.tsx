@@ -12,7 +12,7 @@ import {
 } from "firebase/auth"
 import { auth, googleProvider } from "@/lib/firebase"
 import type { UserProfile } from "@/lib/types"
-import { getMySettings } from "@/services/user-service"
+import { getMySession } from "@/services/user-service"
 
 interface AuthContextType {
   user: User | null
@@ -42,11 +42,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       if (firebaseUser) {
         try {
-          // Fetch user profile from Backend API
-          const profile = await getMySettings(firebaseUser)
+          // Fetch only identity and access flags. History is loaded by the
+          // dashboard/settings pages, so navigation is not blocked by it.
+          const profile = await getMySession(firebaseUser)
           setUserProfile(profile)
         } catch (err) {
-          console.error("Auth context error: Failed to fetch user profile", err)
+          console.error("Auth context error: Failed to fetch signed-in session", err)
           // Fallback minimal profile if API fails (e.g. new user not yet synced)
           setUserProfile({
             uid: firebaseUser.uid,
@@ -85,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Sync to backend with displayName
     const token = await userCredential.user.getIdToken()
     const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
-    await fetch(`${apiBase}/users/me`, {
+    await fetch(`${apiBase}/users/session`, {
       method: "GET",
       headers: { "Authorization": `Bearer ${token}` }
     })
