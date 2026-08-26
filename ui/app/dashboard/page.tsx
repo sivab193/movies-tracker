@@ -83,6 +83,15 @@ export default function DashboardPage() {
         if (contextProfile) setProfile(contextProfile)
     }, [contextProfile])
 
+    // Watch history is deliberately loaded by this page rather than the
+    // global auth provider, keeping initial navigation and admin visibility fast.
+    useEffect(() => {
+        if (!user) return
+        getMySettings().then(setProfile).catch((err) => {
+            console.error("Failed to load watch history", err)
+        })
+    }, [user])
+
     const refreshData = async () => {
         if (!user) return
         try {
