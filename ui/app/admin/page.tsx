@@ -28,7 +28,7 @@ type AdminCard = {
     title: string
     description: string
     href: string
-    icon: React.ComponentType<{ className?: string }>
+    icon: any
     count?: number | string
     tone: string
     action: string
@@ -98,89 +98,16 @@ export default function AdminPage() {
     if (!user || !userProfile?.isAdmin) return null
 
     const cards: AdminCard[] = [
-        {
-            title: "Movies",
-            description: "Manage movie metadata, posters, verification, and title-card timing.",
-            href: "/admin/tools#movies",
-            icon: Film,
-            count: counts.movies,
-            tone: "from-rose-500/20 to-red-500/5 border-rose-500/25",
-            action: "Open movie tools",
-        },
-        {
-            title: "Series",
-            description: "Maintain TV series entries and streaming availability.",
-            href: "/admin/tools#series",
-            icon: Tv,
-            tone: "from-red-500/20 to-orange-500/5 border-red-500/25",
-            action: "Open series tools",
-        },
-        {
-            title: "Users",
-            description: "Review accounts, roles, leaderboard bans, profiles, and joined dates.",
-            href: "/admin/users",
-            icon: Users,
-            count: counts.users,
-            tone: "from-slate-500/20 to-zinc-500/5 border-slate-500/25",
-            action: "Manage users",
-        },
-        {
-            title: "Theaters",
-            description: "Add, import, verify, and clean up approved theater records.",
-            href: "/admin/tools#theaters",
-            icon: MapPin,
-            count: counts.theaters,
-            tone: "from-pink-500/20 to-rose-500/5 border-pink-500/25",
-            action: "Open theater tools",
-        },
-        {
-            title: "OTT Catalog",
-            description: "Browse every linked streaming title grouped by provider.",
-            href: "/admin/tools#ott-catalog",
-            icon: MonitorPlay,
-            tone: "from-fuchsia-500/20 to-purple-500/5 border-fuchsia-500/25",
-            action: "Open catalog",
-        },
-        {
-            title: "Watch Orders",
-            description: "Edit curated watch-order links and published descriptions.",
-            href: "/admin/tools#watch-orders",
-            icon: BadgeCheck,
-            tone: "from-orange-500/20 to-amber-500/5 border-orange-500/25",
-            action: "Manage orders",
-        },
-        {
-            title: "Cards & Offers",
-            description: "Manage bank-card and movie-ticket offer listings.",
-            href: "/admin/tools#cards-offers",
-            icon: CreditCard,
-            tone: "from-rose-500/20 to-pink-500/5 border-rose-500/25",
-            action: "Open offers",
-        },
-        {
-            title: "OMDb API Keys",
-            description: "Monitor API keys, health, and usage limits.",
-            href: "/admin/tools#omdb-api-keys",
-            icon: KeyRound,
-            tone: "from-violet-500/20 to-indigo-500/5 border-violet-500/25",
-            action: "Manage keys",
-        },
-        {
-            title: "Cleanup",
-            description: "Scan duplicate movies and theaters, then merge them safely.",
-            href: "/admin/tools#database-deduplication-cleanup",
-            icon: Database,
-            tone: "from-amber-500/20 to-yellow-500/5 border-amber-500/30",
-            action: "Open cleanup",
-        },
-        {
-            title: "Data Quality",
-            description: "Find missing runtime, cover art, and reported title-card time gaps.",
-            href: "/admin/tools#data-quality",
-            icon: ShieldAlert,
-            tone: "from-sky-500/20 to-cyan-500/5 border-sky-500/30",
-            action: "Scan quality",
-        },
+        { title: "Movies", description: "Manage movie metadata, posters, verification, and title-card timing.", href: "/admin/tools#movies", icon: Film, count: counts.movies, tone: "from-rose-500/20 to-red-500/5 border-rose-500/25", action: "Open movie tools" },
+        { title: "Series", description: "Maintain TV series entries and streaming availability.", href: "/admin/tools#series", icon: Tv, tone: "from-red-500/20 to-orange-500/5 border-red-500/25", action: "Open series tools" },
+        { title: "Users", description: "Review accounts, roles, leaderboard bans, profiles, and joined dates.", href: "/admin/users", icon: Users, count: counts.users, tone: "from-slate-500/20 to-zinc-500/5 border-slate-500/25", action: "Manage users" },
+        { title: "Theaters", description: "Add, import, verify, and clean up approved theater records.", href: "/admin/tools#theaters", icon: MapPin, count: counts.theaters, tone: "from-pink-500/20 to-rose-500/5 border-pink-500/25", action: "Open theater tools" },
+        { title: "OTT Catalog", description: "Browse every linked streaming title grouped by provider.", href: "/admin/tools#ott-catalog", icon: MonitorPlay, tone: "from-fuchsia-500/20 to-purple-500/5 border-fuchsia-500/25", action: "Open catalog" },
+        { title: "Watch Orders", description: "Edit curated watch-order links and published descriptions.", href: "/admin/tools#watch-orders", icon: BadgeCheck, tone: "from-orange-500/20 to-amber-500/5 border-orange-500/25", action: "Manage orders" },
+        { title: "Cards & Offers", description: "Manage bank-card and movie-ticket offer listings.", href: "/admin/tools#cards-offers", icon: CreditCard, tone: "from-rose-500/20 to-pink-500/5 border-rose-500/25", action: "Open offers" },
+        { title: "OMDb API Keys", description: "Monitor API keys, health, and usage limits.", href: "/admin/tools#omdb-api-keys", icon: KeyRound, tone: "from-violet-500/20 to-indigo-500/5 border-violet-500/25", action: "Manage keys" },
+        { title: "Cleanup", description: "Scan duplicate movies and theaters, then merge them safely.", href: "/admin/tools#database-deduplication-cleanup", icon: Database, tone: "from-amber-500/20 to-yellow-500/5 border-amber-500/30", action: "Open cleanup" },
+        { title: "Data Quality", description: "Find missing runtime, cover art, and reported title-card time gaps.", href: "/admin/tools#data-quality", icon: ShieldAlert, tone: "from-sky-500/20 to-cyan-500/5 border-sky-500/30", action: "Scan quality" },
     ]
 
     return (
@@ -195,21 +122,15 @@ export default function AdminPage() {
                         </div>
                         <h1 className="text-4xl font-bold tracking-tight">Admin Dashboard</h1>
                         <p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-                            Pick a management area instead of expanding a long list. The full legacy tool workspace is still available when a section has not been split out yet.
+                            Pick a management area instead of expanding a long list. The full legacy tool workspace is still available while each section is being split out.
                         </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
                         <Button asChild variant="outline" className="gap-2">
-                            <Link href="/admin/tools">
-                                Full Tools
-                                <ArrowRight className="h-4 w-4" />
-                            </Link>
+                            <Link href="/admin/tools">Full Tools <ArrowRight className="h-4 w-4" /></Link>
                         </Button>
                         <Button asChild className="gap-2">
-                            <Link href="/admin/users">
-                                Users
-                                <ArrowRight className="h-4 w-4" />
-                            </Link>
+                            <Link href="/admin/users">Users <ArrowRight className="h-4 w-4" /></Link>
                         </Button>
                     </div>
                 </div>
@@ -225,20 +146,10 @@ export default function AdminPage() {
                     {cards.map((card) => {
                         const Icon = card.icon
                         return (
-                            <Link
-                                key={card.title}
-                                href={card.href}
-                                className={`group rounded-2xl border bg-gradient-to-br ${card.tone} p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lg`}
-                            >
+                            <Link key={card.title} href={card.href} className={`group rounded-2xl border bg-gradient-to-br ${card.tone} p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-primary/50 hover:shadow-lg`}>
                                 <div className="mb-4 flex items-start justify-between gap-4">
-                                    <div className="rounded-xl border border-white/10 bg-background/70 p-2.5">
-                                        <Icon className="h-5 w-5 text-primary" />
-                                    </div>
-                                    {card.count !== undefined && (
-                                        <span className="rounded-full border border-border bg-background/80 px-2.5 py-1 text-xs font-bold text-muted-foreground">
-                                            {card.count}
-                                        </span>
-                                    )}
+                                    <div className="rounded-xl border border-white/10 bg-background/70 p-2.5"><Icon className="h-5 w-5 text-primary" /></div>
+                                    {card.count !== undefined && <span className="rounded-full border border-border bg-background/80 px-2.5 py-1 text-xs font-bold text-muted-foreground">{card.count}</span>}
                                 </div>
                                 <h2 className="text-lg font-bold tracking-tight">{card.title}</h2>
                                 <p className="mt-1.5 min-h-10 text-sm text-muted-foreground">{card.description}</p>
