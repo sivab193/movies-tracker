@@ -16,6 +16,20 @@ import {
 import Link from "next/link"
 import { Header } from "@/components/header"
 
+function formatJoinedDate(user: any) {
+    const rawDate = user.createdAt || user.joinedAt || user.created_at || user.dateJoined || user.metadata?.creationTime
+    if (!rawDate) return "N/A"
+
+    const date = new Date(rawDate)
+    if (Number.isNaN(date.getTime())) return "N/A"
+
+    return date.toLocaleDateString(undefined, {
+        year: "numeric",
+        month: "short",
+        day: "numeric",
+    })
+}
+
 export default function AdminUsersPage() {
     const { user, userProfile, loading: authLoading } = useAuth()
     const [users, setUsers] = useState<any[]>([])
@@ -51,7 +65,6 @@ export default function AdminUsersPage() {
     const handleBanToggle = async (uid: string) => {
         try {
             await toggleLeaderboardBan(uid)
-            // Update local state
             setUsers(users.map(u =>
                 u.firebaseUid === uid ? { ...u, isBannedFromLeaderboard: !u.isBannedFromLeaderboard } : u
             ))
@@ -113,9 +126,17 @@ export default function AdminUsersPage() {
         <div className="min-h-screen bg-background flex flex-col">
             <Header />
             <main className="flex-1 mx-auto max-w-7xl w-full px-4 py-8 space-y-6">
-                <div className="flex items-center gap-2">
-                    <Shield className="h-6 w-6 text-primary" />
-                    <h1 className="text-3xl font-bold">User Management</h1>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-2">
+                        <Shield className="h-6 w-6 text-primary" />
+                        <h1 className="text-3xl font-bold">User Management</h1>
+                        <span className="rounded-full border border-border bg-muted px-3 py-1 text-sm font-semibold text-muted-foreground">
+                            {users.length} users
+                        </span>
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                        Showing {filteredAndSortedUsers.length} of {users.length}
+                    </div>
                 </div>
 
                 {error && (
@@ -124,7 +145,7 @@ export default function AdminUsersPage() {
                     </div>
                 )}
 
-                <div className="rounded-md border">
+                <div className="rounded-md border overflow-x-auto">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -143,6 +164,7 @@ export default function AdminUsersPage() {
                                     </div>
                                 </TableHead>
                                 <TableHead>Email</TableHead>
+                                <TableHead>Date Joined</TableHead>
                                 <TableHead>
                                     <div className="flex items-center gap-2">
                                         Stats
@@ -177,7 +199,7 @@ export default function AdminUsersPage() {
                         <TableBody>
                             {filteredAndSortedUsers.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                                         No users found
                                     </TableCell>
                                 </TableRow>
@@ -192,6 +214,7 @@ export default function AdminUsersPage() {
                                             </div>
                                         </TableCell>
                                         <TableCell>{u.email}</TableCell>
+                                        <TableCell className="whitespace-nowrap text-sm text-muted-foreground">{formatJoinedDate(u)}</TableCell>
                                         <TableCell>
                                             <div className="text-sm text-muted-foreground">
                                                 {u.totalMoviesWatched || 0} movies
