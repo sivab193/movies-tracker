@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { getMySettings, updateUserSettings, requestAdminAccess } from "@/services/user-service"
 import { useAuth } from "@/contexts/auth-context"
+import { SettingsLayoutPolish } from "@/components/settings-layout-polish"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -233,6 +234,7 @@ export default function SettingsPage() {
 
     return (
         <div className="min-h-screen bg-background text-foreground">
+            <SettingsLayoutPolish />
             <Header />
 
             <main className="mx-auto max-w-4xl px-4 py-8 md:py-12">
@@ -249,7 +251,6 @@ export default function SettingsPage() {
                 )}
 
                 <div className="grid gap-8">
-                    {/* Display Name Section */}
                     <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
                         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
                             <div>
@@ -265,12 +266,7 @@ export default function SettingsPage() {
                                 </div>
                             ) : (
                                 <div className="flex w-full items-center gap-2 sm:w-auto">
-                                    <Input
-                                        value={displayName}
-                                        onChange={(e) => setDisplayName(e.target.value)}
-                                        className="w-48"
-                                        placeholder="Enter display name"
-                                    />
+                                    <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="w-48" placeholder="Enter display name" />
                                     <Button size="sm" onClick={handleDisplayNameSave} disabled={saving}>Save</Button>
                                     <Button variant="outline" size="sm" onClick={() => { setDisplayName(savedDisplayName); setEditingName(false) }} disabled={saving}>Cancel</Button>
                                 </div>
@@ -278,253 +274,75 @@ export default function SettingsPage() {
                         </div>
                     </section>
 
-                    {/* Custom Profile URL / Username Section */}
                     <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
                         <div className="flex flex-col gap-4">
                             <div>
                                 <div>
-                                    <h2 className="text-xl font-semibold flex items-center gap-2">
-                                        <LinkIcon className="h-5 w-5 text-primary" />
-                                        Custom Profile URL (/u/username)
-                                    </h2>
-                                    <p className="text-sm text-muted-foreground">
-                                        Claim a short, clean username (5-10 characters) for your public profile link
-                                    </p>
+                                    <h2 className="text-xl font-semibold flex items-center gap-2"><LinkIcon className="h-5 w-5 text-primary" />Custom Profile URL (/u/username)</h2>
+                                    <p className="text-sm text-muted-foreground">Claim a short, clean username (5-10 characters) for your public profile link</p>
                                 </div>
                                 {!savedCustomUrl && !editingCustomUrl ? (
                                     <div className="mt-4 flex w-full flex-col items-start justify-between gap-4 rounded-xl border border-primary/30 bg-primary/5 p-4 sm:flex-row sm:items-center">
-                                        <div>
-                                            <h3 className="font-semibold text-foreground text-sm flex items-center gap-1.5">
-                                                ✨ Claim your short profile URL now!
-                                            </h3>
-                                            <p className="text-xs text-muted-foreground mt-0.5">
-                                                Replace your long database ID with a clean, memorable username within 10 characters (e.g. /u/siv19).
-                                            </p>
-                                        </div>
-                                        <Button size="sm" onClick={() => { setEditingCustomUrl(true); setCustomUrlError(null); }} className="shrink-0">
-                                            Claim URL Now
-                                        </Button>
+                                        <div><h3 className="font-semibold text-foreground text-sm flex items-center gap-1.5">✨ Claim your short profile URL now!</h3><p className="text-xs text-muted-foreground mt-0.5">Replace your long database ID with a clean, memorable username within 10 characters (e.g. /u/siv19).</p></div>
+                                        <Button size="sm" onClick={() => { setEditingCustomUrl(true); setCustomUrlError(null); }} className="shrink-0">Claim URL Now</Button>
                                     </div>
                                 ) : !editingCustomUrl ? (
-                                    <div className="mt-4 flex items-center gap-3">
-                                        <span className="font-mono font-medium text-primary">
-                                            /u/{savedCustomUrl}
-                                        </span>
-                                        <Button variant="ghost" size="sm" onClick={() => { setEditingCustomUrl(true); setCustomUrlError(null); }}>
-                                            <Pencil className="h-4 w-4" />
-                                        </Button>
-                                    </div>
+                                    <div className="mt-4 flex items-center gap-3"><span className="font-mono font-medium text-primary">/u/{savedCustomUrl}</span><Button variant="ghost" size="sm" onClick={() => { setEditingCustomUrl(true); setCustomUrlError(null); }}><Pencil className="h-4 w-4" /></Button></div>
                                 ) : (
-                                    <div className="mt-4 flex w-full flex-col gap-2">
-                                        <div className="flex flex-wrap items-center gap-2">
-                                            <span className="text-sm font-mono text-muted-foreground">/u/</span>
-                                            <Input
-                                                value={customUrl}
-                                                onChange={(e) => setCustomUrl(e.target.value)}
-                                                className="w-44 font-mono text-sm"
-                                                placeholder="myname (5-10 chars)"
-                                                maxLength={10}
-                                            />
-                                            <Button size="sm" onClick={handleSaveCustomUrl} disabled={saving}>
-                                                {saving ? "Saving..." : "Save"}
-                                            </Button>
-                                            <Button variant="outline" size="sm" onClick={() => { setCustomUrl(savedCustomUrl); setEditingCustomUrl(false); setCustomUrlError(null); }} disabled={saving}>
-                                                Cancel
-                                            </Button>
-                                        </div>
-                                    </div>
+                                    <div className="mt-4 flex w-full flex-col gap-2"><div className="flex flex-wrap items-center gap-2"><span className="text-sm font-mono text-muted-foreground">/u/</span><Input value={customUrl} onChange={(e) => setCustomUrl(e.target.value)} className="w-44 font-mono text-sm" placeholder="myname (5-10 chars)" maxLength={10} /><Button size="sm" onClick={handleSaveCustomUrl} disabled={saving}>{saving ? "Saving..." : "Save"}</Button><Button variant="outline" size="sm" onClick={() => { setCustomUrl(savedCustomUrl); setEditingCustomUrl(false); setCustomUrlError(null); }} disabled={saving}>Cancel</Button></div></div>
                                 )}
                             </div>
-                            {customUrlError && (
-                                <div className="flex items-center gap-2 text-xs text-destructive font-medium bg-destructive/10 p-2.5 rounded-lg border border-destructive/20">
-                                    <AlertCircle className="h-4 w-4 shrink-0" />
-                                    <span>{customUrlError}</span>
-                                </div>
-                            )}
+                            {customUrlError && <div className="flex items-center gap-2 text-xs text-destructive font-medium bg-destructive/10 p-2.5 rounded-lg border border-destructive/20"><AlertCircle className="h-4 w-4 shrink-0" /><span>{customUrlError}</span></div>}
                             <div className="flex flex-col gap-3 border-t border-border/40 pt-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-                                {savedCustomUrl ? (
-                                    <>
-                                        <span className="truncate">
-                                            Profile Link: <strong className="font-mono text-foreground">{typeof window !== "undefined" ? window.location.origin : ""}/u/{savedCustomUrl}</strong>
-                                        </span>
-                                        <Button
-                                            variant="outline"
-                                            size="sm"
-                                            onClick={handleCopyProfileUrl}
-                                            className="h-7 gap-1.5 rounded-lg shrink-0 text-xs"
-                                        >
-                                            {copiedUrl ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
-                                            {copiedUrl ? "Copied!" : "Copy Link"}
-                                        </Button>
-                                    </>
-                                ) : (
-                                    <span className="text-amber-500/90 font-medium">
-                                        ⚠️ You are currently using a long database ID. Claim a short username above!
-                                    </span>
-                                )}
+                                {savedCustomUrl ? <><span className="truncate">Profile Link: <strong className="font-mono text-foreground">{typeof window !== "undefined" ? window.location.origin : ""}/u/{savedCustomUrl}</strong></span><Button variant="outline" size="sm" onClick={handleCopyProfileUrl} className="h-7 gap-1.5 rounded-lg shrink-0 text-xs">{copiedUrl ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}{copiedUrl ? "Copied!" : "Copy Link"}</Button></> : <span className="text-amber-500/90 font-medium">⚠️ You are currently using a long database ID. Claim a short username above!</span>}
                             </div>
-                            {savedCustomUrl && !isPublic && (
-                                <p className="text-xs text-amber-500/90">Your profile is private until you enable Public Profile below.</p>
-                            )}
+                            {savedCustomUrl && !isPublic && <p className="text-xs text-amber-500/90">Your profile is private until you enable Public Profile below.</p>}
                         </div>
                     </section>
 
-                    {/* Leaderboard Participation */}
                     <section className={`rounded-2xl border p-6 shadow-sm ring-1 transition-colors ${joinedLeaderboard ? 'border-border bg-card ring-transparent' : 'border-primary/20 bg-primary/5 ring-primary/10'}`}>
                         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                             <div>
-                                <h2 className={`flex items-center gap-2 text-xl font-bold ${joinedLeaderboard ? 'text-foreground' : 'text-primary'}`}>
-                                    <Trophy className={`h-5 w-5 ${joinedLeaderboard ? 'text-yellow-500' : 'text-primary'}`} />
-                                    {joinedLeaderboard ? "Leaderboard Participation" : "Join the Leaderboard"}
-                                </h2>
-                                <p className="mt-1 text-sm text-muted-foreground text-balance">
-                                    {joinedLeaderboard 
-                                        ? "You are currently participating in the global runtime leaderboard. Your display name and total runtime are ranked against other users." 
-                                        : "Compare your movie watch stats with other users. Once you join, your name and total runtime will be visible on the leaderboard."}
-                                </p>
+                                <h2 className={`flex items-center gap-2 text-xl font-bold ${joinedLeaderboard ? 'text-foreground' : 'text-primary'}`}><Trophy className={`h-5 w-5 ${joinedLeaderboard ? 'text-yellow-500' : 'text-primary'}`} />{joinedLeaderboard ? "Leaderboard Participation" : "Join the Leaderboard"}</h2>
+                                <p className="mt-1 text-sm text-muted-foreground text-balance">{joinedLeaderboard ? "You are currently participating in the global runtime leaderboard. Your display name and total runtime are ranked against other users." : "Compare your movie watch stats with other users. Once you join, your name and total runtime will be visible on the leaderboard."}</p>
                                 <p className="mt-2 text-xs text-muted-foreground">Your display name and runtime are always visible on the leaderboard while you participate; profile controls apply to your direct profile.</p>
                             </div>
-                            {joinedLeaderboard ? (
-                                <Button variant="outline" onClick={handleQuitLeaderboard} className="rounded-full px-6 border-destructive/30 text-destructive hover:bg-destructive/10">
-                                    Quit Leaderboard
-                                </Button>
-                            ) : (
-                                <Button onClick={() => setShowLeaderboardConfirm(true)} className="rounded-full px-8">
-                                    Join Now
-                                </Button>
-                            )}
+                            {joinedLeaderboard ? <Button variant="outline" onClick={handleQuitLeaderboard} className="rounded-full px-6 border-destructive/30 text-destructive hover:bg-destructive/10">Quit Leaderboard</Button> : <Button onClick={() => setShowLeaderboardConfirm(true)} className="rounded-full px-8">Join Now</Button>}
                         </div>
                     </section>
 
-                    {!isAdminState && (
-                        <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-                            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                                <div>
-                                    <h2 className="text-xl font-semibold">Admin Access</h2>
-                                    <p className="text-sm text-muted-foreground">{adminRequestStatus === 'PENDING' ? 'Your request is pending approval.' : 'Request access to manage movies and database.'}</p>
-                                </div>
-                                {adminRequestStatus === 'PENDING' ? (
-                                    <Button disabled variant="outline">Request Pending</Button>
-                                ) : adminRequestStatus === 'APPROVED' ? (
-                                    <Button disabled variant="outline" className="text-green-500">Access Granted</Button>
-                                ) : (
-                                    <Button onClick={handleRequestAdmin} variant="outline">Request Access</Button>
-                                )}
-                            </div>
-                        </section>
-                    )}
+                    {!isAdminState && <section className="rounded-2xl border border-border bg-card p-6 shadow-sm"><div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="text-xl font-semibold">Admin Access</h2><p className="text-sm text-muted-foreground">{adminRequestStatus === 'PENDING' ? 'Your request is pending approval.' : 'Request access to manage movies and database.'}</p></div>{adminRequestStatus === 'PENDING' ? <Button disabled variant="outline">Request Pending</Button> : adminRequestStatus === 'APPROVED' ? <Button disabled variant="outline" className="text-green-500">Access Granted</Button> : <Button onClick={handleRequestAdmin} variant="outline">Request Access</Button>}</div></section>}
 
-                    {/* Privacy Section */}
                     <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
                         <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                                <h2 className="text-xl font-semibold">Public Profile Visibility</h2>
-                                <p className="text-sm text-muted-foreground">Publish a profile that can be opened from the leaderboard or a direct link.</p>
-                            </div>
-                            <div className="flex items-center gap-2 rounded-full bg-muted px-3 py-1">
-                                {isPublic ? <Eye className="h-4 w-4 text-green-500" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}
-                                <span className="text-xs font-semibold uppercase">{isPublic ? "Public" : "Private"}</span>
-                            </div>
+                            <div><h2 className="text-xl font-semibold">Public Profile Visibility</h2><p className="text-sm text-muted-foreground">Publish a profile that can be opened from the leaderboard or a direct link.</p></div>
+                            <div className="flex items-center gap-2 rounded-full bg-muted px-3 py-1">{isPublic ? <Eye className="h-4 w-4 text-green-500" /> : <EyeOff className="h-4 w-4 text-muted-foreground" />}<span className="text-xs font-semibold uppercase">{isPublic ? "Public" : "Private"}</span></div>
                         </div>
 
                         <div className="space-y-6">
                             <div className="flex flex-col gap-4 border-b border-border pb-6 sm:flex-row sm:items-center sm:justify-between">
-                                <Label htmlFor="public-toggle" className="flex flex-col gap-1 text-left cursor-pointer">
-                                    <span className="text-base font-semibold">Enable Public Profile</span>
-                                    <span className="font-normal text-muted-foreground">Allow others to open your profile from the leaderboard or a direct link.</span>
+                                <Label htmlFor="public-toggle" className="flex min-w-0 flex-1 flex-col items-start gap-1 text-left cursor-pointer">
+                                    <span className="block w-full text-base font-semibold">Enable Public Profile</span>
+                                    <span className="block w-full font-normal text-muted-foreground">Allow others to open your profile from the leaderboard or a direct link.</span>
                                 </Label>
-                                <Switch
-                                    id="public-toggle"
-                                    checked={isPublic}
-                                    onCheckedChange={handlePublicVisibilityChange}
-                                    className="shrink-0"
-                                    disabled={saving}
-                                />
+                                <Switch id="public-toggle" checked={isPublic} onCheckedChange={handlePublicVisibilityChange} className="shrink-0 self-start sm:self-center" disabled={saving} />
                             </div>
 
-                            {isPublic && (
-                                <div className="space-y-4 pt-4 border-t border-border">
-                                    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Information to Show</h3>
-                                    <div className="grid gap-3">
-                                        {FIELDS.map((field) => (
-                                            <div key={field.id} className="flex items-center space-x-3">
-                                                <Checkbox
-                                                    id={field.id}
-                                                    checked={publicFields.includes(field.id)}
-                                                    onCheckedChange={(checked) => handlePublicFieldChange(field.id, checked === true)}
-                                                    disabled={saving}
-                                                />
-                                                <Label htmlFor={field.id} className="cursor-pointer font-medium">{field.label}</Label>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
+                            {isPublic && <div className="space-y-4 pt-4 border-t border-border"><h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Information to Show</h3><div className="grid gap-3">{FIELDS.map((field) => <div key={field.id} className="flex items-center space-x-3"><Checkbox id={field.id} checked={publicFields.includes(field.id)} onCheckedChange={(checked) => handlePublicFieldChange(field.id, checked === true)} disabled={saving} /><Label htmlFor={field.id} className="cursor-pointer font-medium">{field.label}</Label></div>)}</div></div>}
                         </div>
                     </section>
 
-                    {/* Hidden Movies Section */}
                     <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
-                        <div className="mb-6">
-                            <h2 className="text-xl font-semibold">Manage Hidden Movies</h2>
-                            <p className="text-sm text-muted-foreground">These movies will be hidden from your public detailed list, but will still count towards your total runtime.</p>
-                        </div>
-
-                        {watchHistory.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center py-10 text-center border-2 border-dashed rounded-xl">
-                                <Film className="h-10 w-10 text-muted-foreground/30 mb-2" />
-                                <p className="text-muted-foreground">No movies in your history yet.</p>
-                            </div>
-                        ) : (
-                            <div className="grid max-h-[400px] gap-2 overflow-y-auto pr-2 [scrollbar-color:var(--muted-foreground)_transparent] [scrollbar-width:thin]">
-                                {watchHistory.map((movie) => (
-                                    <div key={movie._id || `${movie.imdbId}-${movie.createdAt}`} className="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 p-3">
-                                        <div className="flex items-center gap-3">
-                                            <div className="h-8 w-6 rounded bg-muted flex items-center justify-center overflow-hidden">
-                                                {movie.moviePosterUrl ? <img src={movie.moviePosterUrl} alt="" className="h-full w-full object-cover" /> : <Film className="h-4 w-4 opacity-30" />}
-                                            </div>
-                                            <div>
-                                                <p className="text-sm font-medium leading-none">{movie.movieTitle || "Unknown movie"}</p>
-                                                {movie.timestamp && <p className="mt-1 text-xs text-muted-foreground">Watched {new Date(movie.timestamp).toLocaleDateString()}</p>}
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            {hiddenMovies.includes(movie.imdbId) ? (
-                                                <Button variant="outline" size="sm" className="h-8 px-3 gap-1.5 text-muted-foreground" onClick={() => toggleHiddenMovie(movie.imdbId)} disabled={saving}>
-                                                    <EyeOff className="h-3.5 w-3.5" />
-                                                    Hidden
-                                                </Button>
-                                            ) : (
-                                                <Button variant="ghost" size="sm" className="h-8 px-3 gap-1.5" onClick={() => toggleHiddenMovie(movie.imdbId)} disabled={saving}>
-                                                    <Eye className="h-3.5 w-3.5" />
-                                                    Visible
-                                                </Button>
-                                            )}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
+                        <div className="mb-6"><h2 className="text-xl font-semibold">Manage Hidden Movies</h2><p className="text-sm text-muted-foreground">These movies will be hidden from your public detailed list, but will still count towards your total runtime.</p></div>
+                        {watchHistory.length === 0 ? <div className="flex flex-col items-center justify-center py-10 text-center border-2 border-dashed rounded-xl"><Film className="h-10 w-10 text-muted-foreground/30 mb-2" /><p className="text-muted-foreground">No movies in your history yet.</p></div> : <div className="grid max-h-[400px] gap-2 overflow-y-auto pr-2 [scrollbar-color:var(--muted-foreground)_transparent] [scrollbar-width:thin]">{watchHistory.map((movie) => <div key={movie._id || `${movie.imdbId}-${movie.createdAt}`} className="flex items-center justify-between gap-3 rounded-lg border bg-muted/30 p-3"><div className="flex items-center gap-3"><div className="h-8 w-6 rounded bg-muted flex items-center justify-center overflow-hidden">{movie.moviePosterUrl ? <img src={movie.moviePosterUrl} alt="" className="h-full w-full object-cover" /> : <Film className="h-4 w-4 opacity-30" />}</div><div><p className="text-sm font-medium leading-none">{movie.movieTitle || "Unknown movie"}</p>{movie.timestamp && <p className="mt-1 text-xs text-muted-foreground">Watched {new Date(movie.timestamp).toLocaleDateString()}</p>}</div></div><div className="flex items-center gap-2">{hiddenMovies.includes(movie.imdbId) ? <Button variant="outline" size="sm" className="h-8 px-3 gap-1.5 text-muted-foreground" onClick={() => toggleHiddenMovie(movie.imdbId)} disabled={saving}><EyeOff className="h-3.5 w-3.5" />Hidden</Button> : <Button variant="ghost" size="sm" className="h-8 px-3 gap-1.5" onClick={() => toggleHiddenMovie(movie.imdbId)} disabled={saving}><Eye className="h-3.5 w-3.5" />Visible</Button>}</div></div>)}</div>}
                     </section>
-
                 </div>
             </main>
 
-            {/* Leaderboard Join Confirmation Dialog */}
             <AlertDialog open={showLeaderboardConfirm} onOpenChange={setShowLeaderboardConfirm}>
                 <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Join the Leaderboard?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Your display name and total watch runtime will be visible to everyone while you participate. You can leave at any time.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleJoinLeaderboard}>
-                            Join Now
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
+                    <AlertDialogHeader><AlertDialogTitle>Join the Leaderboard?</AlertDialogTitle><AlertDialogDescription>Your display name and total watch runtime will be visible to everyone while you participate. You can leave at any time.</AlertDialogDescription></AlertDialogHeader>
+                    <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleJoinLeaderboard}>Join Leaderboard</AlertDialogAction></AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
         </div>
