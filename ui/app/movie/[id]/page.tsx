@@ -116,9 +116,11 @@ export default function MovieDetailPage({ params }: { params: Promise<{ id: stri
   const hasTitleTime = Boolean(movie.submissionCount && movie.averageTimeSeconds && movie.averageTimeSeconds > 0)
 
   return (
-    <div className="min-h-screen bg-background md:h-screen md:overflow-hidden">
+    <div className="min-h-screen bg-background">
       <Header />
-      <main className="relative isolate mx-auto w-full max-w-7xl overflow-hidden px-3 py-3 sm:px-4 md:flex md:h-[calc(100dvh-4rem)] md:flex-col md:overflow-hidden">\n        {movie.posterUrl && <img src={movie.posterUrl} alt="" aria-hidden="true" className="pointer-events-none absolute inset-0 -z-20 h-full w-full scale-110 object-cover opacity-20 blur-3xl" />}\n        <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-background/45 via-background/85 to-background" />
+      <main className="relative isolate mx-auto w-full max-w-7xl overflow-hidden px-3 py-3 sm:px-4 md:py-5">
+        {movie.posterUrl && <img src={movie.posterUrl} alt="" aria-hidden="true" className="pointer-events-none absolute inset-0 -z-20 h-full w-full scale-110 object-cover opacity-20 blur-3xl" />}
+        <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-background/45 via-background/85 to-background" />
         <div className="flex shrink-0 items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
             <Button asChild variant="ghost" size="sm" className="h-8 shrink-0 gap-1.5 px-2 text-muted-foreground">
@@ -135,9 +137,9 @@ export default function MovieDetailPage({ params }: { params: Promise<{ id: stri
           </Button>
         </div>
 
-        <div className="relative mt-3 grid gap-4 overflow-hidden rounded-2xl border border-white/10 bg-background/55 p-3 shadow-2xl shadow-black/20 backdrop-blur-md md:min-h-0 md:flex-1 md:grid-cols-[180px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)] xl:gap-6 xl:p-5">
-          <aside className="mx-auto w-full max-w-[220px] self-start md:mx-0 md:max-w-none">
-            <div className="relative aspect-video overflow-hidden rounded-xl border bg-muted shadow-xl shadow-black/30 md:aspect-[2/3]">
+        <div className="relative mt-3 grid items-start gap-4 overflow-hidden rounded-2xl border border-white/10 bg-background/55 p-3 shadow-2xl shadow-black/20 backdrop-blur-md md:grid-cols-[180px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)] xl:gap-6 xl:p-5">
+          <aside className="mx-auto w-full max-w-[180px] self-start md:mx-0 md:max-w-none">
+            <div className="relative aspect-[2/3] overflow-hidden rounded-xl border bg-muted shadow-xl shadow-black/30">
               {movie.posterUrl ? (
                 <img src={movie.posterUrl} alt={`${movie.title} poster`} className="h-full w-full object-cover" />
               ) : (
@@ -152,7 +154,7 @@ export default function MovieDetailPage({ params }: { params: Promise<{ id: stri
             </div>
           </aside>
 
-          <section className="min-w-0 md:flex md:min-h-0 md:flex-col">
+          <section className="min-w-0">
             <div className="shrink-0 px-1 py-2 sm:px-3">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
@@ -171,7 +173,7 @@ export default function MovieDetailPage({ params }: { params: Promise<{ id: stri
               </div>
             </div>
 
-            <div className="mt-3 grid gap-3 md:min-h-0 md:flex-1 md:grid-cols-[minmax(0,1fr)_minmax(260px,0.82fr)] xl:grid-cols-[minmax(0,1.15fr)_300px]">
+            <div className="mt-3 grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(280px,0.82fr)] xl:grid-cols-[minmax(0,1.15fr)_300px]">
               <div className="flex min-w-0 flex-col gap-3">
                 {(directors.length > 0 || actors.length > 0) && (
                   <Card className="gap-0 py-3">
@@ -198,7 +200,7 @@ export default function MovieDetailPage({ params }: { params: Promise<{ id: stri
                 />
               </div>
 
-              <Card className="gap-0 py-3 md:min-h-0">
+              <Card className="gap-0 py-3">
                 <CardContent className="px-3">
                   <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold"><Clock className="h-4 w-4 text-primary" />Add title-card time</h2>
                   <SubmissionForm

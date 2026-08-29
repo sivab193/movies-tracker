@@ -14,12 +14,10 @@ import { AdminWatchOrders } from "@/components/admin-watch-orders"
 import { AdminCards } from "@/components/admin-cards"
 import { AdminSeries } from "@/components/admin-series"
 import { AdminOmdbKeys } from "@/components/admin-omdb-keys"
-import { AdminRequests } from "@/components/admin-requests"
 import { AdminOttCatalog } from "@/components/admin-ott-catalog"
-import { AdminWatchLinkReports } from "@/components/admin-watch-link-reports"
+import { AdminModeration } from "@/components/admin-moderation"
 import { WatchProviderEditor } from "@/components/watch-provider-editor"
 import type { WatchProvider } from "@/lib/types"
-import { getAdminRequests, resolveAdminRequest } from "@/services/user-service"
 import { getMovies, deleteMovie, clearMovieSubmissions, getTheaters, addTheater, bulkAddTheaters, updateTheater, deleteTheater, updateMovie, addMovie, fetchOmdbPreview, getTheaterDuplicates, mergeTheaterDuplicates, getMovieDuplicates, mergeMovieDuplicates, verifyTheater, verifyMovie, getMovieDataQuality, refreshMovieFromOmdb } from "@/services/api"
 import { formatTimeDisplay, resolveApiUrl, formatRuntimeMinutes } from "@/lib/types"
 import { Label } from "@/components/ui/label"
@@ -46,7 +44,6 @@ import {
 export default function AdminPage() {
     const { user, userProfile, loading: authLoading } = useAuth()
     const router = useRouter()
-    const [requests, setRequests] = useState<any[]>([])
     const [movies, setMovies] = useState<any[]>([])
     const [filteredMovies, setFilteredMovies] = useState<any[]>([])
     const [theaters, setTheaters] = useState<any[]>([])
@@ -152,13 +149,11 @@ export default function AdminPage() {
 
     const loadData = async () => {
         try {
-            const [reqs, moviesRes, theatersData] = await Promise.all([
-                getAdminRequests(),
+            const [moviesRes, theatersData] = await Promise.all([
                 getMovies(0, 20),
                 getTheaters()
             ])
             const moviesList = moviesRes?.movies || moviesRes || []
-            setRequests(reqs || [])
             setMovies(moviesList)
             setFilteredMovies(moviesList)
             setMovieTotal(moviesRes?.total || moviesList.length)
@@ -598,15 +593,6 @@ export default function AdminPage() {
         return () => clearTimeout(timer)
     }, [titleFilter, yearFilter, languageFilter, missingPosterFilter, avgTimeFilter])
 
-    const handleResolve = async (userId: string, action: 'APPROVE' | 'REJECT') => {
-        try {
-            await resolveAdminRequest(userId, action)
-            setRequests(requests.filter(r => r.id !== userId))
-        } catch (err) {
-            console.error(err)
-        }
-    }
-
     const handleDelete = async () => {
         if (!deleteTarget) return
         setDeleting(true)
@@ -652,67 +638,7 @@ export default function AdminPage() {
 
                 <div className="grid gap-8">
                     <div className="space-y-6">
-                            <AdminWatchLinkReports />
-                            <AdminRequests onApprove={(imdbId, type) => {
-                                if (type === 'series') {
-                                    window.dispatchEvent(new CustomEvent('open-add-series-modal', {
-                                        detail: { imdbId }
-                                    }))
-                                    // Scroll to the series section so the admin sees the pre-filled input
-                                    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })
-                                } else {
-                                    setModalMode("add")
-                                    setModalMovieId(null)
-                                    setModalTitle("")
-                                    setModalYear("")
-                                    setModalLanguage("English")
-                                    setModalReleaseDate("")
-                                    setModalRuntime("")
-                                    setModalImdbRating("")
-                                    setModalPosterUrl("")
-                                    setModalPosterFile(null)
-                                    setModalPosterPreview("")
-                                    setModalPosterType("url")
-                                    setModalWatchProviders([])
-                                    setModalStep(1)
-                                    setModalError(null)
-                                    setIsMovieModalOpen(true)
-                                    setModalImdbId(imdbId)
-                                }
-                            }} />
-                            {/* Access Requests */}
-                            {requests.length > 0 && (
-                                <CollapsibleSection
-                                    title={
-                                        <>
-                                            <ShieldAlert className="h-5 w-5 text-yellow-500" />
-                                            Access Requests ({requests.length})
-                                        </>
-                                    }
-                                    description="Manage user requests for admin access"
-                                >
-                                        <div className="space-y-4">
-                                            {requests.map((request) => (
-                                                <div key={request.id} className="flex items-center justify-between p-4 border rounded-lg">
-                                                    <div>
-                                                        <p className="font-medium">{request.email}</p>
-                                                        <p className="text-sm text-muted-foreground">
-                                                            Requested: {request.requestedAt ? new Date(request.requestedAt).toLocaleDateString() : "Unknown"}
-                                                        </p>
-                                                    </div>
-                                                    <div className="flex gap-2">
-                                                        <Button size="sm" variant="outline" onClick={() => handleResolve(request.id, 'REJECT')}>
-                                                            Reject
-                                                        </Button>
-                                                        <Button size="sm" onClick={() => handleResolve(request.id, 'APPROVE')}>
-                                                            Approve
-                                                        </Button>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                </CollapsibleSection>
-                            )}
+                            <AdminModeration />
 
                             {/* Movies List */}
                             <CollapsibleSection
