@@ -23,7 +23,8 @@ export function OttMark({ name, className }: { name: string; className?: string 
   const { providers } = useOttProviders()
   const provider = providers.find((item) => item.name.toLowerCase() === name.toLowerCase())
   const letters = name.replace(/[^a-z0-9]/gi, "").slice(0, 2).toUpperCase()
-  const iconSource = provider?.iconUrl?.startsWith("/") ? `${API_BASE_URL}${provider.iconUrl}` : provider?.iconUrl
+  const apiRoot = API_BASE_URL.replace(/\/api\/?$/, "")
+  const iconSource = provider?.iconUrl?.startsWith("/") ? `${apiRoot}${provider.iconUrl}` : provider?.iconUrl
   if (iconSource) {
     return <span aria-hidden="true" className={cn("inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white shadow-sm", className)}><img src={iconSource} alt="" className="h-full w-full object-contain p-1" /></span>
   }
