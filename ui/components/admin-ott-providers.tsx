@@ -25,7 +25,7 @@ export function AdminOttProviders() {
   const startAdd = () => { setEditing(null); setDraft({ ...emptyDraft }); setError(""); setOpen(true) }
   const startEdit = (provider: OttProviderDefinition) => {
     setEditing(provider)
-    setDraft({ name: provider.name, baseUrl: provider.baseUrl, iconUrl: provider.iconUrl || "", iconImage: "", iconText: provider.iconText || "", backgroundColor: provider.backgroundColor || "#7c3aed", textColor: provider.textColor || "#ffffff" })
+    setDraft({ name: provider.name, baseUrl: provider.baseUrl, iconUrl: provider.iconUrl?.startsWith("http") ? provider.iconUrl : "", iconImage: "", iconText: provider.iconText || "", backgroundColor: provider.backgroundColor || "#7c3aed", textColor: provider.textColor || "#ffffff" })
     setError("")
     setOpen(true)
   }
@@ -33,16 +33,10 @@ export function AdminOttProviders() {
   const chooseIcon = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
-    if (!file.type.startsWith("image/")) {
-      setError("Please choose an image file.")
-      return
-    }
-    if (file.size > 1024 * 1024) {
-      setError("Logo files must be 1 MB or smaller.")
-      return
-    }
+    if (!file.type.startsWith("image/")) { setError("Please choose an image file."); return }
+    if (file.size > 1024 * 1024) { setError("Logo files must be 1 MB or smaller."); return }
     const reader = new FileReader()
-    reader.onload = () => setDraft((current) => ({ ...current, iconImage: typeof reader.result === "string" ? reader.result : "" }))
+    reader.onload = () => setDraft((current) => ({ ...current, iconImage: typeof reader.result === "string" ? reader.result : "", iconUrl: "" }))
     reader.onerror = () => setError("Could not read that image file.")
     reader.readAsDataURL(file)
   }
@@ -53,7 +47,7 @@ export function AdminOttProviders() {
     try {
       const payload = { ...draft }
       if (!payload.iconImage) delete payload.iconImage
-      if (!payload.iconUrl) delete payload.iconUrl
+      if (!payload.iconUrl || !/^https?:\/\//i.test(payload.iconUrl)) delete payload.iconUrl
       if (editing) await updateOttProvider(editing.id, payload)
       else await createOttProvider(payload)
       await refresh()
@@ -97,13 +91,7 @@ export function AdminOttProviders() {
             <Field label="Provider name"><Input value={draft.name || ""} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="Netflix" /></Field>
             <Field label="Base URL"><Input value={draft.baseUrl || ""} onChange={(e) => setDraft({ ...draft, baseUrl: e.target.value })} placeholder="https://provider.com" type="url" /></Field>
             <Field label="Logo / icon URL" wide><Input value={draft.iconUrl || ""} onChange={(e) => setDraft({ ...draft, iconUrl: e.target.value, iconImage: "" })} placeholder="https://provider.com/icon.png (stored in database)" type="url" /><p className="text-xs text-muted-foreground">The server downloads this image and stores it in the database.</p></Field>
-            <Field label="Or upload a logo" wide>
-              <div className="flex items-center gap-2">
-                <Input type="file" accept="image/*" onChange={chooseIcon} className="cursor-pointer" />
-                <Upload className="h-4 w-4 shrink-0 text-muted-foreground" />
-              </div>
-              <p className="text-xs text-muted-foreground">PNG, JPEG, WebP, or SVG up to 1 MB.</p>
-            </Field>
+            <Field label="Or upload a logo" wide><div className="flex items-center gap-2"><Input type="file" accept="image/*" onChange={chooseIcon} className="cursor-pointer" /><Upload className="h-4 w-4 shrink-0 text-muted-foreground" /></div><p className="text-xs text-muted-foreground">PNG, JPEG, WebP, or SVG up to 1 MB.</p></Field>
             <Field label="Fallback icon text"><Input value={draft.iconText || ""} onChange={(e) => setDraft({ ...draft, iconText: e.target.value.slice(0, 4) })} placeholder="N" maxLength={4} /></Field>
             <div className="grid grid-cols-2 gap-3"><Field label="Background"><Input type="color" value={draft.backgroundColor || "#7c3aed"} onChange={(e) => setDraft({ ...draft, backgroundColor: e.target.value })} /></Field><Field label="Text"><Input type="color" value={draft.textColor || "#ffffff"} onChange={(e) => setDraft({ ...draft, textColor: e.target.value })} /></Field></div>
           </div>
@@ -119,11 +107,7 @@ export function AdminOttProviders() {
 function ProviderPreview({ name = "", iconUrl = "", iconImage = "", iconText = "", backgroundColor = "#7c3aed", textColor = "#ffffff" }: OttProviderDraft) {
   const letters = (iconText || name.replace(/[^a-z0-9]/gi, "").slice(0, 2) || "?").toUpperCase()
   const imageSource = iconImage || iconUrl
-  return (
-    <span aria-hidden="true" style={imageSource ? undefined : { backgroundColor, color: textColor }} className={cn("inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg text-[10px] font-black tracking-tight shadow-sm", imageSource && "bg-white")}>
-      {imageSource ? <img src={imageSource} alt="" className="h-full w-full object-contain p-1" /> : <><ImageIcon className="mr-0.5 h-3 w-3" />{letters}</>}
-    </span>
-  )
+  return <span aria-hidden="true" style={imageSource ? undefined : { backgroundColor, color: textColor }} className={cn("inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg text-[10px] font-black tracking-tight shadow-sm", imageSource && "bg-white")}>{imageSource ? <img src={imageSource} alt="" className="h-full w-full object-contain p-1" /> : <><ImageIcon className="mr-0.5 h-3 w-3" />{letters}</>}</span>
 }
 
 function Field({ label, children, wide = false }: { label: string; children: React.ReactNode; wide?: boolean }) {
