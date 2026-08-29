@@ -118,7 +118,7 @@ export default function MovieDetailPage({ params }: { params: Promise<{ id: stri
   return (
     <div className="min-h-screen bg-background md:h-screen md:overflow-hidden">
       <Header />
-      <main className="mx-auto w-full max-w-7xl px-3 py-3 sm:px-4 md:flex md:h-[calc(100dvh-4rem)] md:flex-col md:overflow-hidden">
+      <main className="relative isolate mx-auto w-full max-w-7xl overflow-hidden px-3 py-3 sm:px-4 md:flex md:h-[calc(100dvh-4rem)] md:flex-col md:overflow-hidden">\n        {movie.posterUrl && <img src={movie.posterUrl} alt="" aria-hidden="true" className="pointer-events-none absolute inset-0 -z-20 h-full w-full scale-110 object-cover opacity-20 blur-3xl" />}\n        <div className="pointer-events-none absolute inset-0 -z-10 bg-gradient-to-br from-background/45 via-background/85 to-background" />
         <div className="flex shrink-0 items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
             <Button asChild variant="ghost" size="sm" className="h-8 shrink-0 gap-1.5 px-2 text-muted-foreground">
@@ -135,9 +135,9 @@ export default function MovieDetailPage({ params }: { params: Promise<{ id: stri
           </Button>
         </div>
 
-        <div className="mt-3 grid gap-4 md:min-h-0 md:flex-1 md:grid-cols-[180px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)]">
+        <div className="relative mt-3 grid gap-4 overflow-hidden rounded-2xl border border-white/10 bg-background/55 p-3 shadow-2xl shadow-black/20 backdrop-blur-md md:min-h-0 md:flex-1 md:grid-cols-[180px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)] xl:gap-6 xl:p-5">
           <aside className="mx-auto w-full max-w-[220px] self-start md:mx-0 md:max-w-none">
-            <div className="relative aspect-[2/3] overflow-hidden rounded-xl border bg-muted shadow-sm">
+            <div className="relative aspect-video overflow-hidden rounded-xl border bg-muted shadow-xl shadow-black/30 md:aspect-[2/3]">
               {movie.posterUrl ? (
                 <img src={movie.posterUrl} alt={`${movie.title} poster`} className="h-full w-full object-cover" />
               ) : (
@@ -153,10 +153,10 @@ export default function MovieDetailPage({ params }: { params: Promise<{ id: stri
           </aside>
 
           <section className="min-w-0 md:flex md:min-h-0 md:flex-col">
-            <div className="shrink-0 rounded-xl border bg-card px-4 py-3 shadow-sm">
+            <div className="shrink-0 px-1 py-2 sm:px-3">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
-                  <h1 className="truncate text-2xl font-bold tracking-tight sm:text-3xl">{movie.title}</h1>
+                  <h1 className="text-balance text-3xl font-bold tracking-tight sm:text-4xl xl:text-5xl">{movie.title}</h1>
                   <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{movie.released || movie.releaseDate || movie.year}</span>
                     {(movie.language || movie.Language) && <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">{movie.language || movie.Language}</span>}
@@ -171,7 +171,7 @@ export default function MovieDetailPage({ params }: { params: Promise<{ id: stri
               </div>
             </div>
 
-            <div className="mt-3 grid gap-3 md:min-h-0 md:flex-1 md:grid-cols-2">
+            <div className="mt-3 grid gap-3 md:min-h-0 md:flex-1 md:grid-cols-[minmax(0,1fr)_minmax(260px,0.82fr)] xl:grid-cols-[minmax(0,1.15fr)_300px]">
               <div className="flex min-w-0 flex-col gap-3">
                 {(directors.length > 0 || actors.length > 0) && (
                   <Card className="gap-0 py-3">
