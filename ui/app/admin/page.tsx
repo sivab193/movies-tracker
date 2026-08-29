@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
-import { getAllUsers, getMovies, getTheaters } from "@/services/api"
+import { getAllUsers, getMovies, getTheaters, getWatchLinkReports } from "@/services/api"
 import { getAdminRequests } from "@/services/user-service"
 import {
     ArrowRight,
@@ -22,6 +22,7 @@ import {
     Sparkles,
     Tv,
     Users,
+    AlertTriangle,
 } from "lucide-react"
 
 type AdminCard = {
@@ -38,7 +39,7 @@ export default function AdminPage() {
     const { user, userProfile, loading: authLoading } = useAuth()
     const router = useRouter()
     const [loading, setLoading] = useState(true)
-    const [counts, setCounts] = useState({ movies: "—" as number | string, theaters: "—" as number | string, users: "—" as number | string, requests: "—" as number | string })
+    const [counts, setCounts] = useState({ movies: "—" as number | string, theaters: "—" as number | string, users: "—" as number | string, requests: "—" as number | string, watchLinkReports: "—" as number | string })
 
     useEffect(() => {
         if (authLoading) return
@@ -54,12 +55,13 @@ export default function AdminPage() {
         async function loadCounts() {
             setLoading(true)
             try {
-                const [moviesRes, theatersRes, usersRes, requestsRes] = await Promise.allSettled([getMovies(0, 1), getTheaters(), getAllUsers(), getAdminRequests()])
+                const [moviesRes, theatersRes, usersRes, requestsRes, linkReportsRes] = await Promise.allSettled([getMovies(0, 1), getTheaters(), getAllUsers(), getAdminRequests(), getWatchLinkReports()])
                 setCounts({
                     movies: moviesRes.status === "fulfilled" ? moviesRes.value?.total ?? moviesRes.value?.movies?.length ?? moviesRes.value?.length ?? "—" : "—",
                     theaters: theatersRes.status === "fulfilled" ? theatersRes.value?.length ?? "—" : "—",
                     users: usersRes.status === "fulfilled" ? usersRes.value?.length ?? "—" : "—",
                     requests: requestsRes.status === "fulfilled" ? requestsRes.value?.length ?? "—" : "—",
+                    watchLinkReports: linkReportsRes.status === "fulfilled" ? linkReportsRes.value?.count ?? linkReportsRes.value?.reports?.length ?? "—" : "—",
                 })
             } catch (error) {
                 console.error("Failed to load admin summary", error)
@@ -88,6 +90,7 @@ export default function AdminPage() {
         { title: "Users", description: "Review accounts, roles, leaderboard bans, profiles, and joined dates.", href: "/admin/users", icon: Users, count: counts.users, tone: "from-slate-500/20 to-zinc-500/5 border-slate-500/25", action: "Manage users" },
         { title: "Theaters", description: "Add, import, verify, and clean up approved theater records.", href: "/admin/theaters", icon: MapPin, count: counts.theaters, tone: "from-pink-500/20 to-rose-500/5 border-pink-500/25", action: "Open theater tools" },
         { title: "OTT Catalog", description: "Browse every linked streaming title grouped by provider.", href: "/admin/ott", icon: MonitorPlay, tone: "from-fuchsia-500/20 to-purple-500/5 border-fuchsia-500/25", action: "Open catalog" },
+        { title: "Watch-link Reports", description: "Review streaming links viewers flagged as expired or not working.", href: "/admin/tools#watch-link-reports", icon: AlertTriangle, count: counts.watchLinkReports, tone: "from-amber-500/20 to-orange-500/5 border-amber-500/25", action: "Review reports" },
         { title: "Watch Orders", description: "Edit curated watch-order links and published descriptions.", href: "/admin/watch-orders", icon: BadgeCheck, tone: "from-orange-500/20 to-amber-500/5 border-orange-500/25", action: "Manage orders" },
         { title: "Cards & Offers", description: "Manage bank-card and movie-ticket offer listings.", href: "/admin/cards", icon: CreditCard, tone: "from-rose-500/20 to-pink-500/5 border-rose-500/25", action: "Open offers" },
         { title: "OMDb API Keys", description: "Monitor API keys, health, and usage limits.", href: "/admin/omdb", icon: KeyRound, tone: "from-violet-500/20 to-indigo-500/5 border-violet-500/25", action: "Manage keys" },

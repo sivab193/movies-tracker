@@ -4,6 +4,21 @@ export interface WatchProvider {
   regions: string[]
 }
 
+export interface WatchLinkReport {
+  id: string
+  movieId: string
+  movieTitle: string
+  movieYear?: number | null
+  providerName: string
+  providerUrl: string
+  regions: string[]
+  reason: "not_working" | "expired"
+  status: "pending" | "resolved" | "dismissed"
+  createdAt: string
+  resolvedAt?: string | null
+  adminNote?: string | null
+}
+
 // Movie document stored in Firestore
 export interface Movie {
   id: string

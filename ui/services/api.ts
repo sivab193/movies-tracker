@@ -402,6 +402,47 @@ export async function getMovie(id: string) {
     return data;
 }
 
+export async function reportMovieWatchLink(
+    movieId: string,
+    provider: { name: string; url: string },
+    reason: "not_working" | "expired",
+) {
+    const token = await auth?.currentUser?.getIdToken();
+    if (!token) throw new Error("Sign in to report a watch link");
+    const response = await fetch(`${API_BASE_URL}/movies/${movieId}/watch-link-reports`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ providerName: provider.name, providerUrl: provider.url, reason }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Failed to report watch link");
+    return data;
+}
+
+export async function getWatchLinkReports(status: "pending" | "resolved" | "dismissed" | "all" = "pending") {
+    const token = await auth?.currentUser?.getIdToken();
+    if (!token) throw new Error("User not authenticated");
+    const response = await fetch(`${API_BASE_URL}/movies/watch-link-reports?status=${status}`, {
+        headers: { "Authorization": `Bearer ${token}` },
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Failed to fetch watch-link reports");
+    return data;
+}
+
+export async function resolveWatchLinkReport(reportId: string, status: "resolved" | "dismissed", adminNote?: string) {
+    const token = await auth?.currentUser?.getIdToken();
+    if (!token) throw new Error("User not authenticated");
+    const response = await fetch(`${API_BASE_URL}/movies/watch-link-reports/${reportId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ status, adminNote }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Failed to update watch-link report");
+    return data;
+}
+
 export async function updateMovie(id: string, updateData: any) {
     const token = await auth?.currentUser?.getIdToken();
     if (!token) throw new Error("User not authenticated");

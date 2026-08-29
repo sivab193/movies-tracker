@@ -16,6 +16,7 @@ import { AdminSeries } from "@/components/admin-series"
 import { AdminOmdbKeys } from "@/components/admin-omdb-keys"
 import { AdminRequests } from "@/components/admin-requests"
 import { AdminOttCatalog } from "@/components/admin-ott-catalog"
+import { AdminWatchLinkReports } from "@/components/admin-watch-link-reports"
 import { WatchProviderEditor } from "@/components/watch-provider-editor"
 import type { WatchProvider } from "@/lib/types"
 import { getAdminRequests, resolveAdminRequest } from "@/services/user-service"
@@ -651,6 +652,7 @@ export default function AdminPage() {
 
                 <div className="grid gap-8">
                     <div className="space-y-6">
+                            <AdminWatchLinkReports />
                             <AdminRequests onApprove={(imdbId, type) => {
                                 if (type === 'series') {
                                     window.dispatchEvent(new CustomEvent('open-add-series-modal', {

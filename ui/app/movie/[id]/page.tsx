@@ -4,7 +4,7 @@ import { useEffect, useState, use } from "react"
 import Link from "next/link"
 import { ArrowLeft, Clock, Calendar, Timer, MessageSquare, Share2, Copy, Check, Loader2, ListOrdered, ArrowRight } from "lucide-react"
 import { Header } from "@/components/header"
-import { getMovie, getSubmissions, createShortUrl } from "@/services/api"
+import { getMovie, getSubmissions, createShortUrl, updateMovie } from "@/services/api"
 import { getWatchOrdersForMovie } from "@/services/watch-order-service"
 import { SubmissionForm } from "@/components/submission-form"
 import { Button } from "@/components/ui/button"
@@ -23,7 +23,7 @@ export default function MovieDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = use(params)
-  const { userProfile } = useAuth()
+  const { user, userProfile } = useAuth()
   const [movie, setMovie] = useState<Movie | null>(null)
   const [submissions, setSubmissions] = useState<TitleCardSubmission[]>([])
   const [loading, setLoading] = useState(true)
@@ -115,10 +115,10 @@ export default function MovieDetailPage({
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <main className="mx-auto max-w-4xl px-4 py-8">
+        <main className="mx-auto max-w-5xl px-4 py-6 sm:py-8">
           <Skeleton className="h-8 w-32 mb-6" />
-          <div className="grid gap-8 md:grid-cols-[300px_1fr]">
-            <Skeleton className="aspect-[2/3] w-full rounded-xl" />
+          <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-8">
+            <Skeleton className="mx-auto aspect-[2/3] w-full max-w-[280px] rounded-xl lg:mx-0" />
             <div className="space-y-4">
               <Skeleton className="h-10 w-3/4" />
               <Skeleton className="h-6 w-1/2" />
@@ -153,8 +153,8 @@ export default function MovieDetailPage({
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main className="mx-auto max-w-4xl px-4 py-8">
-        <div className="flex items-center justify-between mb-6">
+      <main className="mx-auto max-w-5xl px-4 py-5 sm:py-8">
+        <div className="mb-5 flex items-center justify-between gap-3 sm:mb-6">
           <Link
             href="/"
             className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -167,10 +167,10 @@ export default function MovieDetailPage({
             size="sm"
             onClick={handleShare}
             disabled={shortUrlLoading}
-            className="rounded-full gap-2 text-xs font-semibold px-4 border-primary/30 hover:border-primary hover:bg-primary/5 transition-all"
+            className="h-9 rounded-full gap-2 text-xs font-semibold px-3 sm:px-4 border-primary/30 hover:border-primary hover:bg-primary/5 transition-all"
           >
             {shortUrlLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> : <Share2 className="h-3.5 w-3.5 text-primary" />}
-            Share / Short Link
+            <span className="sm:hidden">Share</span><span className="hidden sm:inline">Share / Short Link</span>
           </Button>
         </div>
 
@@ -192,9 +192,9 @@ export default function MovieDetailPage({
           </div>
         )}
 
-        <div className="grid gap-8 md:grid-cols-[280px_1fr]">
+        <div className="grid gap-7 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-8">
           {/* Movie Poster */}
-          <div className="relative">
+          <div className="relative mx-auto w-full max-w-[280px] self-start lg:mx-0 lg:max-w-none lg:sticky lg:top-24">
             <div className="aspect-[2/3] overflow-hidden rounded-xl bg-muted">
               {movie.posterUrl ? (
                 <img
@@ -236,16 +236,16 @@ export default function MovieDetailPage({
           </div>
 
           {/* Movie Info */}
-          <div className="space-y-6">
+          <div className="min-w-0 space-y-4 sm:space-y-5">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight text-balance">
+              <h1 className="text-2xl font-bold tracking-tight text-balance sm:text-3xl">
                 {movie.title}
               </h1>
 
               {/* Highlighting the core value proposition of the site on detail page */}
               <div className="mt-4">
                 {movie.submissionCount > 0 && movie.averageTimeSeconds && movie.averageTimeSeconds > 0 ? (
-                  <div className="inline-flex items-center gap-3 rounded-xl bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 px-4 py-3 border border-amber-500/40 shadow-sm">
+                  <div className="inline-flex max-w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-xl bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 px-4 py-3 border border-amber-500/40 shadow-sm">
                     <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-extrabold text-sm uppercase tracking-wider">
                       <Clock className="h-5 w-5 shrink-0 animate-pulse text-amber-500" />
                       <span>Title Card Appears At:</span>
@@ -262,7 +262,7 @@ export default function MovieDetailPage({
                 )}
               </div>
 
-              <div className="mt-4 flex flex-wrap items-center gap-4 text-muted-foreground">
+              <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
                 <div className="flex items-center gap-1.5">
                   <Calendar className="h-4 w-4" />
                   <span>{movie.released || movie.releaseDate || movie.year}</span>
@@ -306,7 +306,16 @@ export default function MovieDetailPage({
               </Card>
             )}
 
-            <WatchOnlineSection providers={movie.watchProviders} />
+            <WatchOnlineSection
+              providers={movie.watchProviders}
+              movieId={id}
+              canReport={Boolean(user)}
+              isAdmin={Boolean(userProfile?.isAdmin)}
+              onSaveProviders={userProfile?.isAdmin ? async (watchProviders) => {
+                const updated = await updateMovie(id, { watchProviders })
+                setMovie((current) => current ? { ...current, ...updated } : current)
+              } : undefined}
+            />
 
             {/* Stats Card */}
             <Card>
@@ -361,7 +370,7 @@ export default function MovieDetailPage({
 
         {/* Submissions List */}
         {submissions.length > 0 && (
-          <section className="mt-12">
+          <section className="mt-8 sm:mt-10 lg:ml-[292px] lg:w-[calc(100%-292px)]">
             <h2 className="text-xl font-bold tracking-tight mb-4 flex items-center gap-2">
               <Clock className="h-5 w-5 text-primary" />
               Recent Community Submissions

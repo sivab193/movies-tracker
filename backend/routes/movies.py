@@ -15,8 +15,9 @@ movies_bp = Blueprint('movies', __name__)
 if db is not None:
     try:
         db.titlecard_rate_limits.create_index('expiresAt', expireAfterSeconds=0)
+        db.watch_link_reports.create_index([('status', 1), ('createdAt', -1)])
     except Exception as e:
-        print(f"Index creation error for title-card rate limits: {e}")
+        print(f"Index creation error for movie support collections: {e}")
 
 OMDB_API_KEY = os.environ.get('OMDB_API_KEY')
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
@@ -71,6 +72,22 @@ def is_admin(id_token):
     except Exception as e:
         print(f"Error verifying admin status: {e}")
         return False
+
+def get_authenticated_uid(req):
+    auth_header = req.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer '):
+        return None
+    try:
+        decoded = firebase_auth.verify_id_token(auth_header.split(' ')[1])
+        return decoded.get('uid')
+    except Exception:
+        return None
+
+def find_movie(movie_id):
+    query = {"$or": [{"id": movie_id}, {"_id": movie_id}, {"imdbId": movie_id}]}
+    if ObjectId.is_valid(movie_id):
+        query["$or"].append({"_id": ObjectId(movie_id)})
+    return db.movies.find_one(query)
 
 def fetch_movie_from_omdb(imdb_id):
     try:
@@ -721,21 +738,100 @@ def get_movie_poster(movie_id):
         print(f"Error fetching poster: {e}")
         return jsonify({"error": "Failed to fetch poster"}), 500
 
+@movies_bp.route('/<movie_id>/watch-link-reports', methods=['POST'])
+def report_movie_watch_link(movie_id):
+    """Let a signed-in viewer flag one currently published streaming link."""
+    if db is None:
+        return jsonify({"error": "Database not connected"}), 500
+    uid = get_authenticated_uid(request)
+    if not uid:
+        return jsonify({"error": "Sign in to report a watch link"}), 401
+
+    movie = find_movie(movie_id)
+    if not movie:
+        return jsonify({"error": "Movie not found"}), 404
+
+    data = request.get_json(silent=True) or {}
+    provider_name = str(data.get('providerName') or '').strip()
+    provider_url = str(data.get('providerUrl') or '').strip()
+    reason = str(data.get('reason') or 'not_working').strip().lower()
+    if reason not in {'not_working', 'expired'}:
+        return jsonify({"error": "Invalid report reason"}), 400
+
+    provider = next((item for item in movie.get('watchProviders', [])
+                     if item.get('name') == provider_name and item.get('url') == provider_url), None)
+    if not provider:
+        return jsonify({"error": "This watch link is no longer published"}), 404
+
+    existing = db.watch_link_reports.find_one({
+        "movieId": movie['_id'], "userId": uid, "providerUrl": provider_url, "status": "pending"
+    })
+    if existing:
+        return jsonify({"message": "You already reported this link", "reportId": str(existing['_id'])}), 200
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+    report = {
+        "movieId": movie['_id'], "movieTitle": movie.get('title'), "movieYear": movie.get('year'),
+        "providerName": provider_name, "providerUrl": provider_url, "regions": provider.get('regions', []),
+        "reason": reason, "userId": uid, "status": "pending", "createdAt": now,
+        "resolvedAt": None, "adminNote": None,
+    }
+    result = db.watch_link_reports.insert_one(report)
+    return jsonify({"message": "Thanks — the admin team will check this link", "reportId": str(result.inserted_id)}), 201
+
+@movies_bp.route('/watch-link-reports', methods=['GET'])
+def get_movie_watch_link_reports():
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer ') or not is_admin(auth_header.split(' ')[1]):
+        return jsonify({"error": "Forbidden: Admin access required"}), 403
+    if db is None:
+        return jsonify({"error": "Database not connected"}), 500
+
+    status = request.args.get('status', 'pending')
+    query = {} if status == 'all' else {"status": status}
+    reports = []
+    for report in db.watch_link_reports.find(query).sort('createdAt', -1):
+        reports.append({
+            "id": str(report['_id']), "movieId": str(report.get('movieId')),
+            "movieTitle": report.get('movieTitle'), "movieYear": report.get('movieYear'),
+            "providerName": report.get('providerName'), "providerUrl": report.get('providerUrl'),
+            "regions": report.get('regions', []), "reason": report.get('reason'),
+            "userId": report.get('userId'), "status": report.get('status'), "adminNote": report.get('adminNote'),
+            "createdAt": report.get('createdAt').isoformat() if report.get('createdAt') else None,
+            "resolvedAt": report.get('resolvedAt').isoformat() if report.get('resolvedAt') else None,
+        })
+    return jsonify({"reports": reports, "count": len(reports)})
+
+@movies_bp.route('/watch-link-reports/<report_id>', methods=['PUT'])
+def resolve_movie_watch_link_report(report_id):
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer ') or not is_admin(auth_header.split(' ')[1]):
+        return jsonify({"error": "Forbidden: Admin access required"}), 403
+    if db is None:
+        return jsonify({"error": "Database not connected"}), 500
+    if not ObjectId.is_valid(report_id):
+        return jsonify({"error": "Invalid report ID"}), 400
+
+    data = request.get_json(silent=True) or {}
+    status = data.get('status')
+    if status not in {'resolved', 'dismissed'}:
+        return jsonify({"error": "Status must be resolved or dismissed"}), 400
+    now = datetime.datetime.now(datetime.timezone.utc)
+    result = db.watch_link_reports.update_one(
+        {"_id": ObjectId(report_id)},
+        {"$set": {"status": status, "adminNote": data.get('adminNote'), "resolvedAt": now}}
+    )
+    if result.matched_count == 0:
+        return jsonify({"error": "Report not found"}), 404
+    return jsonify({"message": f"Report {status}"})
+
 @movies_bp.route('/<movie_id>', methods=['GET'])
 def get_movie(movie_id):
     if db is None:
         return jsonify({"error": "Database not connected"}), 500
 
     try:
-        movie = None
-        if ObjectId.is_valid(movie_id):
-            movie = db.movies.find_one({"_id": ObjectId(movie_id)})
-        if not movie:
-            movie = db.movies.find_one({"_id": movie_id})
-        if not movie:
-            movie = db.movies.find_one({"id": movie_id})
-        if not movie:
-            movie = db.movies.find_one({"imdbId": movie_id})
+        movie = find_movie(movie_id)
         
         if not movie:
             return jsonify({"error": "Movie not found"}), 404
@@ -926,6 +1022,7 @@ def delete_movie(movie_id):
         db.titlecards.delete_many({"movieId": movie_id})
         db.titlecard_images.delete_many({"movieId": movie_id})
         db.movie_posters.delete_one({"movieId": movie_id})
+        db.watch_link_reports.delete_many({"movieId": ObjectId(movie_id)})
             
         return jsonify({"message": "Movie deleted successfully"})
     except Exception as e:
@@ -1204,6 +1301,10 @@ def repoint_movie_references(dup_id, kept_id):
     db.titlecards.update_many({"movieId": dup_id}, {"$set": {"movieId": kept_id}})
     db.titlecard_images.update_many({"movieId": dup_id}, {"$set": {"movieId": kept_id}})
     db.short_urls.update_many({"movieId": dup_id}, {"$set": {"movieId": kept_id}})
+    db.watch_link_reports.update_many(
+        {"movieId": {"$in": [dup_id, ObjectId(dup_id)]}},
+        {"$set": {"movieId": ObjectId(kept_id)}}
+    )
 
     if db.movie_posters.find_one({"movieId": kept_id}):
         db.movie_posters.delete_one({"movieId": dup_id})
