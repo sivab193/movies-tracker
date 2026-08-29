@@ -1,37 +1,66 @@
 "use client"
 
-import { useEffect, useState, use } from "react"
+import { use, useEffect, useState } from "react"
 import Link from "next/link"
-import { ArrowLeft, Clock, Calendar, Timer, MessageSquare, Share2, Copy, Check, Loader2, ListOrdered, ArrowRight } from "lucide-react"
+import { ArrowLeft, Calendar, Check, Clock, Copy, ListOrdered, Loader2, MessageSquare, Share2, Timer, Users } from "lucide-react"
 import { Header } from "@/components/header"
 import { getMovie, getSubmissions, createShortUrl, updateMovie } from "@/services/api"
 import { getWatchOrdersForMovie } from "@/services/watch-order-service"
 import { SubmissionForm } from "@/components/submission-form"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { formatTimeDisplay, formatRuntimeToHHMM, type Movie, type TitleCardSubmission } from "@/lib/types"
 import { useAuth } from "@/contexts/auth-context"
 import { PersonLink } from "@/components/person-link"
 import { creditNames } from "@/lib/people"
 import { WatchOnlineSection } from "@/components/watch-online-section"
 
-export default function MovieDetailPage({
-  params,
-}: {
-  params: Promise<{ id: string }>
-}) {
+export default function MovieDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const { user, userProfile } = useAuth()
   const [movie, setMovie] = useState<Movie | null>(null)
   const [submissions, setSubmissions] = useState<TitleCardSubmission[]>([])
   const [loading, setLoading] = useState(true)
-  const [shortUrl, setShortUrl] = useState<string>("")
+  const [shortUrl, setShortUrl] = useState("")
   const [shortUrlLoading, setShortUrlLoading] = useState(false)
   const [shortUrlDialogOpen, setShortUrlDialogOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const [movieWatchOrders, setMovieWatchOrders] = useState<any[]>([])
+
+  useEffect(() => {
+    async function fetchData() {
+      try {
+        const [movieData, submissionsData, orders] = await Promise.all([
+          getMovie(id),
+          getSubmissions(id),
+          getWatchOrdersForMovie(id).catch(() => []),
+        ])
+        setMovie(movieData ? { ...movieData, createdAt: new Date(movieData.createdAt) } : null)
+        setSubmissions(submissionsData.submissions || [])
+        setMovieWatchOrders(orders)
+      } catch (error) {
+        console.error("Error fetching movie data:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    fetchData()
+  }, [id])
+
+  const refreshSubmissions = async () => {
+    const data = await getSubmissions(id)
+    if (data.submissions) {
+      setSubmissions(data.submissions)
+      const times = data.submissions.map((submission: TitleCardSubmission) => submission.timeInSeconds)
+      setMovie((current) => current ? {
+        ...current,
+        submissionCount: times.length,
+        averageTimeSeconds: times.length ? times.reduce((sum: number, time: number) => sum + time, 0) / times.length : null,
+      } : current)
+    }
+  }
 
   const handleShare = async () => {
     if (!movie) return
@@ -42,21 +71,15 @@ export default function MovieDetailPage({
       const data = await createShortUrl(movie.id || id)
       const fullUrl = window.location.origin + data.shortUrl
       setShortUrl(fullUrl)
-      if (typeof navigator !== "undefined" && navigator.share) {
+      if (navigator.share) {
         try {
-          await navigator.share({
-            title: movie.title,
-            text: `Check out ${movie.title} on Movies Tracker!`,
-            url: fullUrl
-          })
+          await navigator.share({ title: movie.title, text: `View ${movie.title} on MediaVerse`, url: fullUrl })
           setShortUrlDialogOpen(false)
-          return
-        } catch (e) {
-          // If user canceled native share, fallback to our dialog
+        } catch {
+          // Keep the copy dialog open when native sharing is cancelled.
         }
       }
-    } catch (err) {
-      console.error("Failed to generate short URL:", err)
+    } catch {
       setShortUrl(window.location.href)
     } finally {
       setShortUrlLoading(false)
@@ -69,384 +92,174 @@ export default function MovieDetailPage({
     setTimeout(() => setCopied(false), 2000)
   }
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [movieData, submissionsData] = await Promise.all([
-          getMovie(id),
-          getSubmissions(id)
-        ])
-
-        if (movieData) {
-          setMovie({
-            ...movieData,
-            createdAt: new Date(movieData.createdAt)
-          })
-        }
-
-        if (submissionsData.submissions) {
-          setSubmissions(submissionsData.submissions)
-        }
-        
-        try {
-          const orders = await getWatchOrdersForMovie(id)
-          setMovieWatchOrders(orders)
-        } catch (e) {
-          console.error("Error fetching watch orders:", e)
-        }
-      } catch (error) {
-        console.error("Error fetching movie data:", error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    if (id) {
-      fetchData()
-    }
-  }, [id])
-
-  // Calculate stats
-  const times = submissions.map((s) => s.timeInSeconds)
-  const minTime = times.length > 0 ? Math.min(...times) : null
-  const maxTime = times.length > 0 ? Math.max(...times) : null
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <main className="mx-auto max-w-5xl px-4 py-6 sm:py-8">
-          <Skeleton className="h-8 w-32 mb-6" />
-          <div className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-8">
-            <Skeleton className="mx-auto aspect-[2/3] w-full max-w-[280px] rounded-xl lg:mx-0" />
-            <div className="space-y-4">
-              <Skeleton className="h-10 w-3/4" />
-              <Skeleton className="h-6 w-1/2" />
-              <Skeleton className="h-24 w-full" />
-            </div>
-          </div>
-        </main>
-      </div>
-    )
-  }
+  if (loading) return <MoviePageSkeleton />
 
   if (!movie) {
     return (
       <div className="min-h-screen bg-background">
         <Header />
-        <main className="mx-auto max-w-4xl px-4 py-8">
-          <div className="text-center py-16">
-            <h1 className="text-2xl font-bold">Movie not found</h1>
-            <p className="mt-2 text-muted-foreground">
-              This movie doesn't exist or has been removed.
-            </p>
-            <Link href="/">
-              <Button className="mt-4">Go back home</Button>
-            </Link>
-          </div>
+        <main className="mx-auto max-w-4xl px-4 py-16 text-center">
+          <h1 className="text-2xl font-bold">Movie not found</h1>
+          <p className="mt-2 text-muted-foreground">This movie does not exist or has been removed.</p>
+          <Button asChild className="mt-4"><Link href="/">Go back home</Link></Button>
         </main>
       </div>
     )
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      <Header />
+  const directors = creditNames(movie.directors || movie.director)
+  const actors = creditNames(movie.actors)
+  const times = submissions.map((submission) => submission.timeInSeconds)
+  const minTime = times.length ? Math.min(...times) : null
+  const maxTime = times.length ? Math.max(...times) : null
+  const recentSubmissions = submissions.slice(0, 2)
+  const hasTitleTime = Boolean(movie.submissionCount && movie.averageTimeSeconds && movie.averageTimeSeconds > 0)
 
-      <main className="mx-auto max-w-5xl px-4 py-5 sm:py-8">
-        <div className="mb-5 flex items-center justify-between gap-3 sm:mb-6">
-          <Link
-            href="/"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to movies
-          </Link>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleShare}
-            disabled={shortUrlLoading}
-            className="h-9 rounded-full gap-2 text-xs font-semibold px-3 sm:px-4 border-primary/30 hover:border-primary hover:bg-primary/5 transition-all"
-          >
-            {shortUrlLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" /> : <Share2 className="h-3.5 w-3.5 text-primary" />}
-            <span className="sm:hidden">Share</span><span className="hidden sm:inline">Share / Short Link</span>
+  return (
+    <div className="min-h-screen bg-background md:h-screen md:overflow-hidden">
+      <Header />
+      <main className="mx-auto w-full max-w-7xl px-3 py-3 sm:px-4 md:flex md:h-[calc(100dvh-4rem)] md:flex-col md:overflow-hidden">
+        <div className="flex shrink-0 items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <Button asChild variant="ghost" size="sm" className="h-8 shrink-0 gap-1.5 px-2 text-muted-foreground">
+              <Link href="/"><ArrowLeft className="h-4 w-4" />Movies</Link>
+            </Button>
+            {movieWatchOrders.slice(0, 2).map((order) => (
+              <Button key={order.id} asChild variant="outline" size="sm" className="hidden h-8 max-w-52 gap-1.5 md:inline-flex">
+                <Link href={`/w/${order.slug || order.id}`}><ListOrdered className="h-3.5 w-3.5" /><span className="truncate">{order.name}</span></Link>
+              </Button>
+            ))}
+          </div>
+          <Button variant="outline" size="sm" onClick={handleShare} disabled={shortUrlLoading} className="h-8 shrink-0 gap-1.5 rounded-full px-3 text-xs">
+            {shortUrlLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Share2 className="h-3.5 w-3.5" />}Share
           </Button>
         </div>
 
-        {movieWatchOrders.length > 0 && (
-          <div className="flex flex-col gap-2 mb-6">
-            {movieWatchOrders.map((order) => (
-              <Link href={`/w/${order.slug || order.id}`} key={order.id}>
-                <div className="bg-gradient-to-r from-amber-500/10 to-rose-500/10 border border-amber-500/20 text-amber-500 hover:text-amber-400 hover:border-amber-500/40 rounded-lg p-4 flex items-center justify-between transition-colors shadow-sm">
-                  <div className="flex items-center gap-3">
-                    <ListOrdered className="w-5 h-5" />
-                    <span className="font-semibold text-sm md:text-base">Part of: {order.name}</span>
-                  </div>
-                  <div className="flex items-center gap-1 text-sm font-medium">
-                    View Timeline <ArrowRight className="w-4 h-4 ml-1" />
-                  </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        )}
-
-        <div className="grid gap-7 lg:grid-cols-[260px_minmax(0,1fr)] lg:gap-8">
-          {/* Movie Poster */}
-          <div className="relative mx-auto w-full max-w-[280px] self-start lg:mx-0 lg:max-w-none lg:sticky lg:top-24">
-            <div className="aspect-[2/3] overflow-hidden rounded-xl bg-muted">
+        <div className="mt-3 grid gap-4 md:min-h-0 md:flex-1 md:grid-cols-[180px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)]">
+          <aside className="mx-auto w-full max-w-[220px] self-start md:mx-0 md:max-w-none">
+            <div className="relative aspect-[2/3] overflow-hidden rounded-xl border bg-muted shadow-sm">
               {movie.posterUrl ? (
-                <img
-                  src={movie.posterUrl || "/placeholder.svg"}
-                  alt={`${movie.title} poster`}
-                  className="h-full w-full object-cover"
-                />
+                <img src={movie.posterUrl} alt={`${movie.title} poster`} className="h-full w-full object-cover" />
               ) : (
-                <div className="flex h-full w-full items-center justify-center">
-                  <span className="text-6xl">🎬</span>
-                </div>
+                <div className="flex h-full items-center justify-center text-5xl">🎬</div>
               )}
+              <div className="absolute right-2 top-2 flex items-center gap-1 rounded-full border border-white/15 bg-black/80 px-2 py-1 text-[11px] font-semibold text-white backdrop-blur">
+                <Timer className="h-3 w-3 text-sky-400" />{formatRuntimeToHHMM(movie.runtime)}
+              </div>
+              <div className="absolute inset-x-2 bottom-2 rounded-lg border border-white/10 bg-black/80 px-2.5 py-2 text-center text-xs font-semibold text-white backdrop-blur">
+                {hasTitleTime ? <>Title at <span className="text-amber-400">{formatTimeDisplay(movie.averageTimeSeconds!)}</span></> : "Title time not reported"}
+              </div>
+            </div>
+          </aside>
+
+          <section className="min-w-0 md:flex md:min-h-0 md:flex-col">
+            <div className="shrink-0 rounded-xl border bg-card px-4 py-3 shadow-sm">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <h1 className="truncate text-2xl font-bold tracking-tight sm:text-3xl">{movie.title}</h1>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" />{movie.released || movie.releaseDate || movie.year}</span>
+                    {(movie.language || movie.Language) && <span className="rounded-full bg-secondary px-2 py-0.5 font-medium">{movie.language || movie.Language}</span>}
+                    <span className="flex items-center gap-1"><Timer className="h-3.5 w-3.5" />{formatRuntimeToHHMM(movie.runtime)}</span>
+                  </div>
+                </div>
+                <div className="shrink-0 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 sm:text-right">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Title card</p>
+                  <p className="text-xl font-black text-primary">{hasTitleTime ? formatTimeDisplay(movie.averageTimeSeconds!) : "Not reported"}</p>
+                  {hasTitleTime && <p className="text-[10px] text-muted-foreground">{movie.submissionCount} submission{movie.submissionCount !== 1 ? "s" : ""}{minTime !== maxTime && minTime !== null ? ` · ${formatTimeDisplay(minTime)}–${formatTimeDisplay(maxTime!)}` : ""}</p>}
+                </div>
+              </div>
             </div>
 
-            {/* Top Right Runtime Badge */}
-            <div className="absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded-full bg-black/80 px-3 py-1 text-xs font-semibold text-white backdrop-blur-md border border-white/15 shadow-lg">
-              <Timer className="h-3.5 w-3.5 text-sky-400 shrink-0" />
-              <span>Runtime: {formatRuntimeToHHMM(movie.runtime)}</span>
-            </div>
-
-            {/* Title card time badge */}
-            {movie.submissionCount > 0 && movie.averageTimeSeconds && movie.averageTimeSeconds > 0 ? (
-              <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground px-4 py-2 rounded-full shadow-lg border border-border/20 whitespace-nowrap">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 shrink-0" />
-                  <span className="font-semibold text-sm">
-                    Title at: {formatTimeDisplay(movie.averageTimeSeconds)}
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-secondary text-secondary-foreground px-4 py-1.5 rounded-full shadow border border-border whitespace-nowrap">
-                <div className="flex items-center gap-1.5">
-                  <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <span className="text-xs font-medium italic">No title time yet</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Movie Info */}
-          <div className="min-w-0 space-y-4 sm:space-y-5">
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-balance sm:text-3xl">
-                {movie.title}
-              </h1>
-
-              {/* Highlighting the core value proposition of the site on detail page */}
-              <div className="mt-4">
-                {movie.submissionCount > 0 && movie.averageTimeSeconds && movie.averageTimeSeconds > 0 ? (
-                  <div className="inline-flex max-w-full flex-wrap items-center gap-x-3 gap-y-1 rounded-xl bg-gradient-to-r from-amber-500/20 via-orange-500/20 to-rose-500/20 px-4 py-3 border border-amber-500/40 shadow-sm">
-                    <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 font-extrabold text-sm uppercase tracking-wider">
-                      <Clock className="h-5 w-5 shrink-0 animate-pulse text-amber-500" />
-                      <span>Title Card Appears At:</span>
-                    </div>
-                    <span className="font-black text-xl sm:text-2xl bg-gradient-to-r from-amber-600 to-rose-600 dark:from-amber-400 dark:to-rose-400 bg-clip-text text-transparent">
-                      {formatTimeDisplay(movie.averageTimeSeconds)}
-                    </span>
-                  </div>
-                ) : (
-                  <div className="inline-flex items-center gap-2 rounded-xl bg-muted px-4 py-2.5 border border-border/60 text-muted-foreground text-sm font-medium">
-                    <Clock className="h-4 w-4 shrink-0 opacity-70" />
-                    <span>Title Card Time: <strong className="font-semibold italic">Not reported yet</strong></span>
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted-foreground">
-                <div className="flex items-center gap-1.5">
-                  <Calendar className="h-4 w-4" />
-                  <span>{movie.released || movie.releaseDate || movie.year}</span>
-                </div>
-                {((movie.language || movie.Language) && (movie.language || movie.Language) !== "N/A") && (
-                  <span className="rounded-full bg-secondary px-2.5 py-0.5 text-xs font-semibold text-secondary-foreground border border-border">
-                    {movie.language || movie.Language}
-                  </span>
+            <div className="mt-3 grid gap-3 md:min-h-0 md:flex-1 md:grid-cols-2">
+              <div className="flex min-w-0 flex-col gap-3">
+                {(directors.length > 0 || actors.length > 0) && (
+                  <Card className="gap-0 py-3">
+                    <CardContent className="px-3">
+                      <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold"><Users className="h-4 w-4 text-primary" />People</h2>
+                      <div className="space-y-1.5 text-xs leading-relaxed text-muted-foreground">
+                        {directors.length > 0 && <p><span className="font-medium text-foreground">Director:</span> {directors.slice(0, 2).map((name, index) => <span key={name}>{index > 0 && ", "}<PersonLink name={name} /></span>)}</p>}
+                        {actors.length > 0 && <p><span className="font-medium text-foreground">Cast:</span> {actors.slice(0, 5).map((name, index) => <span key={name}>{index > 0 && ", "}<PersonLink name={name} /></span>)}{actors.length > 5 && <span> +{actors.length - 5} more</span>}</p>}
+                      </div>
+                    </CardContent>
+                  </Card>
                 )}
 
-                <div className="flex items-center gap-1.5">
-                  <Timer className="h-4 w-4" />
-                  <span>{formatRuntimeToHHMM(movie.runtime)}</span>
-                </div>
+                <WatchOnlineSection
+                  compact
+                  providers={movie.watchProviders}
+                  movieId={id}
+                  canReport={Boolean(user)}
+                  isAdmin={Boolean(userProfile?.isAdmin)}
+                  onSaveProviders={userProfile?.isAdmin ? async (watchProviders) => {
+                    const updated = await updateMovie(id, { watchProviders })
+                    setMovie((current) => current ? { ...current, ...updated } : current)
+                  } : undefined}
+                />
               </div>
-            </div>
 
-            {(creditNames(movie.directors || movie.director).length > 0 || creditNames(movie.actors).length > 0) && (
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg">People</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 text-sm">
-                  {creditNames(movie.directors || movie.director).length > 0 && (
-                    <div className="space-x-1 text-muted-foreground">
-                      <span className="font-medium text-foreground">Director:</span>{" "}
-                      {creditNames(movie.directors || movie.director).map((name, index) => (
-                        <span key={name}>{index > 0 && ", "}<PersonLink name={name} /></span>
-                      ))}
-                    </div>
-                  )}
-                  {creditNames(movie.actors).length > 0 && (
-                    <div className="space-x-1 text-muted-foreground">
-                      <span className="font-medium text-foreground">Cast:</span>{" "}
-                      {creditNames(movie.actors).map((name, index) => (
-                        <span key={name}>{index > 0 && ", "}<PersonLink name={name} /></span>
-                      ))}
-                    </div>
-                  )}
+              <Card className="gap-0 py-3 md:min-h-0">
+                <CardContent className="px-3">
+                  <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold"><Clock className="h-4 w-4 text-primary" />Add title-card time</h2>
+                  <SubmissionForm
+                    compact
+                    movieId={id}
+                    runtimeMinutes={movie.runtime ? parseInt(movie.runtime) : undefined}
+                    onSubmitted={refreshSubmissions}
+                  />
+
+                  <div className="mt-3 border-t pt-3">
+                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Recent submissions</h3>
+                    {recentSubmissions.length ? (
+                      <div className="space-y-1.5">
+                        {recentSubmissions.map((submission) => (
+                          <div key={submission.id} className="flex items-center justify-between gap-3 rounded-lg bg-muted/40 px-2.5 py-2 text-xs">
+                            <div className="min-w-0">
+                              <span className="font-mono font-bold text-primary">{formatTimeDisplay(submission.timeInSeconds)}</span>
+                              {submission.comment && <span className="ml-2 inline-flex max-w-40 items-center gap-1 truncate text-muted-foreground"><MessageSquare className="h-3 w-3 shrink-0" />{submission.comment}</span>}
+                            </div>
+                            <span className="shrink-0 text-[10px] text-muted-foreground">{new Date(submission.createdAt).toLocaleDateString()}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : <p className="text-xs text-muted-foreground">No submissions yet.</p>}
+                  </div>
                 </CardContent>
               </Card>
-            )}
-
-            <WatchOnlineSection
-              providers={movie.watchProviders}
-              movieId={id}
-              canReport={Boolean(user)}
-              isAdmin={Boolean(userProfile?.isAdmin)}
-              onSaveProviders={userProfile?.isAdmin ? async (watchProviders) => {
-                const updated = await updateMovie(id, { watchProviders })
-                setMovie((current) => current ? { ...current, ...updated } : current)
-              } : undefined}
-            />
-
-            {/* Stats Card */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Clock className="h-5 w-5" />
-                  Title Card Time
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {movie.submissionCount > 0 ? (
-                  <div className="space-y-3">
-                    <div className="text-3xl font-bold text-primary">
-                      ≈ {formatTimeDisplay(movie.averageTimeSeconds!)}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Based on {movie.submissionCount} submission
-                      {movie.submissionCount !== 1 ? "s" : ""}
-                    </div>
-                    {minTime !== null && maxTime !== null && minTime !== maxTime && (
-                      <div className="text-sm text-muted-foreground">
-                        Range: {formatTimeDisplay(minTime)} - {formatTimeDisplay(maxTime)}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground">
-                    No submissions yet. Be the first to add one!
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Submission Form - Open to anyone! */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg">Submit Title Card Time</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <SubmissionForm
-                  movieId={id}
-                  runtimeMinutes={movie.runtime ? parseInt(movie.runtime) : undefined}
-                  onSubmitted={async () => {
-                    const data = await getSubmissions(id)
-                    if (data.submissions) setSubmissions(data.submissions)
-                  }}
-                />
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-
-        {/* Submissions List */}
-        {submissions.length > 0 && (
-          <section className="mt-8 sm:mt-10 lg:ml-[292px] lg:w-[calc(100%-292px)]">
-            <h2 className="text-xl font-bold tracking-tight mb-4 flex items-center gap-2">
-              <Clock className="h-5 w-5 text-primary" />
-              Recent Community Submissions
-            </h2>
-            <div className="grid gap-4 sm:grid-cols-2">
-              {submissions.map((submission) => (
-                <Card key={submission.id} className="overflow-hidden border-border/60">
-                  <CardHeader className="bg-muted/40 pb-3">
-                    <div className="flex items-center justify-between">
-                      <span className="font-mono text-lg font-bold text-primary">
-                        {formatTimeDisplay(submission.timeInSeconds)}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {new Date(submission.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-3 text-sm">
-                    <div className="flex flex-col gap-1.5 text-muted-foreground">
-                      <div>
-                        Input: <span className="font-medium text-foreground">{submission.rawInput}</span>
-                      </div>
-                      {submission.comment && (
-                        <div className="flex items-start gap-1.5 text-xs italic bg-muted/30 p-2 rounded">
-                          <MessageSquare className="h-4 w-4 mt-0.5 shrink-0" />
-                          <span>{submission.comment}</span>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
             </div>
           </section>
-        )}
+        </div>
       </main>
 
-      {/* Short Link Dialog */}
       <Dialog open={shortUrlDialogOpen} onOpenChange={setShortUrlDialogOpen}>
-        <DialogContent className="max-w-md rounded-2xl p-6">
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl">
-              <Share2 className="h-5 w-5 text-primary" />
-              Share Movie
-            </DialogTitle>
-            <DialogDescription>
-              Share this movie link publicly. Short URLs automatically clear after 30 days.
-            </DialogDescription>
+            <DialogTitle className="flex items-center gap-2"><Share2 className="h-5 w-5 text-primary" />Share movie</DialogTitle>
+            <DialogDescription>Copy this short link. It automatically expires after 30 days.</DialogDescription>
           </DialogHeader>
-          <div className="mt-4 flex items-center gap-2 rounded-xl border bg-muted/40 p-2">
-            <input
-              type="text"
-              readOnly
-              value={shortUrl}
-              className="w-full bg-transparent px-2 text-sm font-mono focus:outline-none"
-            />
-            <Button
-              size="sm"
-              onClick={handleCopyShortUrl}
-              className="rounded-lg shrink-0 gap-1.5"
-            >
-              {copied ? (
-                <>
-                  <Check className="h-3.5 w-3.5 text-green-500" />
-                  Copied!
-                </>
-              ) : (
-                <>
-                  <Copy className="h-3.5 w-3.5" />
-                  Copy Link
-                </>
-              )}
+          <div className="flex items-center gap-2 rounded-xl border bg-muted/40 p-2">
+            <input readOnly value={shortUrl} className="min-w-0 flex-1 bg-transparent px-2 text-sm font-mono outline-none" />
+            <Button size="sm" onClick={handleCopyShortUrl} className="shrink-0 gap-1.5">
+              {copied ? <><Check className="h-3.5 w-3.5" />Copied</> : <><Copy className="h-3.5 w-3.5" />Copy</>}
             </Button>
           </div>
         </DialogContent>
       </Dialog>
+    </div>
+  )
+}
+
+function MoviePageSkeleton() {
+  return (
+    <div className="min-h-screen bg-background">
+      <Header />
+      <main className="mx-auto max-w-7xl px-4 py-4">
+        <Skeleton className="mb-3 h-8 w-24" />
+        <div className="grid gap-4 md:grid-cols-[180px_1fr] xl:grid-cols-[220px_1fr]">
+          <Skeleton className="aspect-[2/3] w-full rounded-xl" />
+          <div className="space-y-3"><Skeleton className="h-24 w-full rounded-xl" /><div className="grid gap-3 md:grid-cols-2"><Skeleton className="h-72 rounded-xl" /><Skeleton className="h-72 rounded-xl" /></div></div>
+        </div>
+      </main>
     </div>
   )
 }

@@ -16,6 +16,7 @@ if db is not None:
     try:
         db.titlecard_rate_limits.create_index('expiresAt', expireAfterSeconds=0)
         db.watch_link_reports.create_index([('status', 1), ('createdAt', -1)])
+        db.watch_link_submissions.create_index([('status', 1), ('createdAt', -1)])
     except Exception as e:
         print(f"Index creation error for movie support collections: {e}")
 
@@ -779,6 +780,111 @@ def report_movie_watch_link(movie_id):
     result = db.watch_link_reports.insert_one(report)
     return jsonify({"message": "Thanks — the admin team will check this link", "reportId": str(result.inserted_id)}), 201
 
+@movies_bp.route('/<movie_id>/watch-link-submissions', methods=['POST'])
+def submit_movie_watch_links(movie_id):
+    """Accept viewer suggestions without publishing them before admin review."""
+    if db is None:
+        return jsonify({"error": "Database not connected"}), 500
+    uid = get_authenticated_uid(request)
+    if not uid:
+        return jsonify({"error": "Sign in to suggest a watch link"}), 401
+    movie = find_movie(movie_id)
+    if not movie:
+        return jsonify({"error": "Movie not found"}), 404
+
+    data = request.get_json(silent=True) or {}
+    try:
+        providers = normalize_watch_providers(data.get('providers', []))
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+    if not providers:
+        return jsonify({"error": "Add at least one watch link"}), 400
+    if len(providers) > 3:
+        return jsonify({"error": "You can suggest up to three links at once"}), 400
+
+    published_urls = {provider.get('url') for provider in movie.get('watchProviders', [])}
+    now = datetime.datetime.now(datetime.timezone.utc)
+    created = []
+    skipped = 0
+    for provider in providers:
+        if provider['url'] in published_urls:
+            skipped += 1
+            continue
+        duplicate = db.watch_link_submissions.find_one({
+            "movieId": movie['_id'], "provider.url": provider['url'], "status": "pending"
+        })
+        if duplicate:
+            skipped += 1
+            continue
+        result = db.watch_link_submissions.insert_one({
+            "movieId": movie['_id'], "movieTitle": movie.get('title'), "movieYear": movie.get('year'),
+            "provider": provider, "userId": uid, "status": "pending", "createdAt": now,
+            "reviewedAt": None, "reviewedBy": None, "adminNote": None,
+        })
+        created.append(str(result.inserted_id))
+
+    if not created:
+        return jsonify({"message": "That link is already published or awaiting review", "submitted": 0}), 200
+    return jsonify({
+        "message": f"{len(created)} watch link{'s' if len(created) != 1 else ''} sent for admin approval",
+        "submitted": len(created), "skipped": skipped,
+    }), 201
+
+@movies_bp.route('/watch-link-submissions', methods=['GET'])
+def get_movie_watch_link_submissions():
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer ') or not is_admin(auth_header.split(' ')[1]):
+        return jsonify({"error": "Forbidden: Admin access required"}), 403
+    if db is None:
+        return jsonify({"error": "Database not connected"}), 500
+
+    status = request.args.get('status', 'pending')
+    query = {} if status == 'all' else {"status": status}
+    submissions = []
+    for item in db.watch_link_submissions.find(query).sort('createdAt', -1):
+        submissions.append({
+            "id": str(item['_id']), "movieId": str(item.get('movieId')),
+            "movieTitle": item.get('movieTitle'), "movieYear": item.get('movieYear'),
+            "provider": item.get('provider', {}), "userId": item.get('userId'),
+            "status": item.get('status'), "adminNote": item.get('adminNote'),
+            "createdAt": item.get('createdAt').isoformat() if item.get('createdAt') else None,
+            "reviewedAt": item.get('reviewedAt').isoformat() if item.get('reviewedAt') else None,
+        })
+    return jsonify({"submissions": submissions, "count": len(submissions)})
+
+@movies_bp.route('/watch-link-submissions/<submission_id>', methods=['PUT'])
+def review_movie_watch_link_submission(submission_id):
+    auth_header = request.headers.get('Authorization')
+    if not auth_header or not auth_header.startswith('Bearer ') or not is_admin(auth_header.split(' ')[1]):
+        return jsonify({"error": "Forbidden: Admin access required"}), 403
+    if db is None:
+        return jsonify({"error": "Database not connected"}), 500
+    if not ObjectId.is_valid(submission_id):
+        return jsonify({"error": "Invalid submission ID"}), 400
+
+    data = request.get_json(silent=True) or {}
+    status = data.get('status')
+    if status not in {'approved', 'rejected'}:
+        return jsonify({"error": "Status must be approved or rejected"}), 400
+    submission = db.watch_link_submissions.find_one({"_id": ObjectId(submission_id), "status": "pending"})
+    if not submission:
+        return jsonify({"error": "Pending submission not found"}), 404
+
+    if status == 'approved':
+        provider = submission.get('provider', {})
+        db.movies.update_one(
+            {"_id": submission['movieId'], "watchProviders.url": {"$ne": provider.get('url')}},
+            {"$push": {"watchProviders": provider}}
+        )
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+    uid = get_authenticated_uid(request)
+    db.watch_link_submissions.update_one(
+        {"_id": submission['_id']},
+        {"$set": {"status": status, "adminNote": data.get('adminNote'), "reviewedAt": now, "reviewedBy": uid}}
+    )
+    return jsonify({"message": f"Watch link {status}"})
+
 @movies_bp.route('/watch-link-reports', methods=['GET'])
 def get_movie_watch_link_reports():
     auth_header = request.headers.get('Authorization')
@@ -1023,6 +1129,7 @@ def delete_movie(movie_id):
         db.titlecard_images.delete_many({"movieId": movie_id})
         db.movie_posters.delete_one({"movieId": movie_id})
         db.watch_link_reports.delete_many({"movieId": ObjectId(movie_id)})
+        db.watch_link_submissions.delete_many({"movieId": ObjectId(movie_id)})
             
         return jsonify({"message": "Movie deleted successfully"})
     except Exception as e:
@@ -1302,6 +1409,10 @@ def repoint_movie_references(dup_id, kept_id):
     db.titlecard_images.update_many({"movieId": dup_id}, {"$set": {"movieId": kept_id}})
     db.short_urls.update_many({"movieId": dup_id}, {"$set": {"movieId": kept_id}})
     db.watch_link_reports.update_many(
+        {"movieId": {"$in": [dup_id, ObjectId(dup_id)]}},
+        {"$set": {"movieId": ObjectId(kept_id)}}
+    )
+    db.watch_link_submissions.update_many(
         {"movieId": {"$in": [dup_id, ObjectId(dup_id)]}},
         {"$set": {"movieId": ObjectId(kept_id)}}
     )

@@ -15,9 +15,10 @@ interface SubmissionFormProps {
   movieId: string
   runtimeMinutes?: number // Movie runtime in minutes for validation
   onSubmitted: () => void
+  compact?: boolean
 }
 
-export function SubmissionForm({ movieId, runtimeMinutes, onSubmitted }: SubmissionFormProps) {
+export function SubmissionForm({ movieId, runtimeMinutes, onSubmitted, compact = false }: SubmissionFormProps) {
   const [timeInput, setTimeInput] = useState("")
   const [comment, setComment] = useState("")
   const [loading, setLoading] = useState(false)
@@ -67,8 +68,8 @@ export function SubmissionForm({ movieId, runtimeMinutes, onSubmitted }: Submiss
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
+    <form onSubmit={handleSubmit} className={compact ? "space-y-2" : "space-y-4"}>
+      <div className={compact ? "space-y-1.5" : "space-y-2"}>
         <Label htmlFor="time-input" className="flex items-center gap-2">
           <Clock className="h-4 w-4" />
           When does the title card appear?
@@ -79,14 +80,14 @@ export function SubmissionForm({ movieId, runtimeMinutes, onSubmitted }: Submiss
           value={timeInput}
           onChange={(e) => setTimeInput(e.target.value)}
           disabled={loading}
-          className="text-lg"
+          className={compact ? "h-9" : "text-lg"}
         />
-        <p className="text-xs text-muted-foreground">
+        {!compact && <p className="text-xs text-muted-foreground">
           Enter minutes only (12) or minutes:seconds (12:35)
-        </p>
+        </p>}
       </div>
 
-      <div className="space-y-2">
+      <div className={compact ? "space-y-1.5" : "space-y-2"}>
         <Label htmlFor="comment">Optional note</Label>
         <Textarea
           id="comment"
@@ -94,7 +95,8 @@ export function SubmissionForm({ movieId, runtimeMinutes, onSubmitted }: Submiss
           value={comment}
           onChange={(e) => setComment(e.target.value)}
           disabled={loading}
-          rows={2}
+          rows={compact ? 1 : 2}
+          className={compact ? "min-h-9 resize-none" : undefined}
         />
       </div>
 
@@ -105,7 +107,7 @@ export function SubmissionForm({ movieId, runtimeMinutes, onSubmitted }: Submiss
         </p>
       )}
 
-      <Button type="submit" disabled={loading || !timeInput.trim()} className="w-full gap-2">
+      <Button type="submit" disabled={loading || !timeInput.trim()} size={compact ? "sm" : "default"} className="w-full gap-2">
         {loading ? (
           <>
             <Loader2 className="h-4 w-4 animate-spin" />
@@ -114,7 +116,7 @@ export function SubmissionForm({ movieId, runtimeMinutes, onSubmitted }: Submiss
         ) : (
           <>
             <Send className="h-4 w-4" />
-            Submit Title Card Time
+            {compact ? "Submit time" : "Submit Title Card Time"}
           </>
         )}
       </Button>

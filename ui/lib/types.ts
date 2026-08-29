@@ -19,6 +19,18 @@ export interface WatchLinkReport {
   adminNote?: string | null
 }
 
+export interface WatchLinkSubmission {
+  id: string
+  movieId: string
+  movieTitle: string
+  movieYear?: number | null
+  provider: WatchProvider
+  status: "pending" | "approved" | "rejected"
+  createdAt: string
+  reviewedAt?: string | null
+  adminNote?: string | null
+}
+
 // Movie document stored in Firestore
 export interface Movie {
   id: string

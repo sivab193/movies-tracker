@@ -2,25 +2,29 @@
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { AlertTriangle, Check, ExternalLink, Loader2, X } from "lucide-react"
+import { AlertTriangle, Check, ExternalLink, Link2, Loader2, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CollapsibleSection } from "@/components/collapsible-section"
-import type { WatchLinkReport } from "@/lib/types"
-import { getWatchLinkReports, resolveWatchLinkReport } from "@/services/api"
+import type { WatchLinkReport, WatchLinkSubmission } from "@/lib/types"
+import { getWatchLinkReports, getWatchLinkSubmissions, resolveWatchLinkReport, reviewWatchLinkSubmission } from "@/services/api"
 
 export function AdminWatchLinkReports() {
   const [reports, setReports] = useState<WatchLinkReport[]>([])
+  const [submissions, setSubmissions] = useState<WatchLinkSubmission[]>([])
   const [loading, setLoading] = useState(true)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
 
   useEffect(() => {
-    getWatchLinkReports()
-      .then((data) => setReports(data.reports || []))
-      .catch((error) => console.error("Failed to load watch-link reports", error))
+    Promise.all([getWatchLinkReports(), getWatchLinkSubmissions()])
+      .then(([reportData, submissionData]) => {
+        setReports(reportData.reports || [])
+        setSubmissions(submissionData.submissions || [])
+      })
+      .catch((error) => console.error("Failed to load watch-link moderation", error))
       .finally(() => setLoading(false))
   }, [])
 
-  const updateStatus = async (id: string, status: "resolved" | "dismissed") => {
+  const updateReport = async (id: string, status: "resolved" | "dismissed") => {
     setUpdatingId(id)
     try {
       await resolveWatchLinkReport(id, status)
@@ -32,16 +36,55 @@ export function AdminWatchLinkReports() {
     }
   }
 
+  const reviewSubmission = async (id: string, status: "approved" | "rejected") => {
+    setUpdatingId(id)
+    try {
+      await reviewWatchLinkSubmission(id, status)
+      setSubmissions((items) => items.filter((item) => item.id !== id))
+    } catch (error) {
+      alert(error instanceof Error ? error.message : "Could not review watch link")
+    } finally {
+      setUpdatingId(null)
+    }
+  }
+
   return (
-    <div id="watch-link-reports">
+    <div id="watch-link-moderation" className="space-y-6">
       <CollapsibleSection
         defaultOpen
-        title={<><AlertTriangle className="h-5 w-5 text-amber-500" />Watch-link reports ({reports.length})</>}
-        description="Links viewers flagged as expired or not working"
+        title={<><Link2 className="h-5 w-5 text-sky-500" />Suggested watch links ({submissions.length})</>}
+        description="Viewer links waiting for approval before they are published"
       >
-        {loading ? (
-          <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Loading reports…</div>
-        ) : reports.length ? (
+        {loading ? <Loading /> : submissions.length ? (
+          <div className="space-y-3">
+            {submissions.map((item) => (
+              <div key={item.id} className="rounded-xl border bg-muted/20 p-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="font-semibold">{item.movieTitle} {item.movieYear ? <span className="font-normal text-muted-foreground">({item.movieYear})</span> : null}</p>
+                    <p className="mt-1 text-sm"><span className="font-medium">{item.provider.name}</span> · {item.provider.regions?.join(", ") || "Region not specified"}</p>
+                    <p className="mt-1 truncate text-xs text-muted-foreground">{item.provider.url}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <Button asChild size="sm" variant="outline"><a href={item.provider.url} target="_blank" rel="noopener noreferrer"><ExternalLink className="mr-1.5 h-3.5 w-3.5" />Test</a></Button>
+                    <Button size="sm" variant="outline" disabled={updatingId === item.id} onClick={() => reviewSubmission(item.id, "rejected")}><X className="mr-1.5 h-3.5 w-3.5" />Reject</Button>
+                    <Button size="sm" disabled={updatingId === item.id} onClick={() => reviewSubmission(item.id, "approved")}>
+                      {updatingId === item.id ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}Approve
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : <Empty text="No watch links are waiting for approval." />}
+      </CollapsibleSection>
+
+      <CollapsibleSection
+        defaultOpen
+        title={<><AlertTriangle className="h-5 w-5 text-amber-500" />Broken-link reports ({reports.length})</>}
+        description="Published links viewers flagged as expired or not working"
+      >
+        {loading ? <Loading /> : reports.length ? (
           <div className="space-y-3">
             {reports.map((report) => (
               <div key={report.id} className="rounded-xl border bg-muted/20 p-4">
@@ -53,9 +96,9 @@ export function AdminWatchLinkReports() {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Button asChild size="sm" variant="outline"><Link href={`/movie/${report.movieId}`}><ExternalLink className="mr-1.5 h-3.5 w-3.5" />Open movie</Link></Button>
-                    <Button asChild size="sm" variant="outline"><a href={report.providerUrl} target="_blank" rel="noopener noreferrer">Test link</a></Button>
-                    <Button size="sm" variant="outline" disabled={updatingId === report.id} onClick={() => updateStatus(report.id, "dismissed")}><X className="mr-1.5 h-3.5 w-3.5" />Dismiss</Button>
-                    <Button size="sm" disabled={updatingId === report.id} onClick={() => updateStatus(report.id, "resolved")}>
+                    <Button asChild size="sm" variant="outline"><a href={report.providerUrl} target="_blank" rel="noopener noreferrer">Test</a></Button>
+                    <Button size="sm" variant="outline" disabled={updatingId === report.id} onClick={() => updateReport(report.id, "dismissed")}><X className="mr-1.5 h-3.5 w-3.5" />Dismiss</Button>
+                    <Button size="sm" disabled={updatingId === report.id} onClick={() => updateReport(report.id, "resolved")}>
                       {updatingId === report.id ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}Resolved
                     </Button>
                   </div>
@@ -63,8 +106,16 @@ export function AdminWatchLinkReports() {
               </div>
             ))}
           </div>
-        ) : <p className="py-3 text-sm text-muted-foreground">No pending watch-link reports.</p>}
+        ) : <Empty text="No pending broken-link reports." />}
       </CollapsibleSection>
     </div>
   )
+}
+
+function Loading() {
+  return <div className="flex items-center gap-2 py-4 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />Loading…</div>
+}
+
+function Empty({ text }: { text: string }) {
+  return <p className="py-3 text-sm text-muted-foreground">{text}</p>
 }

@@ -2,12 +2,16 @@
 
 import React from "react"
 import Link from "next/link"
+import { usePathname } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
 import { ALL_GROUPS, HOME_ITEM, TIMER_ITEM, visibleItems } from "@/lib/nav"
 
 export function Footer() {
+    const pathname = usePathname()
     const { user, userProfile } = useAuth()
     const visibility = { isSignedIn: !!user, isAdmin: !!userProfile?.isAdmin }
+
+    if (pathname.startsWith("/movie/")) return null
 
     return (
         <footer className="w-full mt-auto bg-background/90 backdrop-blur-md border-t border-border py-8 px-4 md:px-8 hidden md:block">

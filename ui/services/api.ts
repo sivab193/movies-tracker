@@ -419,6 +419,43 @@ export async function reportMovieWatchLink(
     return data;
 }
 
+export async function suggestMovieWatchLinks(movieId: string, providers: Array<{ name: string; url: string; regions: string[] }>) {
+    const token = await auth?.currentUser?.getIdToken();
+    if (!token) throw new Error("Sign in to suggest a watch link");
+    const response = await fetch(`${API_BASE_URL}/movies/${movieId}/watch-link-submissions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ providers }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Failed to suggest watch link");
+    return data;
+}
+
+export async function getWatchLinkSubmissions(status: "pending" | "approved" | "rejected" | "all" = "pending") {
+    const token = await auth?.currentUser?.getIdToken();
+    if (!token) throw new Error("User not authenticated");
+    const response = await fetch(`${API_BASE_URL}/movies/watch-link-submissions?status=${status}`, {
+        headers: { "Authorization": `Bearer ${token}` },
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Failed to fetch watch-link submissions");
+    return data;
+}
+
+export async function reviewWatchLinkSubmission(submissionId: string, status: "approved" | "rejected", adminNote?: string) {
+    const token = await auth?.currentUser?.getIdToken();
+    if (!token) throw new Error("User not authenticated");
+    const response = await fetch(`${API_BASE_URL}/movies/watch-link-submissions/${submissionId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ status, adminNote }),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Failed to review watch-link submission");
+    return data;
+}
+
 export async function getWatchLinkReports(status: "pending" | "resolved" | "dismissed" | "all" = "pending") {
     const token = await auth?.currentUser?.getIdToken();
     if (!token) throw new Error("User not authenticated");

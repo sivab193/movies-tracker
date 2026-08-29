@@ -2,13 +2,13 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { AlertTriangle, ExternalLink, Loader2, Pencil, Tv } from "lucide-react"
+import { AlertTriangle, ExternalLink, Loader2, Pencil, Plus, Tv } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import type { WatchProvider } from "@/lib/types"
-import { reportMovieWatchLink } from "@/services/api"
+import { reportMovieWatchLink, suggestMovieWatchLinks } from "@/services/api"
 import { OttMark } from "@/components/ott-provider"
 import { WatchProviderEditor } from "@/components/watch-provider-editor"
 
@@ -19,9 +19,10 @@ type Props = {
   canReport?: boolean
   isAdmin?: boolean
   onSaveProviders?: (providers: WatchProvider[]) => Promise<void>
+  compact?: boolean
 }
 
-export function WatchOnlineSection({ providers = [], className, movieId, canReport, isAdmin, onSaveProviders }: Props) {
+export function WatchOnlineSection({ providers = [], className, movieId, canReport, isAdmin, onSaveProviders, compact = false }: Props) {
   const [reportProvider, setReportProvider] = useState<WatchProvider | null>(null)
   const [reason, setReason] = useState<"not_working" | "expired">("not_working")
   const [reporting, setReporting] = useState(false)
@@ -29,6 +30,9 @@ export function WatchOnlineSection({ providers = [], className, movieId, canRepo
   const [editorOpen, setEditorOpen] = useState(false)
   const [draftProviders, setDraftProviders] = useState<WatchProvider[]>(providers)
   const [saving, setSaving] = useState(false)
+  const [suggestionOpen, setSuggestionOpen] = useState(false)
+  const [suggestedProviders, setSuggestedProviders] = useState<WatchProvider[]>([])
+  const [suggesting, setSuggesting] = useState(false)
 
   const submitReport = async () => {
     if (!movieId || !reportProvider) return
@@ -65,11 +69,27 @@ export function WatchOnlineSection({ providers = [], className, movieId, canRepo
     }
   }
 
+  const submitSuggestions = async () => {
+    if (!movieId || !suggestedProviders.length) return
+    setSuggesting(true)
+    setFeedback("")
+    try {
+      const result = await suggestMovieWatchLinks(movieId, suggestedProviders)
+      setFeedback(result.message || "Watch link sent for approval")
+      setSuggestedProviders([])
+      setSuggestionOpen(false)
+    } catch (error) {
+      setFeedback(error instanceof Error ? error.message : "Could not submit watch link")
+    } finally {
+      setSuggesting(false)
+    }
+  }
+
   return (
     <section className={className}>
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between gap-3 space-y-0 pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
+      <Card className={compact ? "gap-0 py-3" : undefined}>
+        <CardHeader className={`flex flex-row items-center justify-between gap-3 space-y-0 ${compact ? "px-3 pb-2" : "pb-3"}`}>
+          <CardTitle className={`flex items-center gap-2 ${compact ? "text-sm" : "text-lg"}`}>
             <Tv className="h-5 w-5 text-primary" />
             Watch online
           </CardTitle>
@@ -78,12 +98,19 @@ export function WatchOnlineSection({ providers = [], className, movieId, canRepo
               <Pencil className="h-3.5 w-3.5" /> Edit links
             </Button>
           )}
+          {!isAdmin && movieId && (canReport ? (
+            <Button type="button" variant="outline" size="sm" className="h-8 gap-1.5 px-2 text-xs" onClick={() => { setSuggestedProviders([]); setFeedback(""); setSuggestionOpen(true) }}>
+              <Plus className="h-3.5 w-3.5" /> Suggest link
+            </Button>
+          ) : (
+            <Button asChild variant="outline" size="sm" className="h-8 px-2 text-xs"><Link href="/auth">Sign in to suggest</Link></Button>
+          ))}
         </CardHeader>
-        <CardContent>
+        <CardContent className={compact ? "px-3" : undefined}>
           {providers.length ? (
             <div className="space-y-2">
               {providers.map((provider) => (
-                <div key={`${provider.name}-${provider.url}`} className="flex items-center gap-2 rounded-xl border p-2.5 transition-colors hover:border-primary/40 hover:bg-muted/40">
+                <div key={`${provider.name}-${provider.url}`} className={`flex items-center gap-2 rounded-xl border transition-colors hover:border-primary/40 hover:bg-muted/40 ${compact ? "p-2" : "p-2.5"}`}>
                   <a href={provider.url} target="_blank" rel="noopener noreferrer" className="flex min-w-0 flex-1 items-center gap-3" aria-label={`Watch on ${provider.name}`}>
                     <OttMark name={provider.name} />
                     <div className="min-w-0 flex-1">
@@ -140,6 +167,23 @@ export function WatchOnlineSection({ providers = [], className, movieId, canRepo
           <DialogFooter>
             <Button type="button" variant="outline" onClick={() => setEditorOpen(false)}>Cancel</Button>
             <Button type="button" onClick={saveProviders} disabled={saving}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save links</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={suggestionOpen} onOpenChange={setSuggestionOpen}>
+        <DialogContent className="max-h-[85vh] max-w-xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Suggest a watch link</DialogTitle>
+            <DialogDescription>Add the direct movie link and region. It will only appear publicly after an admin approves it.</DialogDescription>
+          </DialogHeader>
+          <WatchProviderEditor providers={suggestedProviders} onChange={setSuggestedProviders} />
+          {feedback && <p className="text-sm text-destructive" role="alert">{feedback}</p>}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setSuggestionOpen(false)}>Cancel</Button>
+            <Button type="button" onClick={submitSuggestions} disabled={suggesting || !suggestedProviders.length}>
+              {suggesting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Send for approval
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
