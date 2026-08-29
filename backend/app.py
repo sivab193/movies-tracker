@@ -33,6 +33,7 @@ from routes.device_auth import device_auth_bp
 from routes.cards import cards_bp
 from routes.watch_orders import watch_orders_bp
 from routes.series import series_bp
+from routes.series_table_import import series_table_import_bp
 from routes.omdb_keys import omdb_keys_bp
 from routes.requests import requests_bp
 from routes.people import people_bp
@@ -47,6 +48,7 @@ app.register_blueprint(device_auth_bp, url_prefix='/api/auth')
 app.register_blueprint(cards_bp, url_prefix='/api/cards')
 app.register_blueprint(watch_orders_bp, url_prefix='/api/watch-orders')
 app.register_blueprint(series_bp, url_prefix='/api/series')
+app.register_blueprint(series_table_import_bp, url_prefix='/api/series-table-import')
 app.register_blueprint(omdb_keys_bp, url_prefix='/api/omdb-keys')
 app.register_blueprint(requests_bp, url_prefix='/api/requests')
 app.register_blueprint(people_bp, url_prefix='/api/people')
