@@ -12,6 +12,7 @@ interface WatchHistoryItem {
     moviePosterUrl?: string
     theaterId?: string
     theaterName?: string
+    theaterLocation?: string
     timestamp?: string
     createdAt: string
 }
@@ -171,10 +172,10 @@ export default function CustomUserProfilePage() {
                                                         rel="noopener noreferrer"
                                                         className="mt-0.5 block break-words text-primary hover:underline"
                                                     >
-                                                        {item.theaterName || "Unnamed Theater"}
+                                                        {item.theaterName || "Unnamed Theater"}{item.theaterLocation ? ` (${item.theaterLocation})` : ""}{item.theaterLocation ? ` (${item.theaterLocation})` : ""}
                                                     </a>
                                                 ) : (
-                                                    <p className="mt-0.5 break-words text-muted-foreground">{item.theaterName || "N/A"}</p>
+                                                    <p className="mt-0.5 break-words text-muted-foreground">{item.theaterName || "N/A"}{item.theaterLocation ? ` (${item.theaterLocation})` : ""}</p>
                                                 )}
                                             </div>
                                         </div>
@@ -211,7 +212,7 @@ export default function CustomUserProfilePage() {
                                                         {item.theaterName || "Unnamed Theater"}
                                                     </a>
                                                 ) : (
-                                                    <span className="break-words">{item.theaterName || "N/A"}</span>
+                                                    <span className="break-words">{item.theaterName || "N/A"}{item.theaterLocation ? ` (${item.theaterLocation})` : ""}</span>
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 font-mono text-primary">
