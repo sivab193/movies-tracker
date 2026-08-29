@@ -14,7 +14,7 @@ import {
     getOmdbKeyUsage,
 } from "@/services/omdb-keys-service"
 
-export function AdminOmdbKeys() {
+export function AdminOmdbKeys({ standalone = false }: { standalone?: boolean } = {}) {
     const [keys, setKeys] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
@@ -143,6 +143,7 @@ export function AdminOmdbKeys() {
 
     return (
         <CollapsibleSection
+            defaultOpen={standalone}
             title={
                 <>
                     <Key className="h-5 w-5 text-primary" />

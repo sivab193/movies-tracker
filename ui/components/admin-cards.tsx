@@ -66,7 +66,7 @@ const emptyCard = () => ({
     offers: [emptyOffer()] as DraftOffer[],
 })
 
-export function AdminCards() {
+export function AdminCards({ standalone = false }: { standalone?: boolean } = {}) {
     const [cards, setCards] = useState<CardInfo[]>([])
     const [reports, setReports] = useState<CardReport[]>([])
     const [loading, setLoading] = useState(true)
@@ -201,6 +201,7 @@ export function AdminCards() {
     return (
         <>
             <CollapsibleSection
+                defaultOpen={standalone}
                 title={
                     <>
                         <CreditCard className="h-5 w-5 text-primary" />

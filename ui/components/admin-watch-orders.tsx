@@ -12,7 +12,7 @@ import { Check, Copy, ExternalLink, ListOrdered, Loader2, Pencil, X } from "luci
 
 const SLUG_HINT = "Lowercase letters, numbers and dashes only"
 
-export function AdminWatchOrders() {
+export function AdminWatchOrders({ standalone = false }: { standalone?: boolean } = {}) {
   const [orders, setOrders] = useState<WatchOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -104,6 +104,7 @@ export function AdminWatchOrders() {
 
   return (
     <CollapsibleSection
+      defaultOpen={standalone}
       title={
         <>
           <ListOrdered className="h-5 w-5 text-primary" />

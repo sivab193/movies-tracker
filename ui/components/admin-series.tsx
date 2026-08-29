@@ -51,7 +51,7 @@ const API_KEY_STORAGE = "omdbApiKeyOverride"
 
 type SeasonState = "pending" | "importing" | "done" | "error"
 
-export function AdminSeries() {
+export function AdminSeries({ standalone = false }: { standalone?: boolean } = {}) {
     const [seriesList, setSeriesList] = useState<any[]>([])
     const [seriesTotal, setSeriesTotal] = useState(0)
     const [seriesSkip, setSeriesSkip] = useState(0)
@@ -268,6 +268,7 @@ export function AdminSeries() {
     return (
         <>
             <CollapsibleSection
+                defaultOpen={standalone}
                 title={
                     <>
                         <Tv className="h-5 w-5 text-primary" />

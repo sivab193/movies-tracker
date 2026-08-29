@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from "next"
 import { Analytics } from "@vercel/analytics/next"
 import { AuthProvider } from "@/contexts/auth-context"
 import { ThemeProvider } from "@/contexts/theme-context"
+import { OttProviderCatalogProvider } from "@/contexts/ott-provider-context"
 import { Footer } from "@/components/footer"
 import { BottomNav } from "@/components/bottom-nav"
 import RegisterServiceWorker from "@/app/register-service-worker"
@@ -65,6 +66,7 @@ export default function RootLayout({
       <body className="font-sans antialiased min-h-[100dvh] flex flex-col bg-background">
         <ThemeProvider>
           <AuthProvider>
+            <OttProviderCatalogProvider>
             <div className="min-h-screen flex flex-col flex-1 pb-20 md:pb-0">
               {children}
               <Footer />
@@ -72,6 +74,7 @@ export default function RootLayout({
             <BottomNav />
             <Analytics />
             <RegisterServiceWorker />
+            </OttProviderCatalogProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

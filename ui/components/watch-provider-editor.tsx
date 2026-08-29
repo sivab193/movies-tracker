@@ -7,9 +7,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { OTT_OPTIONS, OttMark } from "@/components/ott-provider"
+import { useOttProviders } from "@/contexts/ott-provider-context"
 import type { WatchProvider } from "@/lib/types"
 
 export function WatchProviderEditor({ providers, onChange }: { providers: WatchProvider[]; onChange: (providers: WatchProvider[]) => void }) {
+  const { providers: providerDefinitions } = useOttProviders()
+  const providerOptions = providerDefinitions.length
+    ? [...providerDefinitions.map((provider) => provider.name), "Other"]
+    : OTT_OPTIONS
   const [selectedName, setSelectedName] = useState("Sun NXT")
   const [customName, setCustomName] = useState("")
   const [url, setUrl] = useState("")
@@ -29,7 +34,7 @@ export function WatchProviderEditor({ providers, onChange }: { providers: WatchP
   }
 
   const edit = (provider: WatchProvider, index: number) => {
-    const known = OTT_OPTIONS.includes(provider.name)
+    const known = providerOptions.includes(provider.name)
     setSelectedName(known ? provider.name : "Other")
     setCustomName(known ? "" : provider.name)
     setUrl(provider.url)
@@ -52,9 +57,9 @@ export function WatchProviderEditor({ providers, onChange }: { providers: WatchP
         </div>)}
       </div>}
       <div className="grid gap-2 rounded-lg border border-dashed p-3 sm:grid-cols-2">
-        <Select value={selectedName} onValueChange={setSelectedName}><SelectTrigger className="w-full"><SelectValue placeholder="Choose OTT" /></SelectTrigger><SelectContent>{OTT_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent></Select>
+        <Select value={selectedName} onValueChange={setSelectedName}><SelectTrigger className="w-full"><SelectValue placeholder="Choose OTT" /></SelectTrigger><SelectContent>{providerOptions.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent></Select>
         {selectedName === "Other" && <Input value={customName} onChange={(e) => setCustomName(e.target.value)} placeholder="OTT name" />}
-        <Input value={url} onChange={(e) => setUrl(e.target.value)} className={selectedName === "Other" ? "sm:col-span-2" : "sm:col-span-2"} placeholder="https://provider.com/title/..." type="url" />
+        <Input value={url} onChange={(e) => setUrl(e.target.value)} className="sm:col-span-2" placeholder={providerDefinitions.find((provider) => provider.name === selectedName)?.baseUrl ? `${providerDefinitions.find((provider) => provider.name === selectedName)?.baseUrl}/title/...` : "https://provider.com/title/..."} type="url" />
         <Input value={regions} onChange={(e) => setRegions(e.target.value)} placeholder="India, United States" />
         <Button type="button" variant="secondary" onClick={saveProvider} disabled={!name || !url.trim()} className="gap-2">{editingIndex === null ? <Plus className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}{editingIndex === null ? "Add provider" : "Update provider"}</Button>
       </div>

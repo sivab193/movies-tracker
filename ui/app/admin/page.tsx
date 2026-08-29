@@ -92,7 +92,7 @@ export default function AdminPage() {
         { title: "Users", description: "Review accounts, roles, leaderboard bans, profiles, and joined dates.", href: "/admin/users", icon: Users, count: counts.users, tone: "from-slate-500/20 to-zinc-500/5 border-slate-500/25", action: "Manage users" },
         { title: "Theaters", description: "Add, import, verify, and clean up approved theater records.", href: "/admin/theaters", icon: MapPin, count: counts.theaters, tone: "from-pink-500/20 to-rose-500/5 border-pink-500/25", action: "Open theater tools" },
         { title: "OTT Catalog", description: "Browse every linked streaming title grouped by provider.", href: "/admin/ott", icon: MonitorPlay, tone: "from-fuchsia-500/20 to-purple-500/5 border-fuchsia-500/25", action: "Open catalog" },
-        { title: "Watch-link Moderation", description: "Approve viewer suggestions and review links reported as broken.", href: "/admin/tools#watch-link-moderation", icon: AlertTriangle, count: counts.watchLinkReports, tone: "from-amber-500/20 to-orange-500/5 border-amber-500/25", action: "Review links" },
+        { title: "Watch-link Moderation", description: "Approve viewer suggestions and review links reported as broken.", href: "/admin/watch-links", icon: AlertTriangle, count: counts.watchLinkReports, tone: "from-amber-500/20 to-orange-500/5 border-amber-500/25", action: "Review links" },
         { title: "Watch Orders", description: "Edit curated watch-order links and published descriptions.", href: "/admin/watch-orders", icon: BadgeCheck, tone: "from-orange-500/20 to-amber-500/5 border-orange-500/25", action: "Manage orders" },
         { title: "Cards & Offers", description: "Manage bank-card and movie-ticket offer listings.", href: "/admin/cards", icon: CreditCard, tone: "from-rose-500/20 to-pink-500/5 border-rose-500/25", action: "Open offers" },
         { title: "OMDb API Keys", description: "Monitor API keys, health, and usage limits.", href: "/admin/omdb", icon: KeyRound, tone: "from-violet-500/20 to-indigo-500/5 border-violet-500/25", action: "Manage keys" },
@@ -108,10 +108,10 @@ export default function AdminPage() {
                     <div>
                         <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-primary"><Sparkles className="h-3.5 w-3.5" />Admin workspace</div>
                         <h1 className="text-4xl font-bold tracking-tight">Admin Dashboard</h1>
-                        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">Pick a management area instead of expanding a long list. The full tools workspace remains at /admin/tools while sections are moved out incrementally.</p>
+                        <p className="mt-2 max-w-2xl text-sm text-muted-foreground">Each management area now has its own focused workspace. The legacy full-tools page remains available only as a fallback.</p>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                        <Button asChild variant="outline" className="gap-2"><Link href="/admin/tools">Full Tools <ArrowRight className="h-4 w-4" /></Link></Button>
+                        <Button asChild variant="outline" className="gap-2"><Link href="/admin/tools">Legacy Full Tools <ArrowRight className="h-4 w-4" /></Link></Button>
                         <Button asChild className="gap-2"><Link href="/admin/users">Users <ArrowRight className="h-4 w-4" /></Link></Button>
                     </div>
                 </div>
