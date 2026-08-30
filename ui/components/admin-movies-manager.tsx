@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { WatchProviderEditor } from "@/components/watch-provider-editor"
+import { WatchProviderEditor, type WatchProviderDraft } from "@/components/watch-provider-editor"
 import type { WatchProvider } from "@/lib/types"
 import { addMovie, clearMovieSubmissions, deleteMovie, getMovies, refreshMovieFromOmdb, updateMovie, verifyMovie } from "@/services/api"
 
@@ -22,6 +22,7 @@ export function AdminMoviesManager() {
   const [editing, setEditing] = useState<any | null>(null)
   const [draft, setDraft] = useState<any>({})
   const [providers, setProviders] = useState<WatchProvider[]>([])
+  const [providerDraft, setProviderDraft] = useState<WatchProviderDraft>({ provider: { name: "Sun NXT", url: "", regions: ["India"] }, editingIndex: null })
   const [saving, setSaving] = useState(false)
   const [imdbId, setImdbId] = useState("")
   const [adding, setAdding] = useState(false)
@@ -37,11 +38,34 @@ export function AdminMoviesManager() {
     setEditing(movie)
     setDraft({ title: movie.title || "", year: movie.year || "", language: movie.language || movie.Language || "", runtime: movie.runtime || "", posterUrl: movie.posterUrl || "" })
     setProviders(movie.watchProviders || [])
+    setProviderDraft({ provider: { name: "Sun NXT", url: "", regions: ["India"] }, editingIndex: null })
   }
   const save = async () => {
     if (!editing) return
+    const pending = providerDraft.provider
+    // The empty editor always has a default provider selected, so a URL is what
+    // makes it an actual pending row.
+    const hasPendingProvider = Boolean(pending.url.trim())
+    let providersToSave = providers
+    if (hasPendingProvider) {
+      if (!pending.name.trim() || !pending.url.trim()) {
+        alert("Complete the provider and URL, or clear the unfinished provider row before saving.")
+        return
+      }
+      try {
+        const parsed = new URL(pending.url.trim())
+        if (!/^https?:$/.test(parsed.protocol)) throw new Error()
+      } catch {
+        alert("Enter a valid http(s) provider URL before saving.")
+        return
+      }
+      const preparedProvider = { ...pending, name: pending.name.trim(), url: pending.url.trim(), regions: pending.regions.filter(Boolean) }
+      providersToSave = providerDraft.editingIndex === null
+        ? [...providers, preparedProvider]
+        : providers.map((provider, index) => index === providerDraft.editingIndex ? preparedProvider : provider)
+    }
     setSaving(true)
-    try { const updated = await updateMovie(editing.id, { ...draft, year: draft.year ? Number(draft.year) : undefined, watchProviders: providers }); setMovies((items) => items.map((item) => item.id === editing.id ? { ...item, ...updated } : item)); setEditing(null) }
+    try { const updated = await updateMovie(editing.id, { ...draft, year: draft.year ? Number(draft.year) : undefined, watchProviders: providersToSave }); setMovies((items) => items.map((item) => item.id === editing.id ? { ...item, ...updated } : item)); setEditing(null) }
     catch (error) { alert(error instanceof Error ? error.message : "Could not update movie") }
     finally { setSaving(false) }
   }
@@ -91,7 +115,7 @@ export function AdminMoviesManager() {
       <Dialog open={Boolean(editing)} onOpenChange={(open) => !open && setEditing(null)}>
         <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto"><DialogHeader><DialogTitle>Edit {editing?.title}</DialogTitle><DialogDescription>Update metadata and streaming links from this dedicated movie workspace.</DialogDescription></DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2"><Field label="Title"><Input value={draft.title || ""} onChange={(e) => setDraft({ ...draft, title: e.target.value })} /></Field><Field label="Year"><Input type="number" value={draft.year || ""} onChange={(e) => setDraft({ ...draft, year: e.target.value })} /></Field><Field label="Language"><Input value={draft.language || ""} onChange={(e) => setDraft({ ...draft, language: e.target.value })} /></Field><Field label="Runtime"><Input value={draft.runtime || ""} onChange={(e) => setDraft({ ...draft, runtime: e.target.value })} /></Field><div className="sm:col-span-2"><Field label="Poster URL"><Input value={draft.posterUrl || ""} onChange={(e) => setDraft({ ...draft, posterUrl: e.target.value })} /></Field></div></div>
-          <WatchProviderEditor providers={providers} onChange={setProviders} />
+          <WatchProviderEditor providers={providers} onChange={setProviders} onDraftChange={setProviderDraft} />
           <DialogFooter className="sm:justify-between"><Button variant="destructive" onClick={async () => { if (editing && confirm("Clear every title-card submission for this movie?")) { await clearMovieSubmissions(editing.id); setEditing(null); await load(skip) } }}>Clear title times</Button><div className="flex gap-2"><Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button><Button onClick={save} disabled={saving}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save</Button></div></DialogFooter>
         </DialogContent>
       </Dialog>
