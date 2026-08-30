@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Pencil, Plus, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -10,7 +10,12 @@ import { OTT_OPTIONS, OttMark } from "@/components/ott-provider"
 import { useOttProviders } from "@/contexts/ott-provider-context"
 import type { WatchProvider } from "@/lib/types"
 
-export function WatchProviderEditor({ providers, onChange }: { providers: WatchProvider[]; onChange: (providers: WatchProvider[]) => void }) {
+export type WatchProviderDraft = {
+  provider: WatchProvider
+  editingIndex: number | null
+}
+
+export function WatchProviderEditor({ providers, onChange, onDraftChange }: { providers: WatchProvider[]; onChange: (providers: WatchProvider[]) => void; onDraftChange?: (draft: WatchProviderDraft) => void }) {
   const { providers: providerDefinitions } = useOttProviders()
   const providerOptions = providerDefinitions.length
     ? [...providerDefinitions.map((provider) => provider.name), "Other"]
@@ -21,6 +26,37 @@ export function WatchProviderEditor({ providers, onChange }: { providers: WatchP
   const [regions, setRegions] = useState("India")
   const [editingIndex, setEditingIndex] = useState<number | null>(null)
   const name = selectedName === "Other" ? customName.trim() : selectedName
+
+  const providerBaseUrls = useMemo(() => {
+    const defaults: Record<string, string> = {
+      "Sun NXT": "https://www.sunnxt.com", Netflix: "https://www.netflix.com", "Prime Video": "https://www.primevideo.com",
+      "Disney+ Hotstar": "https://www.hotstar.com", JioHotstar: "https://www.jiohotstar.com", ZEE5: "https://www.zee5.com",
+      SonyLIV: "https://www.sonyliv.com", aha: "https://www.aha.video", "Apple TV+": "https://tv.apple.com", MUBI: "https://mubi.com",
+    }
+    return providerDefinitions.length ? providerDefinitions.reduce<Record<string, string>>((all, provider) => ({ ...all, [provider.name]: provider.baseUrl }), {}) : defaults
+  }, [providerDefinitions])
+
+  useEffect(() => {
+    onDraftChange?.({ provider: { name, url: url.trim(), regions: regions.split(",").map((region) => region.trim()).filter(Boolean) }, editingIndex })
+  }, [editingIndex, name, onDraftChange, regions, url])
+
+  const inferProvider = (value: string) => {
+    try {
+      const hostname = new URL(value.trim()).hostname.replace(/^www\./, "").toLowerCase()
+      const matched = Object.entries(providerBaseUrls).find(([, baseUrl]) => {
+        try {
+          const providerHost = new URL(baseUrl).hostname.replace(/^www\./, "").toLowerCase()
+          return hostname === providerHost || hostname.endsWith(`.${providerHost}`)
+        } catch { return false }
+      })
+      if (matched) {
+        setSelectedName(matched[0])
+        setCustomName("")
+      }
+    } catch {
+      // Let the browser and save validation handle incomplete or invalid URLs while typing.
+    }
+  }
 
   const saveProvider = () => {
     if (!name || !url.trim()) return
@@ -59,9 +95,9 @@ export function WatchProviderEditor({ providers, onChange }: { providers: WatchP
       <div className="grid gap-2 rounded-lg border border-dashed p-3 sm:grid-cols-2">
         <Select value={selectedName} onValueChange={setSelectedName}><SelectTrigger className="w-full"><SelectValue placeholder="Choose OTT" /></SelectTrigger><SelectContent>{providerOptions.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent></Select>
         {selectedName === "Other" && <Input value={customName} onChange={(e) => setCustomName(e.target.value)} placeholder="OTT name" />}
-        <Input value={url} onChange={(e) => setUrl(e.target.value)} className="sm:col-span-2" placeholder={providerDefinitions.find((provider) => provider.name === selectedName)?.baseUrl ? `${providerDefinitions.find((provider) => provider.name === selectedName)?.baseUrl}/title/...` : "https://provider.com/title/..."} type="url" />
+        <Input value={url} onChange={(e) => { setUrl(e.target.value); inferProvider(e.target.value) }} className="sm:col-span-2" placeholder={providerDefinitions.find((provider) => provider.name === selectedName)?.baseUrl ? `${providerDefinitions.find((provider) => provider.name === selectedName)?.baseUrl}/title/...` : "https://provider.com/title/..."} type="url" />
         <Input value={regions} onChange={(e) => setRegions(e.target.value)} placeholder="India, United States" />
-        <Button type="button" variant="secondary" onClick={saveProvider} disabled={!name || !url.trim()} className="gap-2">{editingIndex === null ? <Plus className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}{editingIndex === null ? "Add provider" : "Update provider"}</Button>
+        <Button type="button" variant="secondary" onClick={saveProvider} disabled={!name || !url.trim()} className="gap-2">{editingIndex === null ? <Plus className="h-4 w-4" /> : <Pencil className="h-4 w-4" />}{editingIndex === null ? "Add another provider" : "Update provider"}</Button>
       </div>
     </div>
   )
