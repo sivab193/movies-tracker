@@ -32,6 +32,9 @@ MONGO_URI=mongodb://localhost:27017/movies_tracker
 OMDB_API_KEY=your_omdb_api_key_here
 FIREBASE_SERVICE_ACCOUNT_KEY=backend/serviceAccountKey.json
 PORT=8000
+# Optional initial Muse API key. For no-deploy rotation, use the hashed
+# agent_api_config document described in ../docs/AGENT_API.md instead.
+MEDIA_VERSE_AGENT_KEY=store-this-only-in-your-secret-manager
 ```
 
 > ⚠️ **Service Account**: Place your downloaded Firebase `serviceAccountKey.json` inside the `backend/` folder (it is automatically ignored by git via `.gitignore`).
@@ -121,3 +124,10 @@ The backend includes a device authorization flow (`/api/auth/device/*`) for CLI 
 - `refresh_tokens` - Long-lived tokens (1 year expiry)
 
 See **[MCP Server Guide](../mcp-server/README.md)** for client implementation.
+
+## Muse agent API
+
+The key-authenticated movie upsert API is documented in
+**[AGENT_API.md](../docs/AGENT_API.md)**. It writes into the existing MongoDB
+movie catalog and poster cache, so the returned permanent `/m/<slug>` page is
+immediately usable as an Instagram story link.

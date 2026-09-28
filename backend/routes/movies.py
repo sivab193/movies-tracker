@@ -1330,7 +1330,7 @@ def shorten_movie_url(movie_id):
 
     code = secrets.token_urlsafe(4)[:6].replace('-', 'x').replace('_', 'z')
     # Ensure code uniqueness
-    while db.short_urls.find_one({"code": code}):
+    while db.short_urls.find_one({"code": code}) or db.movies.find_one({"agentSlug": code}):
         code = secrets.token_urlsafe(4)[:6].replace('-', 'x').replace('_', 'z')
 
     expires_at = now + datetime.timedelta(days=30)
@@ -1350,6 +1350,11 @@ def shorten_movie_url(movie_id):
 def resolve_short_movie_url(code):
     if db is None:
         return jsonify({"error": "Database not connected"}), 500
+    # Permanent Muse links share /m/* with the older 30-day share codes.
+    # Check them first so their canonical route can never expire.
+    permanent_movie = db.movies.find_one({"agentSlug": code})
+    if permanent_movie:
+        return jsonify({"movieId": str(permanent_movie['_id']), "permanent": True})
     doc = db.short_urls.find_one({
         "code": code,
         "expiresAt": {"$gt": datetime.datetime.now(datetime.timezone.utc)}

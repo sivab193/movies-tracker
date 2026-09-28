@@ -51,6 +51,7 @@ export interface Movie {
   released?: string
   releaseDate?: string
   watchProviders?: WatchProvider[]
+  titleCardTiming?: string
 }
 
 // Title card submission

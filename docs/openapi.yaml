@@ -18,6 +18,11 @@ components:
       scheme: bearer
       bearerFormat: JWT
       description: Firebase ID Token obtained after user authentication via Google OAuth.
+    museAgentKey:
+      type: apiKey
+      in: header
+      name: X-MediaVerse-Agent-Key
+      description: Dedicated Muse automation key. It is scoped to /agent endpoints only.
   schemas:
     User:
       type: object
@@ -101,6 +106,63 @@ components:
         location:
           type: string
 paths:
+  /agent/movies/upsert:
+    post:
+      summary: Create or update a movie for the Muse anniversary automation
+      security:
+        - museAgentKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [externalRef, title, language, releaseDate]
+              properties:
+                externalRef: { type: string, example: anniv-2026-10-10 }
+                slug: { type: string, example: kill-bill-vol-1-2003, description: Permanent lowercase URL slug }
+                tmdbId: { type: integer, example: 24 }
+                title: { type: string, example: "Kill Bill: Vol. 1" }
+                language: { type: string, enum: [Tamil, Hindi, Malayalam, English] }
+                releaseDate: { type: string, format: date, example: "2003-10-10" }
+                runtimeMins: { type: integer, example: 110 }
+                director: { type: string, example: Quentin Tarantino }
+                cast: { type: array, items: { type: string } }
+                posterUrl: { type: string, format: uri }
+                synopsis: { type: string }
+                titleCardTiming: { type: string, example: "14 mins" }
+                streamingLinks:
+                  type: array
+                  items:
+                    type: object
+                    required: [platform]
+                    properties:
+                      platform: { type: string, example: Netflix }
+                      url: { type: string, format: uri }
+      responses:
+        '200':
+          description: Canonical movie page URL
+        '400': { description: Invalid request field }
+        '401': { description: Missing or invalid agent key }
+        '429': { description: Daily rate limit reached }
+  /agent/movies:
+    get:
+      summary: Look up a movie for the Muse automation
+      security:
+        - museAgentKey: []
+      parameters:
+        - in: query
+          name: tmdbId
+          schema: { type: integer }
+        - in: query
+          name: title
+          schema: { type: string }
+        - in: query
+          name: releaseDate
+          schema: { type: string, format: date }
+      responses:
+        '200': { description: Canonical movie page URL }
+        '404': { description: Movie not found }
   /users/me:
     get:
       summary: Get current user profile & watch history

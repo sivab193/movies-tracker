@@ -38,6 +38,7 @@ from routes.omdb_keys import omdb_keys_bp
 from routes.requests import requests_bp
 from routes.people import people_bp
 from routes.ott_providers import ott_providers_bp
+from routes.agent_movies import agent_movies_bp
 
 app.register_blueprint(movies_bp, url_prefix='/api/movies')
 app.register_blueprint(leaderboard_bp, url_prefix='/api/leaderboard')
@@ -53,6 +54,7 @@ app.register_blueprint(omdb_keys_bp, url_prefix='/api/omdb-keys')
 app.register_blueprint(requests_bp, url_prefix='/api/requests')
 app.register_blueprint(people_bp, url_prefix='/api/people')
 app.register_blueprint(ott_providers_bp, url_prefix='/api/ott-providers')
+app.register_blueprint(agent_movies_bp, url_prefix='/api/agent')
 
 
 if __name__ == '__main__':

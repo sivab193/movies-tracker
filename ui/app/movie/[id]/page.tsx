@@ -114,6 +114,7 @@ export default function MovieDetailPage({ params }: { params: Promise<{ id: stri
   const maxTime = times.length ? Math.max(...times) : null
   const recentSubmissions = submissions.slice(0, 2)
   const hasTitleTime = Boolean(movie.submissionCount && movie.averageTimeSeconds && movie.averageTimeSeconds > 0)
+  const titleCardTime = movie.titleCardTiming || (hasTitleTime ? formatTimeDisplay(movie.averageTimeSeconds!) : null)
 
   return (
     <div className="min-h-screen bg-background">
@@ -149,7 +150,7 @@ export default function MovieDetailPage({ params }: { params: Promise<{ id: stri
                 <Timer className="h-3 w-3 text-sky-400" />{formatRuntimeToHHMM(movie.runtime)}
               </div>
               <div className="absolute inset-x-2 bottom-2 rounded-lg border border-white/10 bg-black/80 px-2.5 py-2 text-center text-xs font-semibold text-white backdrop-blur">
-                {hasTitleTime ? <>Title at <span className="text-amber-400">{formatTimeDisplay(movie.averageTimeSeconds!)}</span></> : "Title time not reported"}
+                {titleCardTime ? <>Title at <span className="text-amber-400">{titleCardTime}</span></> : "Title time not reported"}
               </div>
             </div>
           </aside>
@@ -167,7 +168,7 @@ export default function MovieDetailPage({ params }: { params: Promise<{ id: stri
                 </div>
                 <div className="shrink-0 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 sm:text-right">
                   <p className="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">Title card</p>
-                  <p className="text-xl font-black text-primary">{hasTitleTime ? formatTimeDisplay(movie.averageTimeSeconds!) : "Not reported"}</p>
+                  <p className="text-xl font-black text-primary">{titleCardTime || "Not reported"}</p>
                   {hasTitleTime && <p className="text-[10px] text-muted-foreground">{movie.submissionCount} submission{movie.submissionCount !== 1 ? "s" : ""}{minTime !== maxTime && minTime !== null ? ` · ${formatTimeDisplay(minTime)}–${formatTimeDisplay(maxTime!)}` : ""}</p>}
                 </div>
               </div>
