@@ -163,6 +163,47 @@ paths:
       responses:
         '200': { description: Canonical movie page URL }
         '404': { description: Movie not found }
+  /agent/admin/keys:
+    get:
+      summary: List Muse key metadata for a MediaVerse admin
+      security:
+        - firebaseAuth: []
+      responses:
+        '200': { description: Active and retired key metadata without key values }
+    post:
+      summary: Generate a new Muse key and return it once to a MediaVerse admin
+      security:
+        - firebaseAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                label: { type: string, example: Muse primary }
+      responses:
+        '201': { description: New key returned once, with its public metadata }
+  /agent/admin/keys/{keyId}:
+    put:
+      summary: Retire or reactivate a Muse key as a MediaVerse admin
+      security:
+        - firebaseAuth: []
+      parameters:
+        - in: path
+          name: keyId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [active]
+              properties:
+                active: { type: boolean }
+      responses:
+        '200': { description: Key state updated }
   /users/me:
     get:
       summary: Get current user profile & watch history

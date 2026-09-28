@@ -68,6 +68,8 @@ class MemoryCollection:
             target[key] = value
         for key, value in update.get('$inc', {}).items():
             target[key] = target.get(key, 0) + value
+        for key, value in update.get('$push', {}).items():
+            target.setdefault(key, []).append(value)
         return UpdateResult(1)
 
     def find_one_and_update(self, query, update, upsert=False, return_document=None):
@@ -95,19 +97,23 @@ class AgentMoviesApiTest(unittest.TestCase):
         self.database = MemoryDatabase(self.key)
         self.original_db = agent_movies.db
         self.original_movies_db = movies.db
+        self.original_is_admin = agent_movies.is_admin
         self.original_cache = agent_movies.save_poster_to_db
         agent_movies.db = self.database
         movies.db = self.database
+        agent_movies.is_admin = lambda token: token == 'admin-token'
         self.cached_urls = []
         agent_movies.save_poster_to_db = self.cache_poster
         app = Flask(__name__)
         app.register_blueprint(agent_movies.agent_movies_bp, url_prefix='/api/agent')
+        app.register_blueprint(agent_movies.agent_admin_bp, url_prefix='/api/agent')
         app.register_blueprint(movies.movies_bp, url_prefix='/api/movies')
         self.client = app.test_client()
 
     def tearDown(self):
         agent_movies.db = self.original_db
         movies.db = self.original_movies_db
+        agent_movies.is_admin = self.original_is_admin
         agent_movies.save_poster_to_db = self.original_cache
 
     def cache_poster(self, movie_id, source_url):
@@ -166,6 +172,24 @@ class AgentMoviesApiTest(unittest.TestCase):
         response = self.client.post('/api/agent/movies/upsert', headers=self.headers(), json=invalid)
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.get_json()['field'], 'releaseDate')
+
+    def test_admin_can_generate_a_one_time_key_without_listing_its_secret(self):
+        headers = {'Authorization': 'Bearer admin-token'}
+        created = self.client.post('/api/agent/admin/keys', headers=headers, json={'label': 'Muse vault'})
+        self.assertEqual(created.status_code, 201)
+        raw_key = created.get_json()['key']
+        self.assertTrue(raw_key.startswith('mv_muse_'))
+        self.assertNotIn(raw_key, str(self.database.agent_api_config.documents))
+
+        listed = self.client.get('/api/agent/admin/keys', headers=headers)
+        self.assertEqual(listed.status_code, 200)
+        self.assertEqual(listed.get_json()['keys'][0]['label'], 'Muse vault')
+        self.assertNotIn('key', listed.get_json()['keys'][0])
+
+        request_body = self.body()
+        request_body['externalRef'] = 'anniv-2026-10-11'
+        response = self.client.post('/api/agent/movies/upsert', headers={'X-MediaVerse-Agent-Key': raw_key}, json=request_body)
+        self.assertEqual(response.status_code, 200)
 
 
 if __name__ == '__main__':

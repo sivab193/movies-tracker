@@ -97,6 +97,7 @@ export default function AdminPage() {
         { title: "Watch Orders", description: "Edit curated watch-order links and published descriptions.", href: "/admin/watch-orders", icon: BadgeCheck, tone: "from-orange-500/20 to-amber-500/5 border-orange-500/25", action: "Manage orders" },
         { title: "Cards & Offers", description: "Manage bank-card and movie-ticket offer listings.", href: "/admin/cards", icon: CreditCard, tone: "from-rose-500/20 to-pink-500/5 border-rose-500/25", action: "Open offers" },
         { title: "OMDb API Keys", description: "Monitor API keys, health, and usage limits.", href: "/admin/omdb", icon: KeyRound, tone: "from-violet-500/20 to-indigo-500/5 border-violet-500/25", action: "Manage keys" },
+        { title: "Muse API", description: "Generate and rotate the dedicated key used by the anniversary automation.", href: "/admin/muse", icon: KeyRound, tone: "from-cyan-500/20 to-sky-500/5 border-cyan-500/25", action: "Manage Muse access" },
         { title: "Cleanup", description: "Scan duplicate movies and theaters, then merge them safely.", href: "/admin/cleanup", icon: Database, tone: "from-amber-500/20 to-yellow-500/5 border-amber-500/30", action: "Open cleanup" },
         { title: "Data Quality", description: "Find missing runtime, cover art, and reported title-card time gaps.", href: "/admin/data-quality", icon: ShieldAlert, tone: "from-sky-500/20 to-cyan-500/5 border-sky-500/30", action: "Scan quality" },
     ]

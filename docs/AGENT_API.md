@@ -24,6 +24,12 @@ backend reads this document on every agent request, so the change is immediate.
 `MEDIA_VERSE_AGENT_DAILY_LIMIT` defaults to `100` and may be adjusted in the
 environment. The rate-limit bucket is per active key per UTC day.
 
+MediaVerse admins can now manage this without direct database access at
+`https://www.media-verse.in/admin/muse`: generate a key, copy the one-time
+value into Muse's Secure Vault, then retire the previous key after confirmation.
+The portal stores only the hash and operational metadata; it never displays a
+previously generated key again.
+
 ## Endpoints
 
 `POST /api/agent/movies/upsert` creates or updates a movie. It requires

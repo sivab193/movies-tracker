@@ -11,6 +11,7 @@ import hmac
 import ipaddress
 import os
 import re
+import secrets
 import socket
 from urllib.parse import urlparse
 
@@ -20,10 +21,11 @@ from pymongo.errors import DuplicateKeyError
 from flask import Blueprint, jsonify, request
 
 from mongo_config import db
-from routes.movies import save_poster_to_db
+from routes.movies import is_admin, save_poster_to_db
 
 
 agent_movies_bp = Blueprint('agent_movies', __name__)
+agent_admin_bp = Blueprint('agent_admin', __name__)
 
 AGENT_CONFIG_ID = 'muse'
 AGENT_KEY_HEADER = 'X-MediaVerse-Agent-Key'
@@ -168,6 +170,12 @@ def _configured_key_hashes():
         for key_hash in config.get('keyHashes', []):
             if isinstance(key_hash, str) and re.fullmatch(r'[a-fA-F0-9]{64}', key_hash):
                 hashes.add(key_hash.lower())
+        for key_record in config.get('keys', []):
+            if not isinstance(key_record, dict):
+                continue
+            key_hash = key_record.get('hash')
+            if key_record.get('active', True) and isinstance(key_hash, str) and re.fullmatch(r'[a-fA-F0-9]{64}', key_hash):
+                hashes.add(key_hash.lower())
     return hashes
 
 
@@ -308,6 +316,92 @@ def _movie_updates(payload, slug):
             for link in payload['streamingLinks']
         ]
     return updates
+
+
+def _require_admin():
+    auth_header = request.headers.get('Authorization', '')
+    if not auth_header.startswith('Bearer ') or not is_admin(auth_header.split(' ', 1)[1]):
+        return _error('forbidden', status=403)
+    if db is None:
+        return _error('internal', status=500)
+    return None
+
+
+def _public_key_record(record):
+    return {
+        'id': record.get('id'),
+        'label': record.get('label') or 'Muse key',
+        'active': record.get('active', True),
+        'createdAt': record.get('createdAt').isoformat() if hasattr(record.get('createdAt'), 'isoformat') else record.get('createdAt'),
+        'retiredAt': record.get('retiredAt').isoformat() if hasattr(record.get('retiredAt'), 'isoformat') else record.get('retiredAt'),
+        'lastFour': record.get('lastFour'),
+    }
+
+
+@agent_admin_bp.route('/admin/keys', methods=['GET'])
+def list_agent_keys():
+    denied = _require_admin()
+    if denied:
+        return denied
+    config = db.agent_api_config.find_one({'_id': AGENT_CONFIG_ID}) or {}
+    keys = [_public_key_record(record) for record in config.get('keys', []) if isinstance(record, dict)]
+    return jsonify({'keys': keys, 'dailyLimit': int(os.environ.get('MEDIA_VERSE_AGENT_DAILY_LIMIT', DEFAULT_DAILY_LIMIT))})
+
+
+@agent_admin_bp.route('/admin/keys', methods=['POST'])
+def create_agent_key():
+    denied = _require_admin()
+    if denied:
+        return denied
+    data = request.get_json(silent=True) or {}
+    label = str(data.get('label') or 'Muse primary').strip()
+    if not label or len(label) > 80:
+        return _error('invalid_field', field='label')
+
+    raw_key = f'mv_muse_{secrets.token_urlsafe(32)}'
+    now = datetime.datetime.now(datetime.timezone.utc)
+    record = {
+        'id': secrets.token_urlsafe(12),
+        'label': label,
+        'hash': hashlib.sha256(raw_key.encode('utf-8')).hexdigest(),
+        'lastFour': raw_key[-4:],
+        'active': True,
+        'createdAt': now,
+        'retiredAt': None,
+    }
+    db.agent_api_config.update_one(
+        {'_id': AGENT_CONFIG_ID},
+        {'$push': {'keys': record}, '$set': {'updatedAt': now}},
+        upsert=True,
+    )
+    # The raw key exists only in this response. Never return it from list or
+    # write it to the config collection, application logs, or audit metadata.
+    return jsonify({'key': raw_key, 'record': _public_key_record(record)}), 201
+
+
+@agent_admin_bp.route('/admin/keys/<key_id>', methods=['PUT'])
+def update_agent_key(key_id):
+    denied = _require_admin()
+    if denied:
+        return denied
+    data = request.get_json(silent=True) or {}
+    if not isinstance(data.get('active'), bool):
+        return _error('invalid_field', field='active')
+
+    config = db.agent_api_config.find_one({'_id': AGENT_CONFIG_ID}) or {}
+    keys = config.get('keys', [])
+    matched = False
+    now = datetime.datetime.now(datetime.timezone.utc)
+    for record in keys:
+        if isinstance(record, dict) and hmac.compare_digest(str(record.get('id', '')), key_id):
+            record['active'] = data['active']
+            record['retiredAt'] = None if data['active'] else now
+            matched = True
+            break
+    if not matched:
+        return _error('not_found', status=404)
+    db.agent_api_config.update_one({'_id': AGENT_CONFIG_ID}, {'$set': {'keys': keys, 'updatedAt': now}})
+    return jsonify({'message': 'key_updated'})
 
 
 @agent_movies_bp.before_request

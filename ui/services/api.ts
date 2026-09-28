@@ -579,6 +579,39 @@ export async function createShortUrl(movieId: string): Promise<{ code: string; s
     return data;
 }
 
+export type AgentApiKey = {
+    id: string
+    label: string
+    active: boolean
+    createdAt: string
+    retiredAt?: string | null
+    lastFour?: string
+}
+
+async function agentAdminRequest(path: string, options: RequestInit = {}) {
+    const token = await auth?.currentUser?.getIdToken()
+    if (!token) throw new Error("User not authenticated")
+    const response = await fetch(`${API_BASE_URL}/agent/admin/keys${path}`, {
+        ...options,
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}`, ...(options.headers || {}) },
+    })
+    const data = await response.json()
+    if (!response.ok) throw new Error(data.error || "Agent key request failed")
+    return data
+}
+
+export async function getAgentApiKeys(): Promise<{ keys: AgentApiKey[]; dailyLimit: number }> {
+    return agentAdminRequest("")
+}
+
+export async function generateAgentApiKey(label: string): Promise<{ key: string; record: AgentApiKey }> {
+    return agentAdminRequest("", { method: "POST", body: JSON.stringify({ label }) })
+}
+
+export async function updateAgentApiKey(keyId: string, active: boolean) {
+    return agentAdminRequest(`/${encodeURIComponent(keyId)}`, { method: "PUT", body: JSON.stringify({ active }) })
+}
+
 export async function resolveShortUrl(code: string): Promise<{ movieId: string }> {
     const response = await fetch(`${API_BASE_URL}/movies/m/${encodeURIComponent(code)}`);
     const data = await response.json();
