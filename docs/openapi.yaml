@@ -288,6 +288,20 @@ paths:
                 active: { type: boolean }
       responses:
         '200': { description: Key state updated }
+  /agent/admin/activity:
+    get:
+      summary: View recent authenticated Muse API activity as a MediaVerse admin
+      security:
+        - firebaseAuth: []
+      parameters:
+        - in: query
+          name: days
+          schema: { type: integer, minimum: 1, maximum: 365, default: 30 }
+        - in: query
+          name: limit
+          schema: { type: integer, minimum: 1, maximum: 500, default: 100 }
+      responses:
+        '200': { description: Recent operational metadata without keys, headers, or request payloads }
   /users/me:
     get:
       summary: Get current user profile & watch history

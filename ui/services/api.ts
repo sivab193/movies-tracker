@@ -646,6 +646,39 @@ export async function dismissAgentTheaterDeleteSuggestion(suggestionId: string) 
     return data
 }
 
+export type AgentApiActivity = {
+    createdAt: string
+    endpoint: string
+    method: string
+    status: number
+    durationMs: number
+    externalRef?: string | null
+    keyLabel?: string | null
+    keyLastFour?: string | null
+}
+
+export type AgentApiActivityResponse = {
+    calls: AgentApiActivity[]
+    summary: {
+        displayedCalls: number
+        successfulCalls: number
+        failedCalls: number
+        endpointCounts: Record<string, number>
+        days: number
+    }
+}
+
+export async function getAgentApiActivity(days = 30): Promise<AgentApiActivityResponse> {
+    const token = await auth?.currentUser?.getIdToken()
+    if (!token) throw new Error("User not authenticated")
+    const response = await fetch(`${API_BASE_URL}/agent/admin/activity?days=${encodeURIComponent(days)}`, {
+        headers: { "Authorization": `Bearer ${token}` },
+    })
+    const data = await response.json()
+    if (!response.ok) throw new Error(data.error || "Could not load Muse activity")
+    return data
+}
+
 export async function resolveShortUrl(code: string): Promise<{ movieId: string }> {
     const response = await fetch(`${API_BASE_URL}/movies/m/${encodeURIComponent(code)}`);
     const data = await response.json();

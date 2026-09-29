@@ -13,12 +13,13 @@ import os
 import re
 import secrets
 import socket
+import time
 from urllib.parse import urlparse
 
 from bson import ObjectId
 from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, g, jsonify, request
 
 from mongo_config import db
 from routes.movies import is_admin, save_poster_to_db
@@ -44,6 +45,8 @@ if db is not None:
         db.agent_movie_refs.create_index('movieId')
         db.agent_theater_refs.create_index('theaterId')
         db.agent_theater_delete_suggestions.create_index([('status', 1), ('createdAt', -1)])
+        db.agent_api_call_logs.create_index('expiresAt', expireAfterSeconds=0)
+        db.agent_api_call_logs.create_index([('createdAt', -1)])
         db.agent_api_rate_limits.create_index('expiresAt', expireAfterSeconds=0)
         db.movies.create_index('agentSlug', unique=True, sparse=True)
     except Exception as error:
@@ -196,6 +199,16 @@ def _authenticate_agent():
     if not valid_hashes:
         return None
     return candidate if any(hmac.compare_digest(candidate, item) for item in valid_hashes) else None
+
+
+def _agent_key_metadata(key_hash):
+    config = db.agent_api_config.find_one({'_id': AGENT_CONFIG_ID}) or {}
+    for record in config.get('keys', []):
+        if isinstance(record, dict) and isinstance(record.get('hash'), str) and hmac.compare_digest(key_hash, record['hash'].lower()):
+            return {'keyId': record.get('id'), 'keyLabel': record.get('label') or 'Muse key', 'keyLastFour': record.get('lastFour')}
+    # Environment-provisioned keys are supported for first-time setup but have
+    # no persisted label. Keep their identifying material out of the log.
+    return {'keyId': None, 'keyLabel': 'Environment key', 'keyLastFour': None}
 
 
 def _rate_limit(key_hash):
@@ -547,6 +560,57 @@ def update_theater_delete_suggestion(suggestion_id):
     return jsonify({'message': 'suggestion_dismissed'})
 
 
+@agent_admin_bp.route('/admin/activity', methods=['GET'])
+def list_agent_activity():
+    denied = _require_admin()
+    if denied:
+        return denied
+    try:
+        days = int(request.args.get('days', 30))
+    except ValueError:
+        return _error('invalid_field', field='days')
+    try:
+        limit = int(request.args.get('limit', 100))
+    except ValueError:
+        return _error('invalid_field', field='limit')
+    if not 1 <= days <= 365:
+        return _error('invalid_field', field='days')
+    if not 1 <= limit <= 500:
+        return _error('invalid_field', field='limit')
+
+    now = datetime.datetime.now(datetime.timezone.utc)
+    since = now - datetime.timedelta(days=days)
+    logs = list(db.agent_api_call_logs.find({'createdAt': {'$gte': since}}).sort('createdAt', -1).limit(limit))
+    calls = []
+    endpoint_counts = {}
+    successful = 0
+    for log in logs:
+        endpoint = log.get('endpoint', 'unknown')
+        endpoint_counts[endpoint] = endpoint_counts.get(endpoint, 0) + 1
+        if int(log.get('status', 500)) < 400:
+            successful += 1
+        calls.append({
+            'createdAt': log.get('createdAt').isoformat() if hasattr(log.get('createdAt'), 'isoformat') else log.get('createdAt'),
+            'endpoint': endpoint,
+            'method': log.get('method'),
+            'status': log.get('status'),
+            'durationMs': log.get('durationMs'),
+            'externalRef': log.get('externalRef'),
+            'keyLabel': log.get('keyLabel'),
+            'keyLastFour': log.get('keyLastFour'),
+        })
+    return jsonify({
+        'calls': calls,
+        'summary': {
+            'displayedCalls': len(calls),
+            'successfulCalls': successful,
+            'failedCalls': len(calls) - successful,
+            'endpointCounts': endpoint_counts,
+            'days': days,
+        },
+    })
+
+
 @agent_movies_bp.before_request
 def require_agent_key():
     if db is None:
@@ -554,8 +618,40 @@ def require_agent_key():
     key_hash = _authenticate_agent()
     if not key_hash:
         return _error('unauthorized', status=401)
+    g.muse_agent_key = _agent_key_metadata(key_hash)
+    g.muse_agent_started_at = time.perf_counter()
     if not _rate_limit(key_hash):
         return _error('rate_limited', status=429)
+
+
+@agent_movies_bp.after_request
+def record_agent_api_call(response):
+    """Store operational telemetry for authenticated Muse calls only.
+
+    No request body, headers, key hashes, or raw keys are written here. The
+    optional externalRef is useful for tracing idempotent automation retries.
+    """
+    if db is None or not hasattr(g, 'muse_agent_key'):
+        return response
+    try:
+        payload = request.get_json(silent=True) if request.is_json else None
+        external_ref = payload.get('externalRef') if isinstance(payload, dict) and isinstance(payload.get('externalRef'), str) else None
+        now = datetime.datetime.now(datetime.timezone.utc)
+        db.agent_api_call_logs.insert_one({
+            'createdAt': now,
+            'expiresAt': now + datetime.timedelta(days=365),
+            'endpoint': request.path,
+            'method': request.method,
+            'status': response.status_code,
+            'durationMs': round((time.perf_counter() - g.muse_agent_started_at) * 1000),
+            'externalRef': external_ref,
+            **g.muse_agent_key,
+        })
+    except Exception as error:
+        # Audit failures must never turn a successful automation call into a
+        # failure, and logs must not carry request secrets.
+        print(f'Agent API audit log failed: {type(error).__name__}')
+    return response
 
 
 @agent_movies_bp.route('/movies/upsert', methods=['POST'])

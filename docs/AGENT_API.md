@@ -30,6 +30,15 @@ value into Muse's Secure Vault, then retire the previous key after confirmation.
 The portal stores only the hash and operational metadata; it never displays a
 previously generated key again.
 
+## Activity trail
+
+Every authenticated Muse endpoint call is retained for 365 days and appears in
+the activity table at `https://www.media-verse.in/admin/muse`. Each record has
+the time, method, route, response status, duration, active key label, and the
+optional `externalRef` used to trace idempotent retries. It never records raw
+keys, headers, or request payloads. Invalid requests without a valid agent key
+are not attributed to Muse and therefore are not logged as Muse activity.
+
 ## Endpoints
 
 `POST /api/agent/movies/upsert` creates or updates a movie. It requires

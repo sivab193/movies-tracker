@@ -22,6 +22,15 @@ class UpdateResult:
         self.matched_count = matched_count
 
 
+class MemoryCursor(list):
+    def sort(self, field, direction):
+        reverse = direction < 0
+        return MemoryCursor(sorted(self, key=lambda document: document.get(field), reverse=reverse))
+
+    def limit(self, count):
+        return MemoryCursor(self[:count])
+
+
 class MemoryCollection:
     def __init__(self):
         self.documents = []
@@ -40,6 +49,12 @@ class MemoryCollection:
                 import re
                 if not isinstance(actual, str) or not re.match(expected['$regex'], actual, re.I if expected.get('$options') == 'i' else 0):
                     return False
+            elif isinstance(expected, dict) and '$gte' in expected:
+                if actual is None or actual < expected['$gte']:
+                    return False
+            elif isinstance(expected, dict) and '$lt' in expected:
+                if actual is None or actual >= expected['$lt']:
+                    return False
             elif actual != expected:
                 return False
         return True
@@ -47,6 +62,9 @@ class MemoryCollection:
     def find_one(self, query):
         document = next((item for item in self.documents if self._matches(item, query)), None)
         return deepcopy(document) if document else None
+
+    def find(self, query):
+        return MemoryCursor([deepcopy(item) for item in self.documents if self._matches(item, query)])
 
     def insert_one(self, document):
         if any(item.get('_id') == document.get('_id') for item in self.documents):
@@ -87,6 +105,7 @@ class MemoryDatabase:
         self.agent_theater_delete_suggestions = MemoryCollection()
         self.agent_api_rate_limits = MemoryCollection()
         self.agent_api_config = MemoryCollection()
+        self.agent_api_call_logs = MemoryCollection()
         self.short_urls = MemoryCollection()
         self.agent_api_config.insert_one({
             '_id': 'muse',
@@ -153,6 +172,10 @@ class AgentMoviesApiTest(unittest.TestCase):
         self.assertEqual(len(self.cached_urls), 1)
         self.assertEqual(self.database.movies.documents[0]['posterUrl'], f"/api/movies/{first_data['id']}/poster")
         self.assertEqual(self.database.movies.documents[0]['watchProviders'][0]['url'], '')
+        first_log = self.database.agent_api_call_logs.documents[0]
+        self.assertEqual(first_log['endpoint'], '/api/agent/movies/upsert')
+        self.assertEqual(first_log['externalRef'], 'anniv-2026-10-10')
+        self.assertNotIn(self.key, str(first_log))
 
         permanent_link = self.client.get('/api/movies/m/kill-bill-vol-1-2003')
         self.assertEqual(permanent_link.status_code, 200)
@@ -171,6 +194,11 @@ class AgentMoviesApiTest(unittest.TestCase):
         lookup = self.client.get('/api/agent/movies?title=Kill%20Bill%3A%20Vol.%201&releaseDate=2003-10-10', headers=self.headers())
         self.assertEqual(lookup.status_code, 200)
         self.assertEqual(lookup.get_json()['pageUrl'], first_data['pageUrl'])
+
+        activity = self.client.get('/api/agent/admin/activity?days=7', headers={'Authorization': 'Bearer admin-token'})
+        self.assertEqual(activity.status_code, 200)
+        self.assertGreaterEqual(activity.get_json()['summary']['displayedCalls'], 3)
+        self.assertNotIn('key', activity.get_json()['calls'][0])
 
     def test_rejects_invalid_key_and_date(self):
         self.assertEqual(self.client.post('/api/agent/movies/upsert', json=self.body()).status_code, 401)
