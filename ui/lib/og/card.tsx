@@ -1,9 +1,10 @@
 /* eslint-disable @next/next/no-img-element */
 import { ImageResponse } from "next/og"
 import { OG_SIZE } from "./data"
+import { OgBrand } from "./brand"
 
 const BG = "#0e0e12"
-const ACCENT = "#a78bfa"
+const ACCENT = "#f5b0a9"
 const TEXT = "#ffffff"
 const MUTED = "#9ca3af"
 
@@ -116,28 +117,14 @@ export function mediaCard({
         >
           {/* Brand row */}
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                width: 52,
-                height: 52,
-                borderRadius: 14,
-                backgroundColor: "#1c1c26",
-                border: "2px solid #2e2e3e",
-                fontSize: 28,
-              }}
-            >
-              🎬
-            </div>
+            <OgBrand />
             <div
               style={{
                 display: "flex",
                 padding: "6px 18px",
                 borderRadius: 9999,
-                backgroundColor: "rgba(30, 30, 44, 0.85)",
-                border: "1px solid #323246",
+                backgroundColor: "rgba(45, 26, 26, 0.85)",
+                border: "1px solid #62403b",
                 color: ACCENT,
                 fontSize: 18,
                 fontWeight: 700,
@@ -161,8 +148,8 @@ export function mediaCard({
                   height: 240,
                   flexShrink: 0,
                   borderRadius: 24,
-                  backgroundColor: "rgba(139, 92, 246, 0.16)",
-                  border: "2px solid rgba(167, 139, 250, 0.4)",
+                  backgroundColor: "rgba(194, 20, 24, 0.16)",
+                  border: "2px solid rgba(245, 176, 169, 0.4)",
                 }}
               >
                 <div style={{ fontSize: 84, fontWeight: 900, color: TEXT }}>{badge.primary}</div>
@@ -182,7 +169,7 @@ export function mediaCard({
                   flexShrink: 0,
                   objectFit: "cover",
                   borderRadius: 9999,
-                  border: "4px solid rgba(167, 139, 250, 0.5)",
+                  border: "4px solid rgba(245, 176, 169, 0.5)",
                 }}
               />
             ) : hasArt ? (
@@ -266,7 +253,7 @@ export function mediaCard({
             }}
           >
             <div style={{ display: "flex", fontSize: 24, fontWeight: 700, color: "#e5e7eb" }}>
-              mv.siv19.dev
+              www.media-verse.in
             </div>
             <div style={{ display: "flex", fontSize: 20, color: "#6b7280" }}>
               Track · Compete · Time title cards

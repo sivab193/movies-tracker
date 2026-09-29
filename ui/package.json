@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "brand:generate": "node scripts/generate-brand-assets.mjs",
     "build": "next build",
     "dev": "next dev",
     "lint": "eslint .",

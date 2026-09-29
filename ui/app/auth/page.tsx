@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Film, Mail, Lock, Loader2, ArrowLeft, AlertCircle, CheckCircle2, QrCode, Copy, Check, RefreshCw, Smartphone } from "lucide-react"
+import { Mail, Lock, Loader2, ArrowLeft, AlertCircle, CheckCircle2, QrCode, Copy, Check, RefreshCw, Smartphone } from "lucide-react"
+import { BrandLogo } from "@/components/brand-logo"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -236,9 +237,7 @@ export default function AuthPage() {
       <div className="flex-1 flex items-center justify-center p-4">
         <Card className="w-full max-w-md border-muted/40 shadow-xl">
           <CardHeader className={`text-center pb-2 ${showDeviceCode ? "hidden" : ""}`}>
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/20">
-              <Film className="h-7 w-7" />
-            </div>
+            <BrandLogo variant="logo" className="mx-auto mb-4 h-28 w-28" />
             <CardTitle className="text-2xl font-bold tracking-tight">Welcome Back</CardTitle>
             <CardDescription>
               Sign in to continue tracking your watch history

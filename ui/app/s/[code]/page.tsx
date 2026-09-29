@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { resolveShortUrl } from "@/services/api"
-import { Loader2, Film, AlertCircle } from "lucide-react"
+import { Loader2, AlertCircle } from "lucide-react"
+import { BrandLogo } from "@/components/brand-logo"
 
 export default function ShortUrlRedirectPage() {
     const { code } = useParams()
@@ -43,8 +44,8 @@ export default function ShortUrlRedirectPage() {
     return (
         <div className="flex h-screen flex-col items-center justify-center gap-4 bg-background text-foreground">
             <div className="relative flex items-center justify-center">
-                <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                <Film className="h-4 w-4 text-primary absolute" />
+                <Loader2 className="h-14 w-14 animate-spin text-primary" />
+                <BrandLogo className="absolute h-8 w-8" />
             </div>
             <p className="text-sm font-medium text-muted-foreground animate-pulse">Redirecting to movie...</p>
         </div>

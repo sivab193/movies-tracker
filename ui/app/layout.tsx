@@ -16,36 +16,28 @@ export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || "https://www.media-verse.in"),
   icons: {
     icon: [
-      { url: "/favicon-96x96.png", sizes: "96x96", type: "image/png" },
-      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon-96x96.png?v=mv-popcorn-1", sizes: "96x96", type: "image/png" },
+      { url: "/favicon.svg?v=mv-popcorn-1", type: "image/svg+xml" },
     ],
-    shortcut: "/favicon.ico",
+    shortcut: "/favicon.ico?v=mv-popcorn-1",
     apple: [
-      { url: "/apple-touch-icon.png", sizes: "180x180" },
+      { url: "/apple-touch-icon.png?v=mv-popcorn-1", sizes: "180x180" },
     ],
   },
   appleWebApp: {
     title: "MediaVerse",
   },
-  manifest: "/site.webmanifest",
+  manifest: "/site.webmanifest?v=mv-popcorn-1",
   openGraph: {
+    siteName: "MediaVerse",
     title: "MediaVerse",
     description: "Track your movie watch history, see your stats, and compete on the leaderboard.",
-    images: [
-      {
-        url: "/opengraph-image",
-        width: 1200,
-        height: 630,
-        alt: "MediaVerse",
-      },
-    ],
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
     title: "MediaVerse | Log, Analyze & Compete",
     description: "Keep track of every movie you watch, analyze your statistics, and compete for the top spot on the global leaderboard.",
-    images: ["/opengraph-image"],
   },
 }
 

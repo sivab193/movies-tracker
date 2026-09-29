@@ -1,10 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="36" fill="#171717"/><g transform="translate(12 12) scale(1.1666666666666667)">
+  <title>MediaVerse popcorn and clapperboard mark</title>
   <defs>
-    <linearGradient id="bg512" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#181824" />
-      <stop offset="100%" stop-color="#0e0e14" />
-    </linearGradient>
+    <clipPath id="bucket"><path d="M23 52H118L107 114H32Z"/></clipPath>
+    <clipPath id="raised"><path d="M18 96L125 65L131 84L24 115Z"/></clipPath>
+    <clipPath id="slate"><path d="M26 108H124V124H26Z"/></clipPath>
   </defs>
-  <rect width="512" height="512" rx="116" fill="url(#bg512)" stroke="#2d2d42" stroke-width="10" />
-  <text x="256" y="340" font-size="280" text-anchor="middle">🎬</text>
-</svg>
+  <path d="M18 96L28 93L23 57C14 52 14 40 23 35C21 25 32 19 41 22C43 11 57 8 66 16C75 6 91 7 97 17C108 14 119 22 118 33C129 38 132 49 125 57L123 65L131 84L111 90L108 108H124V137H26V114Z" fill="#fff" stroke="#fff" stroke-width="10" stroke-linejoin="round"/>
+  <path d="M23 52H118L107 114H32Z" fill="#c21418" stroke="#262626" stroke-width="4" stroke-linejoin="round"/>
+  <g clip-path="url(#bucket)" fill="#fff"><path d="M36 48H47V117H36ZM61 48H72V117H61ZM88 48H99V117H88Z"/></g>
+  <path d="M23 57C14 52 14 40 23 35C21 25 32 19 41 22C43 11 57 8 66 16C75 6 91 7 97 17C108 14 119 22 118 33C129 38 132 49 125 57L116 52L102 64L87 53L72 66L58 54L43 66L29 54Z" fill="#fff2b7" stroke="#262626" stroke-width="4" stroke-linejoin="round"/>
+  <g fill="none" stroke="#d9b953" stroke-width="3" stroke-linecap="round"><path d="M33 41C29 31 42 27 46 36C53 31 60 39 55 44M74 28C70 18 82 16 86 25C94 22 100 30 95 36M89 48C86 40 99 38 102 46"/></g>
+  <path d="M26 108H124V137H26Z" fill="#fff" stroke="#262626" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M26 108H124V124H26Z" fill="#262626"/>
+  <g clip-path="url(#slate)" fill="#fff"><path d="M34 106H46L33 126H21ZM61 106H73L60 126H48ZM88 106H100L87 126H75ZM115 106H127L114 126H102Z"/></g>
+  <path d="M18 96L125 65L131 84L24 115Z" fill="#262626" stroke="#262626" stroke-width="4" stroke-linejoin="round"/>
+  <g clip-path="url(#raised)" fill="#fff"><path d="M23 87L39 82L63 103L47 108ZM55 78L71 73L95 94L79 99ZM87 69L103 64L127 85L111 90Z"/></g>
+  <path d="M26 124H124" stroke="#262626" stroke-width="3"/>
+
+</g></svg>

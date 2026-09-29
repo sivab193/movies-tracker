@@ -3,7 +3,8 @@
 import React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Film, Moon, Sun, LogOut, Settings, ChevronDown, Search } from "lucide-react"
+import { Moon, Sun, LogOut, Settings, ChevronDown, Search } from "lucide-react"
+import { BrandLogo } from "@/components/brand-logo"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -43,7 +44,7 @@ export function Header() {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex shrink-0 items-center gap-2">
-            <Film className="h-6 w-6 text-primary" />
+            <BrandLogo className="h-10 w-10" decorative />
             <span className="text-xl font-bold tracking-tight">MediaVerse</span>
           </Link>
 

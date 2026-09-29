@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mediaverse-cache-v3'
+const CACHE_NAME = 'mediaverse-cache-v4-brand'
 
 self.addEventListener('install', (event) => {
   // Force the new service worker to take over right away

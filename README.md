@@ -1,6 +1,11 @@
-# 🎬 Movies Tracker
+# MediaVerse
 
 <div align="center">
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="ui/public/brand/logo-dark.svg">
+  <img src="ui/public/brand/logo-light.svg" alt="MediaVerse" width="180">
+</picture>
 
 ![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=for-the-badge&logo=typescript&logoColor=white)
 ![Next.js 16](https://img.shields.io/badge/Next.js%2016-black?style=for-the-badge&logo=next.js&logoColor=white)

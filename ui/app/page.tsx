@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { Film, Trophy, List, Share2, ShieldCheck, MessageSquare, Bot, Map, Tv, Sparkles, CreditCard, BarChart3, ListOrdered, LayoutDashboard, Link2, Building2 } from "lucide-react"
+import { BrandLogo } from "@/components/brand-logo"
 import { Header } from "@/components/header"
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/contexts/auth-context"
@@ -140,6 +141,7 @@ export default function HomePage() {
         <section className="relative overflow-hidden py-20 sm:py-28 animate-fade-in">
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
             <div className="mx-auto max-w-2xl text-center">
+              <BrandLogo variant="logo" className="mx-auto mb-8 flex h-36 w-36 sm:h-44 sm:w-44" />
               <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-sm font-medium text-primary">
                 <Sparkles className="h-4 w-4" />
                 Now with theater pages, movie discovery & watch orders

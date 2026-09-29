@@ -208,7 +208,10 @@ function drawPopcornIcon(ctx: CanvasRenderingContext2D, cx: number, cy: number, 
     ctx.restore()
 }
 
-function drawWrappedImage(stats: WrappedStats, selection: StatSelection): HTMLCanvasElement {
+async function drawWrappedImage(stats: WrappedStats, selection: StatSelection): Promise<HTMLCanvasElement> {
+    const brandLogo = new Image()
+    brandLogo.src = "/brand/logo-dark.svg"
+    await brandLogo.decode()
     const W = 1080
     const H = 1920
     const canvas = document.createElement("canvas")
@@ -351,9 +354,7 @@ function drawWrappedImage(stats: WrappedStats, selection: StatSelection): HTMLCa
 
     // --- Header brand ---
     ctx.textAlign = "center"
-    ctx.fillStyle = "rgba(255,255,255,0.85)"
-    ctx.font = "600 34px system-ui, -apple-system, 'Segoe UI', sans-serif"
-    ctx.fillText("🎬  MEDIA VERSE", W / 2, 120)
+    ctx.drawImage(brandLogo, W / 2 - 66, 35, 132, 145)
 
     // --- Title ---
     const titleGrad = ctx.createLinearGradient(0, 150, W, 150)
@@ -600,7 +601,7 @@ export function ShareStats({ stats }: ShareStatsProps) {
     const generate = async () => {
         setBusy(true)
         try {
-            const canvas = drawWrappedImage(stats, selection)
+            const canvas = await drawWrappedImage(stats, selection)
             const b = await canvasToBlob(canvas)
             setBlob(b)
             setPreview(URL.createObjectURL(b))

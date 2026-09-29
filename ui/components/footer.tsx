@@ -4,6 +4,7 @@ import React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useAuth } from "@/contexts/auth-context"
+import { BrandLogo } from "@/components/brand-logo"
 import { ALL_GROUPS, HOME_ITEM, TIMER_ITEM, visibleItems } from "@/lib/nav"
 
 export function Footer() {
@@ -18,7 +19,10 @@ export function Footer() {
             {/* Sitemap mirrors the header grouping so both stay in sync via lib/nav. */}
             <nav className="w-full max-w-6xl mx-auto mb-8 grid grid-cols-2 gap-8 sm:grid-cols-4 lg:grid-cols-5">
                 <div>
-                    <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-foreground">MediaVerse</p>
+                    <Link href="/" className="mb-3 inline-flex items-center gap-2 text-sm font-semibold text-foreground">
+                        <BrandLogo className="h-8 w-8" decorative />
+                        MediaVerse
+                    </Link>
                     <ul className="space-y-2">
                         {[HOME_ITEM, TIMER_ITEM].map(({ href, label }) => (
                             <li key={href}>

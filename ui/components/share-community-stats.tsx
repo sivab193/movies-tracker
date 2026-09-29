@@ -96,7 +96,10 @@ function fitOrTruncate(
     return out.trimEnd() + "…"
 }
 
-function drawCommunityCard(stats: CommunityStats): HTMLCanvasElement {
+async function drawCommunityCard(stats: CommunityStats): Promise<HTMLCanvasElement> {
+    const brandMark = new Image()
+    brandMark.src = "/brand/mark-dark.svg"
+    await brandMark.decode()
     const W = 1080
     const H = 1920
     const canvas = document.createElement("canvas")
@@ -223,6 +226,7 @@ function drawCommunityCard(stats: CommunityStats): HTMLCanvasElement {
     )
 
     // ===================== draw =====================
+    ctx.drawImage(brandMark, W - pad - 96, topMargin, 96, 96)
     let y = topMargin
 
     // --- Badge (width follows its text instead of a fixed 340px box) ---
@@ -373,7 +377,7 @@ export function ShareCommunityStats({ stats }: ShareCommunityStatsProps) {
     const generate = async () => {
         setBusy(true)
         try {
-            const canvas = drawCommunityCard(stats)
+            const canvas = await drawCommunityCard(stats)
             const b = await canvasToBlob(canvas)
             setBlob(b)
             setPreview(URL.createObjectURL(b))
