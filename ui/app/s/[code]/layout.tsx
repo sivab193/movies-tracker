@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { getMovie, resolveShortCode, truncate } from "@/lib/og/data"
+import { formatReleaseDate, getMovie, resolveShortCode, truncate } from "@/lib/og/data"
 import { notFoundMetadata } from "@/lib/og/static"
 
 export async function generateMetadata({
@@ -18,7 +18,8 @@ export async function generateMetadata({
     )
   }
 
-  const title = `${movie.title}${movie.year ? ` (${movie.year})` : ""} | MediaVerse`
+  const releaseDate = formatReleaseDate(movie.releaseDate || movie.released)
+  const title = `${movie.title}${releaseDate ? ` — ${releaseDate}` : movie.year ? ` (${movie.year})` : ""} | MediaVerse`
   const description =
     truncate(movie.plot, 160) || "See details and watch history for this movie on MediaVerse."
 

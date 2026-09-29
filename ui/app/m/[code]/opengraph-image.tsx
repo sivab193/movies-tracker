@@ -2,6 +2,7 @@ import { mediaCard } from "@/lib/og/card"
 import {
   OG_SIZE,
   absoluteAsset,
+  formatReleaseDate,
   formatMinutes,
   getMovie,
   parseRuntimeMinutes,
@@ -29,10 +30,11 @@ export default async function Image({ params }: { params: Promise<{ code: string
   }
 
   const runtime = formatMinutes(parseRuntimeMinutes(movie.runtime))
+  const releaseDate = formatReleaseDate(movie.releaseDate || movie.released)
   return mediaCard({
     kind: "Movie",
     title: movie.title,
-    subtitle: [movie.year, movie.genre].filter(Boolean).join(" · "),
+    subtitle: [releaseDate || movie.year, movie.genre].filter(Boolean).join(" · "),
     facts: [runtime && `⏱ ${runtime}`].filter(
       Boolean,
     ) as string[],

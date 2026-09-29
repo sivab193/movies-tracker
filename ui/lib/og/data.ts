@@ -55,6 +55,8 @@ export type OgMovie = {
   id: string
   title: string
   year?: number
+  releaseDate?: string
+  released?: string
   genre?: string
   runtime?: string
   director?: string
@@ -117,6 +119,20 @@ export function formatMinutes(total: number): string {
   const mins = total % 60
   if (hours === 0) return `${mins}m`
   return mins ? `${hours}h ${mins}m` : `${hours}h`
+}
+
+/** Render an ISO theatrical date without timezone shifts in server-side previews. */
+export function formatReleaseDate(releaseDate?: string | null): string {
+  const match = String(releaseDate || "").match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!match) return ""
+
+  const year = Number(match[1])
+  const month = Number(match[2])
+  const day = Number(match[3])
+  const date = new Date(Date.UTC(year, month - 1, day))
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return ""
+
+  return `${day} ${["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][month - 1]} ${year}`
 }
 
 /** Keep OG descriptions inside the ~200 chars most platforms display. */

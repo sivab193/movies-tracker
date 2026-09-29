@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { formatMinutes, getMovie, parseRuntimeMinutes, truncate } from "@/lib/og/data"
+import { formatMinutes, formatReleaseDate, getMovie, parseRuntimeMinutes, truncate } from "@/lib/og/data"
 import { notFoundMetadata } from "@/lib/og/static"
 
 export async function generateMetadata({
@@ -15,7 +15,8 @@ export async function generateMetadata({
   }
 
   const runtime = formatMinutes(parseRuntimeMinutes(movie.runtime))
-  const title = `${movie.title}${movie.year ? ` (${movie.year})` : ""} | MediaVerse`
+  const releaseDate = formatReleaseDate(movie.releaseDate || movie.released)
+  const title = `${movie.title}${releaseDate ? ` — ${releaseDate}` : movie.year ? ` (${movie.year})` : ""} | MediaVerse`
   // Sparse catalog entries can have no plot and no genre, so the fallback has
   // to read as a sentence rather than a bare "2h 25m".
   const facts = [movie.genre, runtime, movie.director && `directed by ${movie.director}`]
