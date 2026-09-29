@@ -9,6 +9,7 @@ from pymongo.errors import DuplicateKeyError
 
 from routes import agent_movies
 from routes import movies
+from routes import theaters
 
 
 class InsertResult:
@@ -80,7 +81,10 @@ class MemoryCollection:
 class MemoryDatabase:
     def __init__(self, key):
         self.movies = MemoryCollection()
+        self.theaters = MemoryCollection()
         self.agent_movie_refs = MemoryCollection()
+        self.agent_theater_refs = MemoryCollection()
+        self.agent_theater_delete_suggestions = MemoryCollection()
         self.agent_api_rate_limits = MemoryCollection()
         self.agent_api_config = MemoryCollection()
         self.short_urls = MemoryCollection()
@@ -97,10 +101,12 @@ class AgentMoviesApiTest(unittest.TestCase):
         self.database = MemoryDatabase(self.key)
         self.original_db = agent_movies.db
         self.original_movies_db = movies.db
+        self.original_theaters_db = theaters.db
         self.original_is_admin = agent_movies.is_admin
         self.original_cache = agent_movies.save_poster_to_db
         agent_movies.db = self.database
         movies.db = self.database
+        theaters.db = self.database
         agent_movies.is_admin = lambda token: token == 'admin-token'
         self.cached_urls = []
         agent_movies.save_poster_to_db = self.cache_poster
@@ -113,6 +119,7 @@ class AgentMoviesApiTest(unittest.TestCase):
     def tearDown(self):
         agent_movies.db = self.original_db
         movies.db = self.original_movies_db
+        theaters.db = self.original_theaters_db
         agent_movies.is_admin = self.original_is_admin
         agent_movies.save_poster_to_db = self.original_cache
 
@@ -190,6 +197,48 @@ class AgentMoviesApiTest(unittest.TestCase):
         request_body['externalRef'] = 'anniv-2026-10-11'
         response = self.client.post('/api/agent/movies/upsert', headers={'X-MediaVerse-Agent-Key': raw_key}, json=request_body)
         self.assertEqual(response.status_code, 200)
+
+    def test_upserts_theater_specs_and_only_suggests_deletion(self):
+        theater_body = {
+            'externalRef': 'theater-2026-10-10',
+            'name': 'MediaVerse Cinema',
+            'location': 'Bloomington, Indiana',
+            'gmapsLink': 'https://8.8.8.8/maps',
+            'amenities': ['Parking', 'Recliners'],
+            'screens': [{
+                'name': 'Auditorium 1', 'format': 'IMAX', 'sound': 'Dolby Atmos', 'seating': 'Recliner', 'capacity': 180,
+            }],
+        }
+        created = self.client.post('/api/agent/theaters/upsert', headers=self.headers(), json=theater_body)
+        self.assertEqual(created.status_code, 200)
+        created_data = created.get_json()
+        self.assertTrue(created_data['created'])
+        self.assertEqual(len(self.database.theaters.documents), 1)
+        theater = self.database.theaters.documents[0]
+        self.assertFalse(theater['verified'])
+        self.assertEqual(theater['screens'][0]['format'], 'IMAX')
+
+        retry = dict(theater_body)
+        retry.pop('amenities')
+        retry.pop('screens')
+        retry['gmapsLink'] = 'https://8.8.8.8/new-maps'
+        updated = self.client.post('/api/agent/theaters/upsert', headers=self.headers(), json=retry)
+        self.assertEqual(updated.status_code, 200)
+        self.assertFalse(updated.get_json()['created'])
+        self.assertEqual(len(self.database.theaters.documents), 1)
+        self.assertEqual(self.database.theaters.documents[0]['screens'][0]['capacity'], 180)
+
+        lookup = self.client.get('/api/agent/theaters?name=MediaVerse%20Cinema&location=Bloomington', headers=self.headers())
+        self.assertEqual(lookup.status_code, 200)
+        self.assertEqual(lookup.get_json()['id'], created_data['id'])
+
+        suggestion = self.client.post('/api/agent/theaters/delete-suggestions', headers=self.headers(), json={
+            'externalRef': 'delete-suggest-2026-10-10', 'theaterId': created_data['id'], 'reason': 'Venue has permanently closed.',
+        })
+        self.assertEqual(suggestion.status_code, 201)
+        self.assertEqual(suggestion.get_json()['status'], 'pending')
+        self.assertEqual(len(self.database.theaters.documents), 1)
+        self.assertEqual(len(self.database.agent_theater_delete_suggestions.documents), 1)
 
 
 if __name__ == '__main__':

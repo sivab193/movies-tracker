@@ -1,11 +1,12 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Check, Copy, KeyRound, Loader2, Plus, RotateCcw, ShieldCheck } from "lucide-react"
+import Link from "next/link"
+import { Check, Copy, KeyRound, Loader2, Plus, RotateCcw, ShieldCheck, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import { getAgentApiKeys, generateAgentApiKey, updateAgentApiKey, type AgentApiKey } from "@/services/api"
+import { dismissAgentTheaterDeleteSuggestion, getAgentApiKeys, getAgentTheaterDeleteSuggestions, generateAgentApiKey, updateAgentApiKey, type AgentApiKey, type AgentTheaterDeleteSuggestion } from "@/services/api"
 
 export function AdminMuseApi() {
   const [keys, setKeys] = useState<AgentApiKey[]>([])
@@ -105,4 +106,51 @@ export function AdminMuseApi() {
       </DialogContent>
     </Dialog>
   </>
+}
+
+export function AdminMuseTheaterSuggestions() {
+  const [suggestions, setSuggestions] = useState<AgentTheaterDeleteSuggestion[]>([])
+  const [loading, setLoading] = useState(true)
+  const [dismissingId, setDismissingId] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    void (async () => {
+      try {
+        const data = await getAgentTheaterDeleteSuggestions()
+        setSuggestions(data.suggestions)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not load theater suggestions")
+      } finally {
+        setLoading(false)
+      }
+    })()
+  }, [])
+
+  const dismiss = async (suggestionId: string) => {
+    setDismissingId(suggestionId)
+    setError(null)
+    try {
+      await dismissAgentTheaterDeleteSuggestion(suggestionId)
+      setSuggestions((current) => current.filter((suggestion) => suggestion.id !== suggestionId))
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not dismiss theater suggestion")
+    } finally {
+      setDismissingId(null)
+    }
+  }
+
+  return <section className="border border-border bg-card">
+    <div className="border-b border-border p-4">
+      <h2 className="flex items-center gap-2 text-lg font-semibold"><Trash2 className="h-5 w-5 text-primary" />Theater deletion suggestions</h2>
+      <p className="mt-1 text-sm text-muted-foreground">Muse can flag a venue, but only you can delete it from the theater workspace.</p>
+    </div>
+    {error && <p role="alert" className="border-b border-destructive/30 bg-destructive/10 px-4 py-3 text-sm text-destructive">{error}</p>}
+    {loading ? <div className="flex min-h-32 items-center justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div> : suggestions.length === 0 ? <p className="px-4 py-10 text-center text-sm text-muted-foreground">No pending theater deletion suggestions.</p> : <div className="divide-y divide-border">
+      {suggestions.map((suggestion) => <div key={suggestion.id} className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0"><p className="font-medium">{suggestion.theaterName}</p><p className="text-xs text-muted-foreground">{suggestion.theaterLocation || "Location not set"}</p><p className="mt-2 text-sm text-muted-foreground">{suggestion.reason}</p>{suggestion.evidenceUrl && <a href={suggestion.evidenceUrl} target="_blank" rel="noreferrer" className="mt-2 inline-block text-xs font-medium text-primary hover:underline">Review supporting link</a>}</div>
+        <div className="flex shrink-0 gap-2"><Button asChild size="sm" variant="outline"><Link href={`/admin/theaters/${suggestion.theaterId}`}>Review theater</Link></Button><Button size="sm" variant="ghost" disabled={dismissingId === suggestion.id} onClick={() => void dismiss(suggestion.id)}>{dismissingId === suggestion.id ? <Loader2 className="h-4 w-4 animate-spin" /> : "Dismiss"}</Button></div>
+      </div>)}
+    </div>}
+  </section>
 }

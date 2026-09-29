@@ -163,6 +163,90 @@ paths:
       responses:
         '200': { description: Canonical movie page URL }
         '404': { description: Movie not found }
+  /agent/theaters/upsert:
+    post:
+      summary: Create or update theater details for the Muse automation
+      security:
+        - museAgentKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [externalRef, name, location]
+              properties:
+                externalRef: { type: string, example: theater-2026-10-10 }
+                name: { type: string, example: MediaVerse Cinema }
+                location: { type: string, example: Bloomington, Indiana }
+                gmapsLink: { type: string, format: uri }
+                openedYear: { type: integer, example: 1998 }
+                renovatedYear: { type: integer, example: 2024 }
+                website: { type: string, format: uri }
+                notes: { type: string }
+                amenities: { type: array, items: { type: string } }
+                ticketPlatforms:
+                  type: array
+                  items:
+                    type: object
+                    required: [name]
+                    properties:
+                      name: { type: string }
+                      url: { type: string, format: uri }
+                screens:
+                  type: array
+                  items:
+                    type: object
+                    required: [name]
+                    properties:
+                      name: { type: string }
+                      format: { type: string, enum: [IMAX, Dolby Cinema, 4DX, ScreenX, Laser, Standard] }
+                      sound: { type: string, enum: [Dolby Atmos, Dolby 7.1, Dolby 5.1, Auro 3D, Standard] }
+                      seating: { type: string, enum: [Recliner, Premium, Standard, Sofa, Wheelchair accessible] }
+                      capacity: { type: integer }
+                      screenSize: { type: string }
+                      notes: { type: string }
+      responses:
+        '200': { description: Canonical theater page URL }
+  /agent/theaters:
+    get:
+      summary: Look up a theater for the Muse automation
+      security:
+        - museAgentKey: []
+      parameters:
+        - in: query
+          name: id
+          schema: { type: string }
+        - in: query
+          name: name
+          schema: { type: string }
+        - in: query
+          name: location
+          schema: { type: string }
+      responses:
+        '200': { description: Canonical theater page URL }
+        '404': { description: Theater not found }
+  /agent/theaters/delete-suggestions:
+    post:
+      summary: Submit a non-destructive theater deletion suggestion for admin review
+      security:
+        - museAgentKey: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [externalRef, reason]
+              properties:
+                externalRef: { type: string, example: delete-suggest-2026-10-10 }
+                theaterId: { type: string }
+                name: { type: string }
+                location: { type: string }
+                reason: { type: string }
+                evidenceUrl: { type: string, format: uri }
+      responses:
+        '201': { description: Pending review suggestion created }
   /agent/admin/keys:
     get:
       summary: List Muse key metadata for a MediaVerse admin

@@ -70,3 +70,38 @@ returns the same response shape. A missing movie returns
 All agent errors are JSON: missing/invalid keys return `401`, invalid request
 fields return `400` with `error` and `field`, rate limiting returns `429`, and
 unhandled failures return `500 {"error":"internal"}`.
+
+## Theaters
+
+`POST /api/agent/theaters/upsert` creates or updates a theater. It requires
+`externalRef`, `name`, and `location`; `gmapsLink`, `openedYear`,
+`renovatedYear`, `website`, `notes`, `amenities`, `ticketPlatforms`, and
+`screens` are optional. Its structured screen format matches the MediaVerse
+theater model:
+
+```json
+{
+  "externalRef": "theater-2026-10-10",
+  "name": "MediaVerse Cinema",
+  "location": "Bloomington, Indiana",
+  "screens": [{
+    "name": "Auditorium 1",
+    "format": "IMAX",
+    "sound": "Dolby Atmos",
+    "seating": "Recliner",
+    "capacity": 180
+  }]
+}
+```
+
+The response supplies the stable theater URL. The agent may not set `verified`
+on a theater or screen; all agent-created theaters begin unverified. Omitted
+optional fields remain untouched. Look up a theater with
+`GET /api/agent/theaters?id=<id>` or
+`GET /api/agent/theaters?name=...&location=...`.
+
+There is intentionally no delete endpoint. Muse can submit a review-only
+request through `POST /api/agent/theaters/delete-suggestions` with
+`externalRef`, `reason`, and either `theaterId` or `name` plus `location`.
+Suggestions appear at `/admin/muse`; an admin reviews the venue and performs
+the actual deletion only from the existing theater admin workspace.

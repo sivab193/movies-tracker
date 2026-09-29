@@ -612,6 +612,40 @@ export async function updateAgentApiKey(keyId: string, active: boolean) {
     return agentAdminRequest(`/${encodeURIComponent(keyId)}`, { method: "PUT", body: JSON.stringify({ active }) })
 }
 
+export type AgentTheaterDeleteSuggestion = {
+    id: string
+    theaterId: string
+    theaterName: string
+    theaterLocation?: string
+    reason: string
+    evidenceUrl?: string
+    status: "pending" | "dismissed"
+    createdAt: string
+    reviewedAt?: string | null
+}
+
+export async function getAgentTheaterDeleteSuggestions(): Promise<{ suggestions: AgentTheaterDeleteSuggestion[] }> {
+    const token = await auth?.currentUser?.getIdToken()
+    if (!token) throw new Error("User not authenticated")
+    const response = await fetch(`${API_BASE_URL}/agent/admin/theater-delete-suggestions`, { headers: { "Authorization": `Bearer ${token}` } })
+    const data = await response.json()
+    if (!response.ok) throw new Error(data.error || "Could not load theater suggestions")
+    return data
+}
+
+export async function dismissAgentTheaterDeleteSuggestion(suggestionId: string) {
+    const token = await auth?.currentUser?.getIdToken()
+    if (!token) throw new Error("User not authenticated")
+    const response = await fetch(`${API_BASE_URL}/agent/admin/theater-delete-suggestions/${encodeURIComponent(suggestionId)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ status: "dismissed" }),
+    })
+    const data = await response.json()
+    if (!response.ok) throw new Error(data.error || "Could not dismiss theater suggestion")
+    return data
+}
+
 export async function resolveShortUrl(code: string): Promise<{ movieId: string }> {
     const response = await fetch(`${API_BASE_URL}/movies/m/${encodeURIComponent(code)}`);
     const data = await response.json();

@@ -22,6 +22,7 @@ from flask import Blueprint, jsonify, request
 
 from mongo_config import db
 from routes.movies import is_admin, save_poster_to_db
+from routes.theaters import normalize_theater_details, normalize_theater_location
 
 
 agent_movies_bp = Blueprint('agent_movies', __name__)
@@ -41,6 +42,8 @@ if db is not None:
         # The external-ref collection gives one idempotency key one canonical
         # movie, without preventing later anniversary refs from pointing to it.
         db.agent_movie_refs.create_index('movieId')
+        db.agent_theater_refs.create_index('theaterId')
+        db.agent_theater_delete_suggestions.create_index([('status', 1), ('createdAt', -1)])
         db.agent_api_rate_limits.create_index('expiresAt', expireAfterSeconds=0)
         db.movies.create_index('agentSlug', unique=True, sparse=True)
     except Exception as error:
@@ -61,6 +64,13 @@ def _non_empty_string(value, field, max_length=MAX_TEXT_LENGTH):
     value = value.strip()
     if len(value) > max_length:
         raise ValueError(field)
+    return value
+
+
+def _validate_external_ref(value):
+    value = _non_empty_string(value, 'externalRef', 128)
+    if not EXTERNAL_REF_PATTERN.fullmatch(value):
+        raise ValueError('externalRef')
     return value
 
 
@@ -85,9 +95,7 @@ def _validate_request(data):
         return None, ('invalid_json', None)
 
     try:
-        external_ref = _non_empty_string(data.get('externalRef'), 'externalRef', 128)
-        if not EXTERNAL_REF_PATTERN.fullmatch(external_ref):
-            raise ValueError('externalRef')
+        external_ref = _validate_external_ref(data.get('externalRef'))
 
         title = _non_empty_string(data.get('title'), 'title', 300)
         language = _non_empty_string(data.get('language'), 'language', 32)
@@ -318,6 +326,94 @@ def _movie_updates(payload, slug):
     return updates
 
 
+def _validate_theater_upsert(data):
+    if not isinstance(data, dict):
+        return None, ('invalid_json', None)
+    try:
+        if 'verified' in data:
+            raise ValueError('verified')
+        external_ref = _validate_external_ref(data.get('externalRef'))
+        name = _non_empty_string(data.get('name'), 'name', 200)
+        location = _non_empty_string(data.get('location'), 'location', 200)
+        normalized_location = {'name': name, 'location': location}
+        normalize_theater_location(normalized_location)
+        payload = {
+            'externalRef': external_ref,
+            'name': normalized_location['name'],
+            'location': normalized_location['location'],
+        }
+
+        if 'gmapsLink' in data and data['gmapsLink'] is not None:
+            payload['gmapsLink'] = _validate_public_url(data['gmapsLink'], 'gmapsLink')
+
+        details_input = {}
+        for field in ('openedYear', 'renovatedYear', 'notes', 'website', 'amenities', 'ticketPlatforms', 'screens'):
+            if field in data:
+                details_input[field] = data[field]
+        if isinstance(details_input.get('screens'), list) and any(isinstance(screen, dict) and 'verified' in screen for screen in details_input['screens']):
+            raise ValueError('screens')
+        if details_input.get('website') not in (None, ''):
+            details_input['website'] = _validate_public_url(details_input['website'], 'website')
+        if isinstance(details_input.get('ticketPlatforms'), list):
+            for platform in details_input['ticketPlatforms']:
+                if isinstance(platform, dict) and platform.get('url'):
+                    platform['url'] = _validate_public_url(platform['url'], 'ticketPlatforms')
+        payload['details'] = normalize_theater_details(details_input)
+    except ValueError as error:
+        return None, ('invalid_field', str(error).split(' ', 1)[0])
+    return payload, None
+
+
+def _theater_response(theater, created=False):
+    theater_id = str(theater['_id'])
+    site_origin = os.environ.get('MEDIA_VERSE_PUBLIC_ORIGIN', 'https://www.media-verse.in').rstrip('/')
+    return {
+        'id': theater_id,
+        'name': theater.get('name'),
+        'location': theater.get('location'),
+        'pageUrl': f'{site_origin}/theaters/{theater_id}',
+        'created': created,
+    }
+
+
+def _find_theater_for_request(payload):
+    ref = db.agent_theater_refs.find_one({'_id': payload['externalRef']})
+    if ref and isinstance(ref.get('theaterId'), ObjectId):
+        theater = db.theaters.find_one({'_id': ref['theaterId']})
+        if theater:
+            return theater
+    return db.theaters.find_one({
+        'name': {'$regex': f'^{re.escape(payload["name"])}$', '$options': 'i'},
+        'location': {'$regex': f'^{re.escape(payload["location"])}$', '$options': 'i'},
+    })
+
+
+def _validate_delete_suggestion(data):
+    if not isinstance(data, dict):
+        return None, ('invalid_json', None)
+    try:
+        payload = {
+            'externalRef': _validate_external_ref(data.get('externalRef')),
+            'reason': _non_empty_string(data.get('reason'), 'reason', 1_000),
+        }
+        if 'theaterId' in data and data['theaterId'] is not None:
+            if not isinstance(data['theaterId'], str) or not ObjectId.is_valid(data['theaterId']):
+                raise ValueError('theaterId')
+            payload['theaterId'] = ObjectId(data['theaterId'])
+        else:
+            name = _non_empty_string(data.get('name'), 'name', 200)
+            location = _non_empty_string(data.get('location'), 'location', 200)
+            location_data = {'name': name, 'location': location}
+            normalize_theater_location(location_data)
+            payload['name'] = location_data['name']
+            payload['location'] = location_data['location']
+        if data.get('evidenceUrl') is not None:
+            payload['evidenceUrl'] = _validate_public_url(data['evidenceUrl'], 'evidenceUrl')
+    except ValueError as error:
+        return None, ('invalid_field', str(error))
+    return payload, None
+
+
 def _require_admin():
     auth_header = request.headers.get('Authorization', '')
     if not auth_header.startswith('Bearer ') or not is_admin(auth_header.split(' ', 1)[1]):
@@ -402,6 +498,53 @@ def update_agent_key(key_id):
         return _error('not_found', status=404)
     db.agent_api_config.update_one({'_id': AGENT_CONFIG_ID}, {'$set': {'keys': keys, 'updatedAt': now}})
     return jsonify({'message': 'key_updated'})
+
+
+def _public_theater_delete_suggestion(suggestion):
+    return {
+        'id': str(suggestion['_id']),
+        'theaterId': str(suggestion['theaterId']),
+        'theaterName': suggestion.get('theaterName'),
+        'theaterLocation': suggestion.get('theaterLocation'),
+        'reason': suggestion.get('reason'),
+        'evidenceUrl': suggestion.get('evidenceUrl'),
+        'status': suggestion.get('status', 'pending'),
+        'createdAt': suggestion.get('createdAt').isoformat() if hasattr(suggestion.get('createdAt'), 'isoformat') else suggestion.get('createdAt'),
+        'reviewedAt': suggestion.get('reviewedAt').isoformat() if hasattr(suggestion.get('reviewedAt'), 'isoformat') else suggestion.get('reviewedAt'),
+    }
+
+
+@agent_admin_bp.route('/admin/theater-delete-suggestions', methods=['GET'])
+def list_theater_delete_suggestions():
+    denied = _require_admin()
+    if denied:
+        return denied
+    status = request.args.get('status', 'pending')
+    if status not in {'pending', 'dismissed', 'all'}:
+        return _error('invalid_field', field='status')
+    query = {} if status == 'all' else {'status': status}
+    suggestions = [
+        _public_theater_delete_suggestion(suggestion)
+        for suggestion in db.agent_theater_delete_suggestions.find(query).sort('createdAt', -1)
+    ]
+    return jsonify({'suggestions': suggestions})
+
+
+@agent_admin_bp.route('/admin/theater-delete-suggestions/<suggestion_id>', methods=['PUT'])
+def update_theater_delete_suggestion(suggestion_id):
+    denied = _require_admin()
+    if denied:
+        return denied
+    data = request.get_json(silent=True) or {}
+    if data.get('status') != 'dismissed':
+        return _error('invalid_field', field='status')
+    result = db.agent_theater_delete_suggestions.update_one(
+        {'_id': suggestion_id, 'status': 'pending'},
+        {'$set': {'status': 'dismissed', 'reviewedAt': datetime.datetime.now(datetime.timezone.utc)}},
+    )
+    if result.matched_count == 0:
+        return _error('not_found', status=404)
+    return jsonify({'message': 'suggestion_dismissed'})
 
 
 @agent_movies_bp.before_request
@@ -531,3 +674,132 @@ def lookup_movie():
     if not movie:
         return _error('not_found', status=404)
     return jsonify(_movie_response(movie, created=False)), 200
+
+
+@agent_movies_bp.route('/theaters/upsert', methods=['POST'])
+def upsert_theater():
+    payload, validation_error = _validate_theater_upsert(request.get_json(silent=True))
+    if validation_error:
+        error, field = validation_error
+        return _error(error, field=field)
+
+    try:
+        ref = db.agent_theater_refs.find_one({'_id': payload['externalRef']})
+        if ref and isinstance(ref.get('theaterId'), ObjectId):
+            candidate_id = ref['theaterId']
+        else:
+            candidate_id = ObjectId()
+            try:
+                db.agent_theater_refs.insert_one({
+                    '_id': payload['externalRef'],
+                    'theaterId': candidate_id,
+                    'createdAt': datetime.datetime.now(datetime.timezone.utc),
+                })
+            except DuplicateKeyError:
+                ref = db.agent_theater_refs.find_one({'_id': payload['externalRef']})
+                candidate_id = ref.get('theaterId') if ref else None
+                if not isinstance(candidate_id, ObjectId):
+                    return _error('internal', status=500)
+
+        theater = db.theaters.find_one({'_id': candidate_id}) or _find_theater_for_request(payload)
+        created = theater is None
+        updates = {
+            'name': payload['name'],
+            'location': payload['location'],
+            'lastUpdatedBy': 'muse-agent',
+            'agentUpdatedAt': datetime.datetime.now(datetime.timezone.utc),
+            **payload['details'],
+        }
+        if 'gmapsLink' in payload:
+            updates['gmapsLink'] = payload['gmapsLink']
+
+        if created:
+            updates.update({
+                '_id': candidate_id,
+                'createdAt': datetime.datetime.now(datetime.timezone.utc),
+                'agentSource': 'muse',
+                'verified': False,
+            })
+            try:
+                db.theaters.insert_one(updates)
+                theater = db.theaters.find_one({'_id': candidate_id})
+            except DuplicateKeyError:
+                theater = db.theaters.find_one({'_id': candidate_id})
+                if not theater:
+                    return _error('internal', status=500)
+                created = False
+        else:
+            db.theaters.update_one({'_id': theater['_id']}, {'$set': updates})
+            theater.update(updates)
+
+        if theater['_id'] != candidate_id:
+            db.agent_theater_refs.update_one(
+                {'_id': payload['externalRef'], 'theaterId': candidate_id},
+                {'$set': {'theaterId': theater['_id']}},
+            )
+        return jsonify(_theater_response(theater, created)), 200
+    except Exception as error:
+        print(f'Agent theater upsert failed: {type(error).__name__}')
+        return _error('internal', status=500)
+
+
+@agent_movies_bp.route('/theaters', methods=['GET'])
+def lookup_theater():
+    theater_id = request.args.get('id')
+    name = request.args.get('name')
+    location = request.args.get('location')
+    if theater_id:
+        if not ObjectId.is_valid(theater_id):
+            return _error('invalid_field', field='id')
+        theater = db.theaters.find_one({'_id': ObjectId(theater_id)})
+    else:
+        if not name:
+            return _error('invalid_field', field='name')
+        if not location:
+            return _error('invalid_field', field='location')
+        location_data = {'name': name.strip(), 'location': location.strip()}
+        normalize_theater_location(location_data)
+        theater = db.theaters.find_one({
+            'name': {'$regex': f'^{re.escape(location_data["name"])}$', '$options': 'i'},
+            'location': {'$regex': f'^{re.escape(location_data["location"])}$', '$options': 'i'},
+        })
+    if not theater:
+        return _error('not_found', status=404)
+    return jsonify(_theater_response(theater)), 200
+
+
+@agent_movies_bp.route('/theaters/delete-suggestions', methods=['POST'])
+def suggest_theater_deletion():
+    payload, validation_error = _validate_delete_suggestion(request.get_json(silent=True))
+    if validation_error:
+        error, field = validation_error
+        return _error(error, field=field)
+
+    existing = db.agent_theater_delete_suggestions.find_one({'_id': payload['externalRef']})
+    if existing:
+        return jsonify({'id': str(existing['_id']), 'status': existing.get('status', 'pending'), 'created': False}), 200
+
+    theater = db.theaters.find_one({'_id': payload['theaterId']}) if payload.get('theaterId') else db.theaters.find_one({
+        'name': {'$regex': f'^{re.escape(payload["name"])}$', '$options': 'i'},
+        'location': {'$regex': f'^{re.escape(payload["location"])}$', '$options': 'i'},
+    })
+    if not theater:
+        return _error('not_found', status=404)
+    suggestion = {
+        '_id': payload['externalRef'],
+        'theaterId': theater['_id'],
+        'theaterName': theater.get('name'),
+        'theaterLocation': theater.get('location'),
+        'reason': payload['reason'],
+        'evidenceUrl': payload.get('evidenceUrl'),
+        'status': 'pending',
+        'createdAt': datetime.datetime.now(datetime.timezone.utc),
+        'source': 'muse-agent',
+    }
+    try:
+        db.agent_theater_delete_suggestions.insert_one(suggestion)
+    except DuplicateKeyError:
+        existing = db.agent_theater_delete_suggestions.find_one({'_id': payload['externalRef']})
+        return jsonify({'id': str(existing['_id']), 'status': existing.get('status', 'pending'), 'created': False}), 200
+    # This is deliberately a review record, never a queued deletion job.
+    return jsonify({'id': payload['externalRef'], 'status': 'pending', 'created': True}), 201
