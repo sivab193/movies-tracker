@@ -144,7 +144,6 @@ paths:
           description: Canonical movie page URL
         '400': { description: Invalid request field }
         '401': { description: Missing or invalid agent key }
-        '429': { description: Daily rate limit reached }
   /agent/movies:
     get:
       summary: Look up a movie for the Muse automation

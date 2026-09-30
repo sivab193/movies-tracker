@@ -4,7 +4,6 @@ from copy import deepcopy
 
 from bson import ObjectId
 from flask import Flask
-from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 
 from routes import agent_movies
@@ -103,7 +102,6 @@ class MemoryDatabase:
         self.agent_movie_refs = MemoryCollection()
         self.agent_theater_refs = MemoryCollection()
         self.agent_theater_delete_suggestions = MemoryCollection()
-        self.agent_api_rate_limits = MemoryCollection()
         self.agent_api_config = MemoryCollection()
         self.agent_api_call_logs = MemoryCollection()
         self.short_urls = MemoryCollection()
@@ -208,6 +206,11 @@ class AgentMoviesApiTest(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertEqual(response.get_json()['field'], 'releaseDate')
 
+    def test_authenticated_agent_requests_are_not_rate_limited(self):
+        for _ in range(150):
+            response = self.client.get('/api/agent/movies?tmdbId=999999', headers=self.headers())
+            self.assertEqual(response.status_code, 404)
+
     def test_admin_can_generate_a_one_time_key_without_listing_its_secret(self):
         headers = {'Authorization': 'Bearer admin-token'}
         created = self.client.post('/api/agent/admin/keys', headers=headers, json={'label': 'Muse vault'})
@@ -219,6 +222,7 @@ class AgentMoviesApiTest(unittest.TestCase):
         listed = self.client.get('/api/agent/admin/keys', headers=headers)
         self.assertEqual(listed.status_code, 200)
         self.assertEqual(listed.get_json()['keys'][0]['label'], 'Muse vault')
+        self.assertNotIn('dailyLimit', listed.get_json())
         self.assertNotIn('key', listed.get_json()['keys'][0])
 
         request_body = self.body()

@@ -28,7 +28,6 @@ export async function generateMetadata({
     description,
     openGraph: { title, description, type: "video.movie" },
     twitter: { card: "summary_large_image", title, description },
-    // The page itself only redirects; the canonical target is the movie page.
     robots: { index: false, follow: true },
   }
 }

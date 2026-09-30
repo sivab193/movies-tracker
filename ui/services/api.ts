@@ -600,7 +600,7 @@ async function agentAdminRequest(path: string, options: RequestInit = {}) {
     return data
 }
 
-export async function getAgentApiKeys(): Promise<{ keys: AgentApiKey[]; dailyLimit: number }> {
+export async function getAgentApiKeys(): Promise<{ keys: AgentApiKey[] }> {
     return agentAdminRequest("")
 }
 

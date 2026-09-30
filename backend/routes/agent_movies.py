@@ -17,7 +17,6 @@ import time
 from urllib.parse import urlparse
 
 from bson import ObjectId
-from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
 from flask import Blueprint, g, jsonify, request
 
@@ -31,7 +30,6 @@ agent_admin_bp = Blueprint('agent_admin', __name__)
 
 AGENT_CONFIG_ID = 'muse'
 AGENT_KEY_HEADER = 'X-MediaVerse-Agent-Key'
-DEFAULT_DAILY_LIMIT = 100
 MAX_TEXT_LENGTH = 1_000
 ALLOWED_LANGUAGES = {'Tamil', 'Hindi', 'Malayalam', 'English'}
 EXTERNAL_REF_PATTERN = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$')
@@ -47,7 +45,6 @@ if db is not None:
         db.agent_theater_delete_suggestions.create_index([('status', 1), ('createdAt', -1)])
         db.agent_api_call_logs.create_index('expiresAt', expireAfterSeconds=0)
         db.agent_api_call_logs.create_index([('createdAt', -1)])
-        db.agent_api_rate_limits.create_index('expiresAt', expireAfterSeconds=0)
         db.movies.create_index('agentSlug', unique=True, sparse=True)
     except Exception as error:
         # Startup must not take the public API down when an index already exists.
@@ -209,26 +206,6 @@ def _agent_key_metadata(key_hash):
     # Environment-provisioned keys are supported for first-time setup but have
     # no persisted label. Keep their identifying material out of the log.
     return {'keyId': None, 'keyLabel': 'Environment key', 'keyLastFour': None}
-
-
-def _rate_limit(key_hash):
-    try:
-        configured_limit = int(os.environ.get('MEDIA_VERSE_AGENT_DAILY_LIMIT', DEFAULT_DAILY_LIMIT))
-    except ValueError:
-        configured_limit = DEFAULT_DAILY_LIMIT
-    limit = max(1, min(configured_limit, 10_000))
-    now = datetime.datetime.now(datetime.timezone.utc)
-    day = now.strftime('%Y-%m-%d')
-    record = db.agent_api_rate_limits.find_one_and_update(
-        {'_id': f'{day}:{key_hash}'},
-        {
-            '$inc': {'count': 1},
-            '$setOnInsert': {'expiresAt': now + datetime.timedelta(days=2), 'day': day},
-        },
-        upsert=True,
-        return_document=ReturnDocument.AFTER,
-    )
-    return record.get('count', 0) <= limit
 
 
 def _movie_response(movie, created):
@@ -454,7 +431,7 @@ def list_agent_keys():
         return denied
     config = db.agent_api_config.find_one({'_id': AGENT_CONFIG_ID}) or {}
     keys = [_public_key_record(record) for record in config.get('keys', []) if isinstance(record, dict)]
-    return jsonify({'keys': keys, 'dailyLimit': int(os.environ.get('MEDIA_VERSE_AGENT_DAILY_LIMIT', DEFAULT_DAILY_LIMIT))})
+    return jsonify({'keys': keys})
 
 
 @agent_admin_bp.route('/admin/keys', methods=['POST'])
@@ -620,8 +597,6 @@ def require_agent_key():
         return _error('unauthorized', status=401)
     g.muse_agent_key = _agent_key_metadata(key_hash)
     g.muse_agent_started_at = time.perf_counter()
-    if not _rate_limit(key_hash):
-        return _error('rate_limited', status=429)
 
 
 @agent_movies_bp.after_request

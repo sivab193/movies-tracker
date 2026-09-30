@@ -1,14 +1,15 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams } from "next/navigation"
 import { resolveShortUrl } from "@/services/api"
 import { Loader2, AlertCircle } from "lucide-react"
 import { BrandLogo } from "@/components/brand-logo"
+import { MovieDetailContent } from "@/app/movie/[id]/page"
 
 export default function ShortUrlRedirectPage() {
     const { code } = useParams()
-    const router = useRouter()
+    const [movieId, setMovieId] = useState<string | null>(null)
     const [error, setError] = useState<string | null>(null)
 
     useEffect(() => {
@@ -17,7 +18,7 @@ export default function ShortUrlRedirectPage() {
             try {
                 const data = await resolveShortUrl(code as string)
                 if (data.movieId) {
-                    router.replace(`/movie/${data.movieId}`)
+                    setMovieId(data.movieId)
                 } else {
                     setError("Invalid short link.")
                 }
@@ -26,7 +27,9 @@ export default function ShortUrlRedirectPage() {
             }
         }
         doResolve()
-    }, [code, router])
+    }, [code])
+
+    if (movieId) return <MovieDetailContent id={movieId} />
 
     if (error) {
         return (

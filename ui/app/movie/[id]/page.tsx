@@ -19,6 +19,10 @@ import { WatchOnlineSection } from "@/components/watch-online-section"
 
 export default function MovieDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
+  return <MovieDetailContent id={id} />
+}
+
+export function MovieDetailContent({ id }: { id: string }) {
   const { user, userProfile } = useAuth()
   const [movie, setMovie] = useState<Movie | null>(null)
   const [submissions, setSubmissions] = useState<TitleCardSubmission[]>([])

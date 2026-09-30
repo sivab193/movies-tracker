@@ -11,7 +11,6 @@ import { dismissAgentTheaterDeleteSuggestion, getAgentApiActivity, getAgentApiKe
 
 export function AdminMuseApi() {
   const [keys, setKeys] = useState<AgentApiKey[]>([])
-  const [dailyLimit, setDailyLimit] = useState(100)
   const [label, setLabel] = useState("Muse primary")
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
@@ -24,7 +23,6 @@ export function AdminMuseApi() {
     try {
       const data = await getAgentApiKeys()
       setKeys(data.keys)
-      setDailyLimit(data.dailyLimit)
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load Muse keys")
     } finally {
@@ -73,7 +71,7 @@ export function AdminMuseApi() {
       <div className="flex flex-col gap-4 border-b border-border p-4 sm:flex-row sm:items-end sm:justify-between">
         <div className="max-w-xl">
           <h2 className="flex items-center gap-2 text-lg font-semibold"><KeyRound className="h-5 w-5 text-primary" />Muse access keys</h2>
-          <p className="mt-1 text-sm text-muted-foreground">Active keys can call only the anniversary-movie endpoints. The daily limit is {dailyLimit} requests per key.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Active keys can call only the Muse catalog endpoints.</p>
         </div>
         <div className="flex w-full max-w-sm gap-2">
           <Input aria-label="New Muse key label" value={label} onChange={(event) => setLabel(event.target.value)} maxLength={80} disabled={creating} />

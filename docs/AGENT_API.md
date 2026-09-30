@@ -21,8 +21,6 @@ For rotation without a deployment, store SHA-256 hashes in MongoDB's
 
 Keep both hashes during the vault rollout, then remove the retired hash. The
 backend reads this document on every agent request, so the change is immediate.
-`MEDIA_VERSE_AGENT_DAILY_LIMIT` defaults to `100` and may be adjusted in the
-environment. The rate-limit bucket is per active key per UTC day.
 
 MediaVerse admins can now manage this without direct database access at
 `https://www.media-verse.in/admin/muse`: generate a key, copy the one-time
@@ -77,8 +75,8 @@ returns the same response shape. A missing movie returns
 `404 {"error":"not_found"}`.
 
 All agent errors are JSON: missing/invalid keys return `401`, invalid request
-fields return `400` with `error` and `field`, rate limiting returns `429`, and
-unhandled failures return `500 {"error":"internal"}`.
+fields return `400` with `error` and `field`, and unhandled failures return
+`500 {"error":"internal"}`.
 
 ## Theaters
 
