@@ -34,7 +34,7 @@ export interface WrappedStats {
 }
 
 const SITE = "www.media-verse.in"
-const INSTA = "@media.verse.tv"
+const INSTA = "@media.verse.in"
 
 // Rounded rectangle path helper
 function roundRect(

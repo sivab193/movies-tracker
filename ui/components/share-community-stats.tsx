@@ -28,7 +28,7 @@ export interface CommunityStats {
 }
 
 const SITE = "www.media-verse.in"
-const INSTA = "@media.verse.tv"
+const INSTA = "@media.verse.in"
 
 function roundRect(
     ctx: CanvasRenderingContext2D,

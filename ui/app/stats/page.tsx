@@ -314,13 +314,13 @@ export default function StatsPage() {
                                         </p>
                                         <div className="flex flex-wrap items-center gap-3 justify-center sm:justify-start">
                                             <a
-                                                href="https://www.instagram.com/media.verse.tv/"
+                                                href="https://www.instagram.com/media.verse.in/"
                                                 target="_blank"
                                                 rel="noopener noreferrer"
                                             >
                                                 <Button size="sm" className="gap-2 bg-gradient-to-r from-pink-500 via-red-500 to-orange-400 hover:from-pink-600 hover:via-red-600 hover:to-orange-500 text-white border-0">
                                                     <Instagram className="h-4 w-4" />
-                                                    @media.verse.tv
+                                                    @media.verse.in
                                                     <ExternalLink className="h-3 w-3" />
                                                 </Button>
                                             </a>

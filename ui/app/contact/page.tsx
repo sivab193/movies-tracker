@@ -20,17 +20,15 @@ export default function ContactPage() {
             <section className="rounded-2xl border border-muted/20 bg-background p-6">
               <h2 className="text-xl font-semibold">Report missing or incorrect data</h2>
               <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                Please reach out on Instagram for any missing entries, data updates, or app issues.
+                Email us about missing entries, data updates, or app issues.
               </p>
-              <Link
-                href="https://www.instagram.com/media.verse.tv/"
-                target="_blank"
-                rel="noreferrer"
+              <a
+                href="mailto:contact@media-verse.in"
                 className="mt-4 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-primary/90"
               >
                 <Mail className="h-4 w-4" />
-                @media.verse.tv
-              </Link>
+                contact@media-verse.in
+              </a>
             </section>
 
             <section className="rounded-2xl border border-muted/20 bg-background p-6">
