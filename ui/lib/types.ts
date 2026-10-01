@@ -93,6 +93,7 @@ export interface WatchHistoryEntry {
   theaterGmapsLink?: string | null
   timestamp: string | null // ISO Date string
   showTime?: string | null // e.g. "7:30 PM"
+  format?: string | null // e.g. "IMAX", "3D"
   ticketCost: number
   foodCost?: number | null
   currency: "INR" | "USD"
@@ -437,3 +438,6 @@ export function formatRuntimeMinutes(totalMinutes: number): string {
   if (mins > 0) parts.push(`${mins}m`)
   return parts.join(' ') || '0 mins'
 }
+
+// Presentation formats a movie can be watched in
+export const WATCH_FORMATS = ["Standard", "IMAX", "3D", "IMAX 3D", "4DX", "Dolby Cinema", "ScreenX", "Other"] as const

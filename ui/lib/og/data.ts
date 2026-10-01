@@ -41,9 +41,9 @@ export function absoluteAsset(url?: string | null): string | null {
 }
 
 /** Fetch JSON without ever throwing — a preview must degrade, never 500. */
-export async function fetchJson<T>(path: string, revalidate = 3600): Promise<T | null> {
+export async function fetchJson<T>(path: string, revalidate = 3600, tags?: string[]): Promise<T | null> {
   try {
-    const res = await fetch(`${apiBase()}${path}`, { next: { revalidate } })
+    const res = await fetch(`${apiBase()}${path}`, { next: { revalidate, tags } })
     if (!res.ok) return null
     return (await res.json()) as T
   } catch {
@@ -82,7 +82,7 @@ export type OgSeries = {
 }
 
 export function getMovie(id: string) {
-  return fetchJson<OgMovie>(`/movies/${encodeURIComponent(id)}`)
+  return fetchJson<OgMovie>(`/movies/${encodeURIComponent(id)}`, 3600, ["movie"])
 }
 
 export function getSeries(id: string) {
@@ -102,6 +102,7 @@ export function resolveShortCode(code: string) {
   return fetchJson<{ movieId?: string; seriesId?: string }>(
     `/movies/m/${encodeURIComponent(code)}`,
     60,
+    ["movie"],
   )
 }
 

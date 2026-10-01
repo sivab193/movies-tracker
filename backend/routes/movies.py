@@ -10,6 +10,18 @@ import base64
 import secrets
 from routes.omdb_keys import get_available_api_key, record_omdb_call
 
+
+def notify_frontend_movie_changed():
+    """Best-effort: bust the frontend's cached movie metadata (titles, link previews)."""
+    secret = os.environ.get('REVALIDATE_SECRET')
+    origin = (os.environ.get('FRONTEND_URL') or 'https://www.media-verse.in').rstrip('/')
+    if not secret:
+        return
+    try:
+        requests.post(f'{origin}/api/revalidate', headers={'x-revalidate-secret': secret}, timeout=3)
+    except requests.RequestException:
+        pass
+
 movies_bp = Blueprint('movies', __name__)
 
 if db is not None:
@@ -1030,6 +1042,7 @@ def update_movie(movie_id):
             updated_doc['id'] = str(updated_doc.pop('_id'))
             if updated_doc.get('createdAt') and hasattr(updated_doc['createdAt'], 'isoformat'):
                 updated_doc['createdAt'] = updated_doc['createdAt'].isoformat()
+        notify_frontend_movie_changed()
         return jsonify({"message": "Movie updated successfully", "movie": updated_doc or update_fields})
     except Exception as e:
         return jsonify({"error": str(e)}), 500

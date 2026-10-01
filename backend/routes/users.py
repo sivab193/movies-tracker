@@ -58,7 +58,7 @@ def parse_watch_payload(data):
         except ValueError:
             raise ValueError('timestamp must be an ISO-8601 string')
     for field, maximum in (('theaterName', 200), ('theaterLocation', 300),
-                           ('theaterGmapsLink', 2048), ('showTime', 100)):
+                           ('theaterGmapsLink', 2048), ('showTime', 100), ('format', 50)):
         value = data.get(field)
         if value is not None and (not isinstance(value, str) or len(value) > maximum):
             raise ValueError(f'{field} is invalid or too long')
@@ -370,6 +370,7 @@ def add_watch_history():
         "currency": data.get('currency'),
         "ticketStubUrl": ticket_stub_url,
         "showTime": data.get('showTime'),
+        "format": data.get('format'),
         "timestamp": data.get('timestamp'), # Expecting ISO string
         "createdAt": datetime.datetime.now(datetime.timezone.utc).isoformat()
     }
@@ -542,6 +543,8 @@ def update_watch_history(user_id, entry_id):
         updates['watchHistory.$.foodCost'] = data['foodCost']
     if 'showTime' in data:
         updates['watchHistory.$.showTime'] = data['showTime']
+    if 'format' in data:
+        updates['watchHistory.$.format'] = data['format']
     if 'timestamp' in data:
         updates['watchHistory.$.timestamp'] = data['timestamp']
     if 'currency' in data:

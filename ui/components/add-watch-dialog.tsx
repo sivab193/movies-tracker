@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { type WatchHistoryEntry } from "@/lib/types"
+import { type WatchHistoryEntry, WATCH_FORMATS } from "@/lib/types"
 import { addWatchHistory, updateWatchHistory, getMovies, getTheaters } from "@/services/api"
 import { DatePicker } from "@/components/ui/date-picker"
 
@@ -82,6 +82,7 @@ export function AddWatchDialog({
   const [theaterGmapsLink, setTheaterGmapsLink] = useState("")
   const [watchDate, setWatchDate] = useState(new Date().toISOString().split('T')[0])
   const [showTime, setShowTime] = useState("")
+  const [format, setFormat] = useState("")
   const [ticketCost, setTicketCost] = useState("")
   const [foodCost, setFoodCost] = useState("")
   const [currency, setCurrency] = useState<"INR" | "USD">("INR")
@@ -173,6 +174,7 @@ export function AddWatchDialog({
       setTicketCost(initialData.ticketCost?.toString() || "")
       setFoodCost(initialData.foodCost?.toString() || "")
       setShowTime(initialData.showTime || "")
+      setFormat(initialData.format || "")
       setCurrency(initialData.currency || "INR")
       if (initialData.timestamp) {
         try {
@@ -223,6 +225,7 @@ export function AddWatchDialog({
     setSearchingMovies(false)
     setWatchDate(new Date().toISOString().split('T')[0])
     setShowTime("")
+    setFormat("")
     setTicketCost("")
     setFoodCost("")
     setCurrency("INR")
@@ -257,6 +260,7 @@ export function AddWatchDialog({
         theaterGmapsLink: theaterGmapsLink.trim() || undefined,
         timestamp: new Date(watchDate).toISOString(),
         showTime: showTime.trim() || null,
+        format: format || null,
         ticketCost: ticketCost ? parseFloat(ticketCost) : 0,
         foodCost: foodCost ? parseFloat(foodCost) : 0,
         currency,
@@ -534,6 +538,20 @@ export function AddWatchDialog({
               disabled={loading}
               className="[color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="flex items-center gap-2">
+              <Film className="h-4 w-4" />
+              Format <span className="text-xs text-muted-foreground">(Optional)</span>
+            </Label>
+            <Select value={format || "none"} onValueChange={(v) => setFormat(v === "none" ? "" : v)} disabled={loading}>
+              <SelectTrigger><SelectValue placeholder="Select format" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Not specified</SelectItem>
+                {WATCH_FORMATS.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
 
           <div className="grid grid-cols-2 gap-4">

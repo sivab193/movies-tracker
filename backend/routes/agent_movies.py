@@ -21,7 +21,7 @@ from pymongo.errors import DuplicateKeyError
 from flask import Blueprint, g, jsonify, request
 
 from mongo_config import db
-from routes.movies import is_admin, save_poster_to_db
+from routes.movies import is_admin, notify_frontend_movie_changed, save_poster_to_db
 from routes.theaters import normalize_theater_details, normalize_theater_location
 
 
@@ -705,6 +705,7 @@ def upsert_movie():
             db.movies.update_one({'_id': movie['_id']}, {'$set': {'posterUrl': cached_url}})
             movie['posterUrl'] = cached_url
 
+        notify_frontend_movie_changed()
         return jsonify(_movie_response(movie, created)), 200
     except Exception as error:
         # Keep external responses deliberately opaque; no key, connection, or

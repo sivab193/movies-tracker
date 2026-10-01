@@ -814,6 +814,7 @@ export default function DashboardPage() {
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="font-semibold">{entry.movieTitle}</div>
+                                                    {entry.format && <span className="mt-0.5 inline-block rounded border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">{entry.format}</span>}
                                                 </TableCell>
                                                 <TableCell>
                                                     <div className="flex flex-col gap-0.5">
