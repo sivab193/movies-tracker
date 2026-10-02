@@ -246,8 +246,9 @@ export default function DashboardPage() {
             }
 
             if (h.movieLanguage && h.movieLanguage !== "N/A") {
-                const langs = h.movieLanguage.split(',').map(l => l.trim()).filter(Boolean)
-                langs.forEach(l => languageSet.add(l))
+                // Only count the primary (first-listed) language; OMDb lists every dubbed/secondary language
+                const primary = h.movieLanguage.split(',').map(l => l.trim()).filter(Boolean)[0]
+                if (primary && primary !== "N/A") languageSet.add(primary)
             }
 
             const theater = (h.theaterName || "").trim()
