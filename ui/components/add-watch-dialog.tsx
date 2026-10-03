@@ -82,7 +82,7 @@ export function AddWatchDialog({
   const [theaterGmapsLink, setTheaterGmapsLink] = useState("")
   const [watchDate, setWatchDate] = useState(new Date().toISOString().split('T')[0])
   const [showTime, setShowTime] = useState("")
-  const [format, setFormat] = useState("")
+  const [format, setFormat] = useState("2D")
   const [ticketCost, setTicketCost] = useState("")
   const [foodCost, setFoodCost] = useState("")
   const [currency, setCurrency] = useState<"INR" | "USD">("INR")
@@ -174,7 +174,7 @@ export function AddWatchDialog({
       setTicketCost(initialData.ticketCost?.toString() || "")
       setFoodCost(initialData.foodCost?.toString() || "")
       setShowTime(initialData.showTime || "")
-      setFormat(initialData.format || "")
+      setFormat(initialData.format || "2D")
       setCurrency(initialData.currency || "INR")
       if (initialData.timestamp) {
         try {
@@ -225,7 +225,7 @@ export function AddWatchDialog({
     setSearchingMovies(false)
     setWatchDate(new Date().toISOString().split('T')[0])
     setShowTime("")
-    setFormat("")
+    setFormat("2D")
     setTicketCost("")
     setFoodCost("")
     setCurrency("INR")
