@@ -258,7 +258,9 @@ export default function DashboardPage() {
             }
 
             const watchFormat = (h.format || "").trim()
-            if (watchFormat && watchFormat !== "N/A") {
+            // 2D is the default for regular screens — not a premium format, so it
+            // never counts toward the Top Format highlight.
+            if (watchFormat && watchFormat !== "N/A" && watchFormat.toLowerCase() !== "2d") {
                 formatCounts.set(watchFormat, (formatCounts.get(watchFormat) || 0) + 1)
             }
 
