@@ -1,10 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { Share2, Loader2, Download } from "lucide-react"
+import { Share2, Loader2, Download, ChevronDown, AlertTriangle, CheckCircle2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import {
     Dialog,
     DialogContent,
@@ -33,6 +34,18 @@ export interface WrappedStats {
     languagesCount: number
     maxWatchesInMonth: number
     maxWatchesInDay: number
+    breakdown: {
+        watchHistoryCount: number
+        uniqueMovies: number
+        movies: Array<{ name: string; count: number }>
+        rewatches: Array<{ name: string; watches: number; rewatches: number }>
+        theaters: Array<{ name: string; count: number }>
+        cities: Array<{ name: string; count: number }>
+        languages: Array<{ name: string; count: number }>
+        formats: Array<{ name: string; count: number }>
+        days: Array<{ name: string; count: number }>
+        months: Array<{ name: string; count: number }>
+    }
 }
 
 const SITE = "www.media-verse.in"
@@ -595,6 +608,44 @@ interface ShareStatsProps {
     stats: WrappedStats
 }
 
+function BreakdownList({ items, empty }: { items: Array<{ name: string; count: number }>; empty: string }) {
+    if (!items.length) return <p className="px-3 pb-3 text-sm text-muted-foreground">{empty}</p>
+
+    return (
+        <ul className="max-h-48 overflow-y-auto px-3 pb-3 text-sm">
+            {items.map((item) => (
+                <li key={item.name} className="flex items-start justify-between gap-4 border-t py-2 first:border-t-0">
+                    <span className="min-w-0 break-words">{item.name}</span>
+                    <span className="shrink-0 tabular-nums text-muted-foreground">{item.count}×</span>
+                </li>
+            ))}
+        </ul>
+    )
+}
+
+function BreakdownSection({
+    title,
+    summary,
+    children,
+}: {
+    title: string
+    summary: string
+    children: React.ReactNode
+}) {
+    return (
+        <Collapsible className="group rounded-xl border bg-background">
+            <CollapsibleTrigger className="flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left outline-none transition-colors hover:bg-muted/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+                <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold">{title}</span>
+                    <span className="block truncate text-xs text-muted-foreground">{summary}</span>
+                </span>
+                <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+            </CollapsibleTrigger>
+            <CollapsibleContent>{children}</CollapsibleContent>
+        </Collapsible>
+    )
+}
+
 export function ShareStats({ stats }: ShareStatsProps) {
     const [busy, setBusy] = useState(false)
     const [preview, setPreview] = useState<string | null>(null)
@@ -710,15 +761,93 @@ export function ShareStats({ stats }: ShareStatsProps) {
             </Button>
 
             <Dialog open={customizeOpen} onOpenChange={setCustomizeOpen}>
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
                     <DialogHeader>
-                        <DialogTitle>Customize Your Wrapped</DialogTitle>
+                        <DialogTitle>Review your Cinema Wrapped</DialogTitle>
                         <DialogDescription>
-                            Select the stats you want to include in your generated image.
+                            Check how each number was calculated, then choose what to include in the image.
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="py-4 flex flex-col gap-4">
+                    <div className="flex flex-col gap-5 py-2">
+                        <section aria-labelledby="wrapped-data-heading" className="space-y-3">
+                            <div className="flex items-start gap-3 rounded-xl bg-muted/60 p-3">
+                                {stats.breakdown.watchHistoryCount === stats.totalMovies ? (
+                                    <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                                ) : (
+                                    <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-600 dark:text-amber-400" />
+                                )}
+                                <div className="min-w-0">
+                                    <h3 id="wrapped-data-heading" className="text-sm font-semibold">
+                                        {stats.breakdown.watchHistoryCount === stats.totalMovies
+                                            ? `${stats.totalMovies} watch entries are ready`
+                                            : `Movie total and watch history do not match`}
+                                    </h3>
+                                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+                                        {stats.breakdown.watchHistoryCount === stats.totalMovies
+                                            ? "Open any section below to verify the entries behind the count."
+                                            : `The saved total is ${stats.totalMovies}, but the history contains ${stats.breakdown.watchHistoryCount}. Return to your watch history and correct it before sharing.`}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-3 gap-2" aria-label="Wrapped data summary">
+                                <div className="rounded-xl bg-muted/40 px-3 py-2">
+                                    <strong className="block text-lg tabular-nums">{stats.breakdown.watchHistoryCount}</strong>
+                                    <span className="text-xs text-muted-foreground">watch entries</span>
+                                </div>
+                                <div className="rounded-xl bg-muted/40 px-3 py-2">
+                                    <strong className="block text-lg tabular-nums">{stats.breakdown.uniqueMovies}</strong>
+                                    <span className="text-xs text-muted-foreground">unique movies</span>
+                                </div>
+                                <div className="rounded-xl bg-muted/40 px-3 py-2">
+                                    <strong className="block text-lg tabular-nums">{stats.totalRewatches}</strong>
+                                    <span className="text-xs text-muted-foreground">rewatches</span>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <BreakdownSection title="Movies and rewatches" summary={`${stats.breakdown.uniqueMovies} movies · ${stats.totalRewatches} repeat watches`}>
+                                    <BreakdownList items={stats.breakdown.movies} empty="No movies are in the watch history." />
+                                </BreakdownSection>
+                                <BreakdownSection title="Rewatch calculation" summary={stats.breakdown.rewatches.length ? `${stats.breakdown.rewatches.length} movies watched more than once` : "No repeat watches found"}>
+                                    {stats.breakdown.rewatches.length ? (
+                                        <ul className="max-h-48 overflow-y-auto px-3 pb-3 text-sm">
+                                            {stats.breakdown.rewatches.map((item) => (
+                                                <li key={item.name} className="flex items-start justify-between gap-4 border-t py-2 first:border-t-0">
+                                                    <span className="min-w-0 break-words">{item.name} <span className="text-muted-foreground">({item.watches} watches)</span></span>
+                                                    <span className="shrink-0 tabular-nums text-muted-foreground">{item.rewatches} rewatch{item.rewatches === 1 ? "" : "es"}</span>
+                                                </li>
+                                            ))}
+                                        </ul>
+                                    ) : <p className="px-3 pb-3 text-sm text-muted-foreground">A rewatch is every watch after the first watch of the same movie.</p>}
+                                </BreakdownSection>
+                                <BreakdownSection title="Places" summary={`${stats.citiesExplored} cities · ${stats.theatersVisited} theaters`}>
+                                    <p className="px-3 pt-1 text-xs font-semibold text-muted-foreground">Cities</p>
+                                    <BreakdownList items={stats.breakdown.cities} empty="No city information is saved." />
+                                    <p className="border-t px-3 pt-3 text-xs font-semibold text-muted-foreground">Theaters</p>
+                                    <BreakdownList items={stats.breakdown.theaters} empty="No theater information is saved." />
+                                </BreakdownSection>
+                                <BreakdownSection title="Languages and formats" summary={`${stats.languagesCount} languages · ${stats.formatsExperienced} formats`}>
+                                    <p className="px-3 pt-1 text-xs font-semibold text-muted-foreground">Languages</p>
+                                    <BreakdownList items={stats.breakdown.languages} empty="No language information is available." />
+                                    <p className="border-t px-3 pt-3 text-xs font-semibold text-muted-foreground">Formats</p>
+                                    <BreakdownList items={stats.breakdown.formats} empty="No format information is saved." />
+                                </BreakdownSection>
+                                <BreakdownSection title="Busiest dates" summary={`${stats.maxWatchesInDay} in one day · ${stats.maxWatchesInMonth} in one month`}>
+                                    <p className="px-3 pt-1 text-xs font-semibold text-muted-foreground">Days</p>
+                                    <BreakdownList items={stats.breakdown.days} empty="No valid watch dates are available." />
+                                    <p className="border-t px-3 pt-3 text-xs font-semibold text-muted-foreground">Months</p>
+                                    <BreakdownList items={stats.breakdown.months} empty="No valid watch dates are available." />
+                                </BreakdownSection>
+                            </div>
+                        </section>
+
+                        <section aria-labelledby="wrapped-options-heading" className="space-y-4 border-t pt-5">
+                            <div>
+                                <h3 id="wrapped-options-heading" className="font-semibold">Choose image contents</h3>
+                                <p className="text-sm text-muted-foreground">Unchecked items stay out of the generated image.</p>
+                            </div>
                         <div className="flex items-center space-x-2 pb-2 border-b">
                             <Checkbox
                                 id="select-all"
@@ -858,10 +987,11 @@ export function ShareStats({ stats }: ShareStatsProps) {
                                     Last Watched</Label>
                             </div>
                         </div>
+                        </section>
                     </div>
 
                     <DialogFooter className="sm:justify-between">
-                        <Button variant="ghost" onClick={() => setCustomizeOpen(false)}>Cancel</Button>
+                        <Button variant="ghost" onClick={() => setCustomizeOpen(false)}>Back to watch history</Button>
                         <Button
                             onClick={() => {
                                 setCustomizeOpen(false)

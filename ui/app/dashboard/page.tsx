@@ -228,12 +228,16 @@ export default function DashboardPage() {
         const formatCounts = new Map<string, number>()
         const allFormats = new Set<string>()
         const cityset = new Set<string>()
+        const cityCounts = new Map<string, number>()
+        const cityLabels = new Map<string, string>()
         const movieCounts = new Map<string, number>()
         const movieTitles = new Map<string, string>()
         const movieLatestDate = new Map<string, number>() // track most recent watch timestamp per movie
         const monthCounts = new Array(12).fill(0)
         
         const languageSet = new Set<string>()
+        const languageCounts = new Map<string, number>()
+        const experiencedFormatCounts = new Map<string, number>()
         const monthYearCounts = new Map<string, number>()
         const dayCounts = new Map<string, number>()
 
@@ -261,7 +265,10 @@ export default function DashboardPage() {
             if (h.movieLanguage && h.movieLanguage !== "N/A") {
                 // Only count the primary (first-listed) language; OMDb lists every dubbed/secondary language
                 const primary = h.movieLanguage.split(',').map(l => l.trim()).filter(Boolean)[0]
-                if (primary && primary !== "N/A") languageSet.add(primary)
+                if (primary && primary !== "N/A") {
+                    languageSet.add(primary)
+                    languageCounts.set(primary, (languageCounts.get(primary) || 0) + 1)
+                }
             }
 
             const theater = (h.theaterName || "").trim()
@@ -277,10 +284,16 @@ export default function DashboardPage() {
             }
             if (watchFormat && watchFormat !== "N/A") {
                 allFormats.add(watchFormat)
+                experiencedFormatCounts.set(watchFormat, (experiencedFormatCounts.get(watchFormat) || 0) + 1)
             }
 
             const city = cityName(h.theaterLocation)
-            if (city) cityset.add(city.toLocaleLowerCase())
+            if (city) {
+                const cityKey = city.toLocaleLowerCase()
+                cityset.add(cityKey)
+                cityLabels.set(cityKey, cityLabels.get(cityKey) || city)
+                cityCounts.set(cityKey, (cityCounts.get(cityKey) || 0) + 1)
+            }
 
             const title = (h.movieTitle || "").trim()
             if (title) {
@@ -354,6 +367,10 @@ export default function DashboardPage() {
         const busiestMonth = busiestMonthIdx >= 0 && monthCounts[busiestMonthIdx] > 0 ? monthNames[busiestMonthIdx] : null
 
         const totalHours = Math.round(totalRuntime / 3600)
+        const byCountThenName = (a: { name: string; count: number }, b: { name: string; count: number }) =>
+            b.count - a.count || a.name.localeCompare(b.name)
+        const namedCounts = (counts: Map<string, number>) => Array.from(counts, ([name, count]) => ({ name, count })).sort(byCountThenName)
+        const movieBreakdown = Array.from(movieCounts, ([key, count]) => ({ name: movieTitles.get(key) || key, count })).sort(byCountThenName)
 
         // Find most recently watched movie
         let lastWatched: { title: string; date: string } | null = null
@@ -394,6 +411,29 @@ export default function DashboardPage() {
             languagesCount: languageSet.size,
             maxWatchesInMonth,
             maxWatchesInDay,
+            breakdown: {
+                watchHistoryCount: profile?.watchHistory?.length || 0,
+                uniqueMovies: movieCounts.size,
+                movies: movieBreakdown,
+                rewatches: movieBreakdown
+                    .filter(item => item.count > 1)
+                    .map(item => ({ name: item.name, watches: item.count, rewatches: item.count - 1 })),
+                theaters: namedCounts(theaterCounts),
+                cities: Array.from(cityCounts, ([key, count]) => ({ name: cityLabels.get(key) || key, count })).sort(byCountThenName),
+                languages: namedCounts(languageCounts),
+                formats: namedCounts(experiencedFormatCounts),
+                days: Array.from(dayCounts, ([key, count]) => {
+                    const [year, month, day] = key.split('-').map(Number)
+                    return {
+                        name: new Date(year, month, day).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+                        count,
+                    }
+                }).sort(byCountThenName),
+                months: Array.from(monthYearCounts, ([key, count]) => {
+                    const [year, month] = key.split('-').map(Number)
+                    return { name: new Date(year, month, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' }), count }
+                }).sort(byCountThenName),
+            },
         }
     }, [profile])
 
@@ -426,6 +466,7 @@ export default function DashboardPage() {
         languagesCount: stats.languagesCount,
         maxWatchesInMonth: stats.maxWatchesInMonth,
         maxWatchesInDay: stats.maxWatchesInDay,
+        breakdown: stats.breakdown,
     }), [profile, user, stats, spentLabel])
 
 
