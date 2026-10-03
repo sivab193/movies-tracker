@@ -2,6 +2,7 @@
   "name": "movies-tracker",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@9.15.9",
   "scripts": {
     "brand:generate": "node scripts/generate-brand-assets.mjs",
     "build": "next build",

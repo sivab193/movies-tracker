@@ -19,7 +19,8 @@ This directory contains the modern, responsive web frontend for **Movies Tracker
 ### 1. Install Node Dependencies
 ```bash
 cd ui
-npm install
+corepack enable
+pnpm install
 ```
 
 ### 2. Configure Environment Variables (`ui/.env.local`)
@@ -39,7 +40,7 @@ NEXT_PUBLIC_API_URL=http://localhost:8000/api
 
 ### 3. Start Development Server
 ```bash
-npm run dev
+pnpm dev
 ```
 Visit `http://localhost:3000` to browse the app.
 
@@ -51,10 +52,10 @@ Before committing or deploying, verify TypeScript type safety and Next.js produc
 
 ```bash
 # Check TypeScript types across the entire UI codebase:
-npx tsc --noEmit
+pnpm exec tsc --noEmit
 
 # Test production build locally:
-npm run build
+pnpm build
 ```
 
 ---

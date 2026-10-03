@@ -82,7 +82,7 @@ For detailed sequence diagrams of request lifecycles and storage topologies, see
 ## 🚀 Quick Start Guide (Local Development)
 
 ### Prerequisites
-- **Node.js 20+** and **npm**
+- **Node.js 20+**, Corepack, and **pnpm 9**
 - **Python 3.10+** and **pip**
 - **MongoDB Atlas** connection URI (`mongodb+srv://...`)
 - **Firebase** project with Google OAuth enabled and `serviceAccountKey.json` downloaded
@@ -109,7 +109,8 @@ python3 app.py
 ### 2. Start Next.js Frontend (`localhost:3000`)
 ```bash
 cd ../ui
-npm install
+corepack enable
+pnpm install
 
 # Create .env.local inside ui/
 cat <<EOT >> .env.local
@@ -122,7 +123,7 @@ NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 NEXT_PUBLIC_API_URL=http://localhost:8000/api
 EOT
 
-npm run dev
+pnpm dev
 ```
 
 Visit `http://localhost:3000` to log in via Google OAuth and start logging movies!

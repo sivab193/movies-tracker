@@ -14,8 +14,8 @@ Closes #
 
 <!-- List exact commands and results. Say "Not run" with a reason when applicable. -->
 
-- [ ] UI lint: `cd ui && npm run lint`
-- [ ] UI build: `cd ui && npm run build`
+- [ ] UI lint: `cd ui && pnpm lint`
+- [ ] UI build: `cd ui && pnpm build`
 - [ ] Backend tests: `cd backend && python -m unittest discover -s tests`
 - [ ] MCP build: `cd mcp-server && npm run build`
 - [ ] Repository check: `git diff --check`

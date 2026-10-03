@@ -77,8 +77,8 @@ Minimum local checks:
 ```bash
 # Frontend
 cd ui
-npm run lint
-npm run build
+pnpm lint
+pnpm build
 
 # Backend
 cd backend
