@@ -440,4 +440,4 @@ export function formatRuntimeMinutes(totalMinutes: number): string {
 }
 
 // Presentation formats a movie can be watched in
-export const WATCH_FORMATS = ["Standard", "IMAX", "3D", "IMAX 3D", "4DX", "Dolby Cinema", "ScreenX", "Other"] as const
+export const WATCH_FORMATS = ["Standard", "3D", "IMAX", "EPIQ", "PXL", "4DX", "ScreenX", "Dolby Cinema", "Others"] as const
