@@ -24,6 +24,7 @@ gcs-service-account.json
 *.log
 */*.csv
 pnpm-workspace.yaml
+output/
 
 # MCP Server
 .movies-tracker/

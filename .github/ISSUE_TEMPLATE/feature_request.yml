@@ -1,0 +1,64 @@
+name: Feature request
+description: Propose a new outcome for a MediaVerse user or administrator.
+title: "[Feature]: "
+labels:
+  - "type: feature"
+body:
+  - type: markdown
+    attributes:
+      value: Describe the problem and desired outcome. A maintainer will decide scope and priority before implementation starts.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or opportunity
+      description: Who is affected, what are they trying to do, and why is the current experience insufficient?
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Describe what the user should be able to accomplish without prescribing code.
+    validations:
+      required: true
+  - type: textarea
+    id: criteria
+    attributes:
+      label: Acceptance criteria
+      description: List observable conditions that would make this request complete.
+      placeholder: |
+        - Given ..., when ..., then ...
+        - The admin can ...
+    validations:
+      required: true
+  - type: dropdown
+    id: audience
+    attributes:
+      label: Primary audience
+      options:
+        - Viewer or member
+        - Product administrator
+        - Developer or API consumer
+        - MCP or AI-assistant user
+        - Everyone
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives and constraints
+      description: Current workarounds, rejected options, dependencies, privacy concerns, or compatibility needs.
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Supporting evidence
+      description: Add mockups, examples, user feedback, or related issues if available.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Submission checks
+      options:
+        - label: I searched for an existing request.
+          required: true
+        - label: I described the user outcome rather than only an implementation.
+          required: true

@@ -21,7 +21,7 @@ Built with **Next.js 16 App Router**, **Python Flask**, **MongoDB Atlas**, and *
 
 🌐 **Live:** [www.media-verse.in](https://www.media-verse.in)
 
-[Explore API Docs](./docs/API_DOCS.md) · [OpenAPI Spec](./docs/openapi.yaml) · [Architecture Reference](./docs/ARCHITECTURE.md) · [MCP Server](./mcp-server/README.md) · [Frontend Guide](./ui/README.md) · [Backend Guide](./backend/README.md)
+[Report an issue](https://github.com/sivab193/movies-tracker/issues/new/choose) · [Contribute](./CONTRIBUTING.md) · [API Docs](./docs/API_DOCS.md) · [Architecture](./docs/ARCHITECTURE.md) · [MCP Server](./mcp-server/README.md)
 
 </div>
 
@@ -75,6 +75,7 @@ For detailed sequence diagrams of request lifecycles and storage topologies, see
 | **[OpenAPI 3.0 Specification](./docs/openapi.yaml)** | Standard OpenAPI / Swagger definition ready for Postman or Redoc import. |
 | **[Backend Engineering Guide](./backend/README.md)** | Flask environment setup, CLI utility documentation (`bulk_import.py`, `bulk_watch.py`), and routes. |
 | **[Frontend Engineering Guide](./ui/README.md)** | Next.js 16 setup, Tailwind v4 styling, component hierarchy, and build verification. |
+| **[Contribution Workflow](./CONTRIBUTING.md)** | How users report problems, maintainers triage work, developers implement changes, and agents prepare PRs. |
 
 ---
 
@@ -162,6 +163,15 @@ In your Vercel Dashboard → Project Settings → Environment Variables, configu
 | `NEXT_PUBLIC_API_URL` | **Must exactly be `/api`** (triggers `vercel.json` reverse proxy) |
 
 ---
+
+## 🤝 Requests and contributions
+
+- Report a reproducible problem with the **bug report** form.
+- Propose an outcome—not an implementation—with the **feature request** form.
+- Report missing or incorrect catalog data with the **data correction** form.
+- Before opening code, read [CONTRIBUTING.md](./CONTRIBUTING.md) and link the pull request to an accepted issue.
+
+Security vulnerabilities and secrets must not be posted in a public issue. Follow [SECURITY.md](./SECURITY.md) instead.
 
 ## 📄 License
 

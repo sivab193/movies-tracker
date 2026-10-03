@@ -1,0 +1,78 @@
+name: Bug report
+description: Report behavior that is broken or different from what you expected.
+title: "[Bug]: "
+labels:
+  - "type: bug"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve MediaVerse. Search existing issues first. Never include passwords, API keys, access tokens, or private account data.
+  - type: textarea
+    id: summary
+    attributes:
+      label: What happened?
+      description: Describe the problem and its impact in one or two paragraphs.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Include the page or endpoint, inputs, and the smallest repeatable sequence.
+      placeholder: |
+        1. Go to ...
+        2. Select ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should have happened?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior and evidence
+      description: Add an error message, redacted log, screenshot, or recording if useful.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Affected area
+      options:
+        - Website or mobile browser
+        - Admin tools
+        - API or backend
+        - MCP server or CLI
+        - Authentication or account
+        - Movie or series data
+        - Other or unknown
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Device, operating system, browser/client version, and production or local development.
+      placeholder: iPhone 16, iOS 20, Safari, production
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Frequency, first occurrence, workaround, regression information, or related issues.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Submission checks
+      options:
+        - label: I searched for an existing issue.
+          required: true
+        - label: I removed secrets and private user data.
+          required: true

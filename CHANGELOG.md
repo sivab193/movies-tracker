@@ -5,6 +5,8 @@ All notable changes to Movies Tracker will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Contribution workflow** - guided bug, feature, and data-correction forms; shared triage and pull request standards; repository instructions for coding agents; and a private security-reporting path
+- **Frontend lint baseline** - Next.js and TypeScript ESLint configuration makes the existing `npm run lint` quality gate executable while keeping legacy findings visible as warnings
 - **Per-page link previews** - every URL now has its own title, description and OG image
   - Movies and series render a card with the real poster art as a blurred backdrop,
     plus year, genre, runtime and rating
@@ -67,6 +69,7 @@ All notable changes to Movies Tracker will be documented in this file.
   - `refresh_tokens` - Long-lived tokens for CLI/MCP access
 
 ### Changed
+- Contact now routes users to the correct guided request form and contributors to the canonical workflow
 - Updated main README with MCP server documentation
 - Enhanced backend README with device auth flow details
 - Updated frontend README with device page documentation

@@ -1,0 +1,63 @@
+name: Data correction
+description: Report missing or incorrect movie, series, person, theater, or watch-order data.
+title: "[Data]: "
+labels:
+  - "type: data"
+body:
+  - type: dropdown
+    id: entity
+    attributes:
+      label: Data type
+      options:
+        - Movie
+        - Series
+        - Person or credits
+        - Theater or screen
+        - Watch order
+        - Poster or artwork
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: record
+    attributes:
+      label: Record
+      description: Provide the MediaVerse URL, IMDb ID, TMDB ID, or exact name that uniquely identifies the record.
+    validations:
+      required: true
+  - type: textarea
+    id: current
+    attributes:
+      label: Current or missing value
+      description: What does MediaVerse show now?
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Correct value
+      description: What should it show instead?
+    validations:
+      required: true
+  - type: input
+    id: source
+    attributes:
+      label: Source
+      description: Link to IMDb, TMDB, an official theater page, distributor, or another trustworthy source.
+      placeholder: https://...
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Explain ambiguity, regional differences, dates, or other details an admin should know.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Submission checks
+      options:
+        - label: I searched for an existing correction request.
+          required: true
+        - label: This report contains no secrets or private user data.
+          required: true

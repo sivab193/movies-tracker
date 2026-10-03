@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { Header } from "@/components/header"
-import { Mail, Github, MessageCircle } from "lucide-react"
+import { Github, MessageCircle } from "lucide-react"
 
 export default function ContactPage() {
   return (
@@ -20,38 +20,48 @@ export default function ContactPage() {
             <section className="rounded-2xl border border-muted/20 bg-background p-6">
               <h2 className="text-xl font-semibold">Report missing or incorrect data</h2>
               <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                Email us about missing entries, data updates, or app issues.
+                Use the guided data correction form so the request includes the title, source, and expected value an admin needs.
               </p>
-              <a
-                href="mailto:contact@media-verse.in"
+              <Link
+                href="https://github.com/sivab193/movies-tracker/issues/new?template=data_correction.yml"
+                target="_blank"
+                rel="noreferrer"
                 className="mt-4 inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-medium text-white transition hover:bg-primary/90"
               >
-                <Mail className="h-4 w-4" />
-                contact@media-verse.in
-              </a>
+                <Github className="h-4 w-4" />
+                Request a data correction
+              </Link>
             </section>
 
             <section className="rounded-2xl border border-muted/20 bg-background p-6">
               <h2 className="text-xl font-semibold">Submit bugs or feature requests</h2>
               <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                Bugs can also be created directly in the GitHub Issues page for this repository.
+                Choose the guided bug or feature form. Please do not include passwords, API keys, tokens, or private account data.
               </p>
               <Link
-                href="https://github.com/sivab193/movies-tracker/issues"
+                href="https://github.com/sivab193/movies-tracker/issues/new/choose"
                 target="_blank"
                 rel="noreferrer"
                 className="mt-4 inline-flex items-center gap-2 rounded-full bg-secondary px-4 py-2 text-sm font-medium text-foreground transition hover:bg-secondary/90"
               >
                 <Github className="h-4 w-4" />
-                Open GitHub Issues
+                Create a request
               </Link>
             </section>
 
             <section className="rounded-2xl border border-muted/20 bg-background p-6">
               <h2 className="text-xl font-semibold">Want to help build this?</h2>
               <p className="mt-3 text-sm leading-6 text-muted-foreground">
-                If you are a developer, feel free to contribute by fixing bugs or adding new features in the repository.
+                Start with an accepted issue, keep the change focused, and follow the repository contribution and pull request checklist.
               </p>
+              <Link
+                href="https://github.com/sivab193/movies-tracker/blob/main/CONTRIBUTING.md"
+                target="_blank"
+                rel="noreferrer"
+                className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+              >
+                Read the contribution guide
+              </Link>
             </section>
           </div>
         </div>
