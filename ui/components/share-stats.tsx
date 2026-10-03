@@ -24,6 +24,7 @@ export interface WrappedStats {
     citiesExplored: number
     topMovie: { title: string; count: number } | null
     topTheater: { name: string; count: number } | null
+    topFormat: { name: string; count: number } | null
     lastWatched: { title: string; date: string } | null
     thisYearCount: number
     totalRewatches: number
@@ -134,6 +135,7 @@ export type StatSelection = {
     rewatches: boolean;
     mostWatched: boolean;
     favoriteTheater: boolean;
+    topFormat: boolean;
     lastWatched: boolean;
     languagesCount: boolean;
     maxWatchesInMonth: boolean;
@@ -204,6 +206,35 @@ function drawPopcornIcon(ctx: CanvasRenderingContext2D, cx: number, cy: number, 
     ctx.moveTo(6, 14)
     ctx.lineTo(18, 14)
     ctx.stroke()
+
+    ctx.restore()
+}
+
+// Draw a film strip icon (for the Top Format highlight)
+function drawFilmIcon(ctx: CanvasRenderingContext2D, cx: number, cy: number, size: number) {
+    ctx.save()
+    const s = size / 24
+    ctx.translate(cx - 12 * s, cy - 12 * s)
+    ctx.scale(s, s)
+
+    // Strip body
+    roundRect(ctx, 2, 5, 20, 14, 2)
+    ctx.fillStyle = "#1a1a1a"
+    ctx.fill()
+    ctx.strokeStyle = "#ff4b4b"
+    ctx.lineWidth = 1.5
+    ctx.stroke()
+
+    // Sprocket holes
+    ctx.fillStyle = "rgba(255,255,255,0.75)"
+    for (const hx of [5.5, 9.5, 13.5, 17.5]) {
+        ctx.beginPath(); ctx.arc(hx, 8, 1.3, 0, Math.PI * 2); ctx.fill()
+        ctx.beginPath(); ctx.arc(hx, 16, 1.3, 0, Math.PI * 2); ctx.fill()
+    }
+
+    // Centre frame
+    ctx.fillStyle = "#ff4b4b"
+    ctx.fillRect(9.5, 10.6, 5, 2.8)
 
     ctx.restore()
 }
@@ -287,6 +318,7 @@ async function drawWrappedImage(stats: WrappedStats, selection: StatSelection): 
     let highlightCount = 0
     if (selection.mostWatched && stats.topMovie) highlightCount++
     if (selection.favoriteTheater && stats.topTheater) highlightCount++
+    if (selection.topFormat && stats.topFormat) highlightCount++
     if (selection.lastWatched && stats.lastWatched) highlightCount++
 
     // --- Dynamic vertical layout calculation ---
@@ -452,7 +484,7 @@ async function drawWrappedImage(stats: WrappedStats, selection: StatSelection): 
     let hy = tilesBottomEdge + tilesToHighlightsGap
     if (activeTiles.length === 0 && highlightCount > 0) hy = blockTop
 
-    const drawHighlight = (iconType: "popcorn" | "pin", label: string, value: string) => {
+    const drawHighlight = (iconType: "popcorn" | "pin" | "film", label: string, value: string) => {
         const x = pad
         const w = W - pad * 2
         const h = highlightCardH
@@ -476,6 +508,8 @@ async function drawWrappedImage(stats: WrappedStats, selection: StatSelection): 
         const textX = iconCx + iconSize / 2 + 34
         if (iconType === "pin") {
             drawLocationPin(ctx, iconCx, hy + h / 2 + 6, iconSize)
+        } else if (iconType === "film") {
+            drawFilmIcon(ctx, iconCx, hy + h / 2, iconSize)
         } else {
             drawPopcornIcon(ctx, iconCx, hy + h / 2, iconSize)
         }
@@ -512,6 +546,9 @@ async function drawWrappedImage(stats: WrappedStats, selection: StatSelection): 
     }
     if (selection.favoriteTheater && stats.topTheater) {
         drawHighlight("pin", "Favorite Theater", `${stats.topTheater.name} (${stats.topTheater.count}×)`)
+    }
+    if (selection.topFormat && stats.topFormat) {
+        drawHighlight("film", "Top Format", `${stats.topFormat.name} (${stats.topFormat.count}×)`)
     }
     if (selection.lastWatched && stats.lastWatched) {
         drawHighlight("popcorn", "Last Watched", `${stats.lastWatched.title} · ${stats.lastWatched.date}`)
@@ -572,6 +609,7 @@ export function ShareStats({ stats }: ShareStatsProps) {
         rewatches: true,
         mostWatched: true,
         favoriteTheater: true,
+        topFormat: true,
         lastWatched: true,
         languagesCount: true,
         maxWatchesInMonth: true,
@@ -591,6 +629,7 @@ export function ShareStats({ stats }: ShareStatsProps) {
             rewatches: checked,
             mostWatched: checked,
             favoriteTheater: checked,
+            topFormat: checked,
             lastWatched: checked,
             languagesCount: checked,
             maxWatchesInMonth: checked,
@@ -759,6 +798,16 @@ export function ShareStats({ stats }: ShareStatsProps) {
                                 />
                                 <Label htmlFor="s-favtheater" className={!stats.topTheater ? "opacity-50" : ""}>
                                     Favorite Theater</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="s-topformat"
+                                    checked={selection.topFormat}
+                                    onCheckedChange={(c) => setSelection(s => ({...s, topFormat: c as boolean}))}
+                                    disabled={!stats.topFormat}
+                                />
+                                <Label htmlFor="s-topformat" className={!stats.topFormat ? "opacity-50" : ""}>
+                                    Top Format</Label>
                             </div>
                             <div className="flex items-center space-x-2">
                                 <Checkbox

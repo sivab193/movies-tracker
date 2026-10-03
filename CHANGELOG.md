@@ -5,6 +5,9 @@ All notable changes to Movies Tracker will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Top Format in Cinema Wrapped** - the shareable year-in-review image now includes a Top Format
+  highlight card (e.g. IMAX x12), computed from the `format` on each watch-history entry, with a
+  toggle in the customize dialog
 - **Contribution workflow** - guided bug, feature, and data-correction forms; shared triage and pull request standards; repository instructions for coding agents; and a private security-reporting path
 - **Frontend lint baseline** - Next.js and TypeScript ESLint configuration makes the existing `pnpm lint` quality gate executable while keeping legacy findings visible as warnings
 - **Per-page link previews** - every URL now has its own title, description and OG image
