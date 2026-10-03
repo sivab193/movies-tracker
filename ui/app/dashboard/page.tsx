@@ -681,6 +681,17 @@ export default function DashboardPage() {
 
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Languages</CardTitle>
+                            <Languages className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{stats.languagesCount}</div>
+                            <p className="text-xs text-muted-foreground">Across your watches</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Formats Experienced</CardTitle>
                             <Film className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
@@ -689,17 +700,6 @@ export default function DashboardPage() {
                             <p className="text-xs text-muted-foreground truncate">
                                 {stats.topFormat ? `Top: ${stats.topFormat.name}` : "Unique formats"}
                             </p>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Languages</CardTitle>
-                            <Languages className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{stats.languagesCount}</div>
-                            <p className="text-xs text-muted-foreground">Across your watches</p>
                         </CardContent>
                     </Card>
 

@@ -310,10 +310,10 @@ async function drawWrappedImage(stats: WrappedStats, selection: StatSelection): 
     if (selection.totalSpent) activeTiles.push({ value: stats.spentLabel, label: "Total Spent" })
     if (selection.theatersVisited) activeTiles.push({ value: String(stats.theatersVisited), label: "Theaters Visited" })
     if (selection.citiesExplored) activeTiles.push({ value: String(stats.citiesExplored), label: "Cities Explored" })
-    if (selection.formatsExperienced) activeTiles.push({ value: String(stats.formatsExperienced), label: "Formats Experienced" })
-    if (selection.watchedThisYear) activeTiles.push({ value: String(stats.thisYearCount), label: `Watched in ${stats.year}` })
-    if (selection.rewatches) activeTiles.push({ value: String(stats.totalRewatches), label: "Rewatches" })
     if (selection.languagesCount) activeTiles.push({ value: String(stats.languagesCount), label: "Languages" })
+    if (selection.formatsExperienced) activeTiles.push({ value: String(stats.formatsExperienced), label: "Formats Experienced" })
+    if (selection.rewatches) activeTiles.push({ value: String(stats.totalRewatches), label: "Rewatches" })
+    if (selection.watchedThisYear) activeTiles.push({ value: String(stats.thisYearCount), label: `Watched in ${stats.year}` })
     if (selection.maxWatchesInMonth) activeTiles.push({ value: String(stats.maxWatchesInMonth), label: "Most Watches / Month" })
     if (selection.maxWatchesInDay) activeTiles.push({ value: String(stats.maxWatchesInDay), label: "Most Watches / Day" })
 
@@ -771,11 +771,20 @@ export function ShareStats({ stats }: ShareStatsProps) {
                             </div>
                             <div className="flex items-center space-x-2">
                                 <Checkbox
-                                    id="s-year"
-                                    checked={selection.watchedThisYear}
-                                    onCheckedChange={(c) => setSelection(s => ({...s, watchedThisYear: c as boolean}))}
+                                    id="s-languages"
+                                    checked={selection.languagesCount}
+                                    onCheckedChange={(c) => setSelection(s => ({...s, languagesCount: c as boolean}))}
                                 />
-                                <Label htmlFor="s-year">Watched this Year</Label>
+                                <Label htmlFor="s-languages">Languages</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="s-formatsexperienced"
+                                    checked={selection.formatsExperienced}
+                                    onCheckedChange={(c) => setSelection(s => ({...s, formatsExperienced: c as boolean}))}
+                                />
+                                <Label htmlFor="s-formatsexperienced">
+                                    Formats Experienced</Label>
                             </div>
                             <div className="flex items-center space-x-2">
                                 <Checkbox
@@ -784,6 +793,30 @@ export function ShareStats({ stats }: ShareStatsProps) {
                                     onCheckedChange={(c) => setSelection(s => ({...s, rewatches: c as boolean}))}
                                 />
                                 <Label htmlFor="s-rewatches">Rewatches</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="s-year"
+                                    checked={selection.watchedThisYear}
+                                    onCheckedChange={(c) => setSelection(s => ({...s, watchedThisYear: c as boolean}))}
+                                />
+                                <Label htmlFor="s-year">Watched this Year</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="s-maxmonth"
+                                    checked={selection.maxWatchesInMonth}
+                                    onCheckedChange={(c) => setSelection(s => ({...s, maxWatchesInMonth: c as boolean}))}
+                                />
+                                <Label htmlFor="s-maxmonth">Max Watches / Month</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="s-maxday"
+                                    checked={selection.maxWatchesInDay}
+                                    onCheckedChange={(c) => setSelection(s => ({...s, maxWatchesInDay: c as boolean}))}
+                                />
+                                <Label htmlFor="s-maxday">Max Watches / Day</Label>
                             </div>
                             <div className="flex items-center space-x-2">
                                 <Checkbox
@@ -816,15 +849,6 @@ export function ShareStats({ stats }: ShareStatsProps) {
                             </div>
                             <div className="flex items-center space-x-2">
                                 <Checkbox
-                                    id="s-formatsexperienced"
-                                    checked={selection.formatsExperienced}
-                                    onCheckedChange={(c) => setSelection(s => ({...s, formatsExperienced: c as boolean}))}
-                                />
-                                <Label htmlFor="s-formatsexperienced">
-                                    Formats Experienced</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <Checkbox
                                     id="s-lastwatched"
                                     checked={selection.lastWatched}
                                     onCheckedChange={(c) => setSelection(s => ({...s, lastWatched: c as boolean}))}
@@ -832,30 +856,6 @@ export function ShareStats({ stats }: ShareStatsProps) {
                                 />
                                 <Label htmlFor="s-lastwatched" className={!stats.lastWatched ? "opacity-50" : ""}>
                                     Last Watched</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <Checkbox
-                                    id="s-languages"
-                                    checked={selection.languagesCount}
-                                    onCheckedChange={(c) => setSelection(s => ({...s, languagesCount: c as boolean}))}
-                                />
-                                <Label htmlFor="s-languages">Languages</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <Checkbox
-                                    id="s-maxmonth"
-                                    checked={selection.maxWatchesInMonth}
-                                    onCheckedChange={(c) => setSelection(s => ({...s, maxWatchesInMonth: c as boolean}))}
-                                />
-                                <Label htmlFor="s-maxmonth">Max Watches / Month</Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                                <Checkbox
-                                    id="s-maxday"
-                                    checked={selection.maxWatchesInDay}
-                                    onCheckedChange={(c) => setSelection(s => ({...s, maxWatchesInDay: c as boolean}))}
-                                />
-                                <Label htmlFor="s-maxday">Max Watches / Day</Label>
                             </div>
                         </div>
                     </div>
