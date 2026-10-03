@@ -544,10 +544,9 @@ export function AddWatchDialog({
               <Film className="h-4 w-4" />
               Format <span className="text-xs text-muted-foreground">(Optional)</span>
             </Label>
-            <Select value={format || "none"} onValueChange={(v) => setFormat(v === "none" ? "" : v)} disabled={loading}>
+            <Select value={format} onValueChange={setFormat} disabled={loading}>
               <SelectTrigger><SelectValue placeholder="Select format" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">Not specified</SelectItem>
                 {WATCH_FORMATS.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
               </SelectContent>
             </Select>

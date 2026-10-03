@@ -166,7 +166,7 @@ export function BulkWatchDialog({ onWatchAdded }: { onWatchAdded: () => void }) 
           foodCost: row.food_cost || "",
           currency: row.currency?.toUpperCase() === "USD" ? "USD" : currency,
           showTime: row.show_time || "",
-          format: matchFormat(row.format)
+          format: matchFormat(row.format) || "2D"
         }))
       } catch { skipped.push(lookup) }
     }
@@ -254,7 +254,7 @@ export function BulkWatchDialog({ onWatchAdded }: { onWatchAdded: () => void }) 
             <div><Label>Date</Label><Input type="date" max={today()} value={watchDate} onChange={event => setWatchDate(event.target.value)} /></div>
             <div><Label>Show time</Label><TimePicker value={showTime} onChange={setShowTime} placeholder="Select time" /></div>
             <div><Label>Theater</Label><select className={selectClass} value={theaterId} onChange={event => setTheaterId(event.target.value)}><option value="">No theater</option>{theaters.map(theater => <option key={theater.id} value={theater.id}>{theater.name}</option>)}</select></div>
-            <div><Label>Format</Label><select className={selectClass} value={format} onChange={event => setFormat(event.target.value)}><option value="">Not specified</option>{WATCH_FORMATS.map(item => <option key={item} value={item}>{item}</option>)}</select></div>
+            <div><Label>Format</Label><select className={selectClass} value={format} onChange={event => setFormat(event.target.value)}>{WATCH_FORMATS.map(item => <option key={item} value={item}>{item}</option>)}</select></div>
             <div><Label>Ticket cost</Label><Input type="number" min="0" value={ticketCost} onChange={event => setTicketCost(event.target.value)} placeholder="0" /></div>
             <div><Label>Food cost</Label><Input type="number" min="0" value={foodCost} onChange={event => setFoodCost(event.target.value)} placeholder="0" /></div>
             <div><Label>Currency</Label><select className={selectClass} value={currency} onChange={event => setCurrency(event.target.value as "INR" | "USD")}><option value="INR">INR (₹)</option><option value="USD">USD ($)</option></select></div>
@@ -271,7 +271,7 @@ export function BulkWatchDialog({ onWatchAdded }: { onWatchAdded: () => void }) 
             {!isOpen && (item.theaterName || item.format || item.showTime || item.ticketCost || item.foodCost) && <p className="pl-9 text-xs text-muted-foreground">{[item.theaterName, item.format, item.showTime, item.ticketCost && `${item.currency} ${item.ticketCost}`, item.foodCost && `food ${item.foodCost}`].filter(Boolean).join(" · ")}</p>}
             {isOpen && <div className="grid sm:grid-cols-4 gap-2 pl-9">
               <div><Label className="text-xs">Theater</Label><select className={selectClass} value={item.theaterId || ""} onChange={event => { const theater = theaters.find(entry => entry.id === event.target.value); updateItem(item.key, { theaterId: theater?.id, theaterName: theater?.name, theaterLocation: theater?.location, theaterGmapsLink: theater?.gmapsLink }) }}><option value="">{item.theaterId || !item.theaterName ? "No theater" : item.theaterName}</option>{theaters.map(theater => <option key={theater.id} value={theater.id}>{theater.name}</option>)}</select></div>
-              <div><Label className="text-xs">Format</Label><select className={selectClass} value={item.format} onChange={event => updateItem(item.key, { format: event.target.value })}><option value="">Not specified</option>{WATCH_FORMATS.map(f => <option key={f} value={f}>{f}</option>)}</select></div>
+              <div><Label className="text-xs">Format</Label><select className={selectClass} value={item.format} onChange={event => updateItem(item.key, { format: event.target.value })}>{WATCH_FORMATS.map(f => <option key={f} value={f}>{f}</option>)}</select></div>
               <div><Label className="text-xs">Show time</Label><TimePicker value={item.showTime} onChange={value => updateItem(item.key, { showTime: value })} placeholder="Select time" /></div>
               <div><Label className="text-xs">Currency</Label><select className={selectClass} value={item.currency} onChange={event => updateItem(item.key, { currency: event.target.value as "INR" | "USD" })}><option value="INR">INR (₹)</option><option value="USD">USD ($)</option></select></div>
               <div><Label className="text-xs">Ticket cost</Label><Input type="number" min="0" value={item.ticketCost} onChange={event => updateItem(item.key, { ticketCost: event.target.value })} /></div>
