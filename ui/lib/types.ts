@@ -91,9 +91,9 @@ export interface WatchHistoryEntry {
   theaterName: string | null
   theaterLocation: string | null
   theaterGmapsLink?: string | null
-  timestamp: string | null // ISO Date string
-  watchDate?: string // Original YYYY-MM-DD calendar date, before timezone conversion
-  showTime?: string | null // e.g. "7:30 PM"
+  timestamp: string | null // Legacy-compatible YYYY-MM-DD watch date
+  watchDate?: string // Literal YYYY-MM-DD calendar date; never timezone-converted
+  showTime?: string | null // 24-hour HH:mm, stored separately from the date
   format?: string | null // e.g. "IMAX", "3D"
   ticketCost: number
   foodCost?: number | null

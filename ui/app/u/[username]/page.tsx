@@ -5,6 +5,7 @@ import { useParams } from "next/navigation"
 import { Header } from "@/components/header"
 import { getUserProfile } from "@/services/user-service"
 import { Loader2, User, Film, Clock, Lock } from "lucide-react"
+import { entryWatchDate, formatWatchDate, watchSortValue } from "@/lib/watch-date"
 
 interface WatchHistoryItem {
     movieId: string
@@ -13,7 +14,9 @@ interface WatchHistoryItem {
     theaterId?: string
     theaterName?: string
     theaterLocation?: string
+    watchDate?: string
     timestamp?: string
+    showTime?: string
     createdAt: string
 }
 
@@ -56,21 +59,8 @@ export default function CustomUserProfilePage() {
         return `${hours}h ${minutes}m`
     }
 
-    const formatDate = (dateStr?: string) => {
-        if (!dateStr) return "Unknown Date"
-        const d = new Date(dateStr)
-        if (isNaN(d.getTime())) return "Unknown Date"
-        return d.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        })
-    }
-
     const sortedHistory = [...(profile?.watchHistory || [])].sort((a, b) => {
-        const dateA = new Date(a.timestamp || a.createdAt || 0).getTime()
-        const dateB = new Date(b.timestamp || b.createdAt || 0).getTime()
-        return dateB - dateA
+        return watchSortValue(b) - watchSortValue(a)
     })
 
     if (loading) {
@@ -162,7 +152,7 @@ export default function CustomUserProfilePage() {
                                             >
                                                 {item.movieTitle}
                                             </a>
-                                            <p className="mt-1 text-sm text-muted-foreground">{formatDate(item.timestamp || item.createdAt)}</p>
+                                            <p className="mt-1 text-sm text-muted-foreground">{formatWatchDate(entryWatchDate(item))}</p>
                                             <div className="mt-3 border-t pt-3 text-sm">
                                                 <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Theater</span>
                                                 {item.theaterId ? (
@@ -216,7 +206,7 @@ export default function CustomUserProfilePage() {
                                                 )}
                                             </td>
                                             <td className="px-6 py-4 font-mono text-primary">
-                                                {formatDate(item.timestamp || item.createdAt)}
+                                                {formatWatchDate(entryWatchDate(item))}
                                             </td>
                                         </tr>
                                     ))}

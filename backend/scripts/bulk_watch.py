@@ -62,12 +62,19 @@ def main():
     for idx, row in enumerate(rows, 1):
         imdb_id = row.get("imdb_id", "").strip()
         theater_name = row.get("theater_name", "").strip()
-        date_str = row.get("date", "").strip() or datetime.datetime.now(datetime.timezone.utc).isoformat()
+        date_str = row.get("date", "").strip() or datetime.date.today().isoformat()
         ticket_cost = row.get("ticket_cost", "0").strip()
         currency = row.get("currency", "INR").strip()
 
         if not imdb_id:
             print(f"[{idx}/{len(rows)}] ⚠️  Skipped row without imdb_id")
+            skipped_count += 1
+            continue
+
+        try:
+            datetime.date.fromisoformat(date_str)
+        except ValueError:
+            print(f"[{idx}/{len(rows)}] ⚠️  Skipped: date must use YYYY-MM-DD (received '{date_str}')")
             skipped_count += 1
             continue
 
@@ -101,6 +108,7 @@ def main():
             "ticketCost": ticket_cost,
             "currency": currency,
             "ticketStubUrl": None,
+            "watchDate": date_str,
             "timestamp": date_str,
             "createdAt": datetime.datetime.now(datetime.timezone.utc).isoformat()
         }

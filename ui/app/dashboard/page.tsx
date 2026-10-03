@@ -40,6 +40,7 @@ import { AddWatchDialog } from "@/components/add-watch-dialog"
 import { BulkWatchDialog } from "@/components/bulk-watch-dialog"
 import { ShareStats, type WrappedStats } from "@/components/share-stats"
 import { formatTimeDisplay, type WatchHistoryEntry } from "@/lib/types"
+import { entryWatchDate, formatWatchDate, watchSortValue } from "@/lib/watch-date"
 import { getMySettings } from "@/services/user-service"
 import { deleteWatchHistory, openProtectedAsset } from "@/services/api"
 import {
@@ -54,23 +55,12 @@ import {
 } from "@/components/ui/alert-dialog"
 
 function watchSortTimestamp(entry: WatchHistoryEntry): number {
-    const watchedOn = watchCalendarDate(entry)
-    if (isNaN(watchedOn.getTime())) return 0
-
-    // Watch dates are stored independently from the optional showtime. Normalize
-    // to the calendar day, then layer HH:mm on top so two movies on the same
-    // date read in real chronological order.
-    const dayStart = new Date(watchedOn.getFullYear(), watchedOn.getMonth(), watchedOn.getDate()).getTime()
-    const match = (entry.showTime || "").match(/^(\d{1,2}):(\d{2})$/)
-    if (!match) return watchedOn.getTime()
-    const hours = Number(match[1])
-    const minutes = Number(match[2])
-    return hours < 24 && minutes < 60 ? dayStart + (hours * 60 + minutes) * 60 * 1000 : watchedOn.getTime()
+    return watchSortValue(entry)
 }
 
 function watchCalendarDate(entry: WatchHistoryEntry): Date {
-    const dateKey = entry.watchDate || (entry.timestamp || entry.createdAt).match(/^(\d{4}-\d{2}-\d{2})/)?.[1]
-    if (!dateKey) return new Date(entry.timestamp || entry.createdAt)
+    const dateKey = entryWatchDate(entry)
+    if (!dateKey) return new Date(NaN)
     const [year, month, day] = dateKey.split("-").map(Number)
     return new Date(year, month - 1, day)
 }
@@ -475,14 +465,6 @@ export default function DashboardPage() {
             style: 'currency',
             currency: currency
         }).format(amount)
-    }
-
-    const formatDate = (dateStr: string | Date) => {
-        return new Date(dateStr).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        })
     }
 
     // Show skeletons while auth resolves or the profile (stats source) is still loading,
@@ -913,7 +895,7 @@ export default function DashboardPage() {
                                         {history.map((entry, i) => (
                                             <TableRow key={entry._id || i}>
                                                 <TableCell className="font-medium text-xs sm:text-sm text-muted-foreground whitespace-nowrap">
-                                                    <div>{formatDate(entry.timestamp || entry.createdAt)}</div>
+                                                    <div>{formatWatchDate(entryWatchDate(entry))}</div>
                                                     {entry.showTime && (
                                                         <div className="text-xs text-muted-foreground/70 flex items-center gap-1 mt-0.5">
                                                             <Clock className="h-3 w-3" />

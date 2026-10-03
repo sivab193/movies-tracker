@@ -25,6 +25,7 @@ import { type WatchHistoryEntry, WATCH_FORMATS } from "@/lib/types"
 import { addWatchHistory, updateWatchHistory, getMovies, getTheaters } from "@/services/api"
 import { DatePicker } from "@/components/ui/date-picker"
 import { TimePicker } from "@/components/ui/time-picker"
+import { localToday, watchDateValue } from "@/lib/watch-date"
 
 interface AddWatchDialogProps {
   uid: string
@@ -81,7 +82,7 @@ export function AddWatchDialog({
   const [theaterName, setTheaterName] = useState("")
   const [theaterLocation, setTheaterLocation] = useState("")
   const [theaterGmapsLink, setTheaterGmapsLink] = useState("")
-  const [watchDate, setWatchDate] = useState(new Date().toISOString().split('T')[0])
+  const [watchDate, setWatchDate] = useState(localToday())
   const [showTime, setShowTime] = useState("")
   const [format, setFormat] = useState("2D")
   const [customFormat, setCustomFormat] = useState("")
@@ -189,9 +190,9 @@ export function AddWatchDialog({
         setWatchDate(initialData.watchDate)
       } else if (initialData.timestamp) {
         try {
-          setWatchDate(new Date(initialData.timestamp).toISOString().split('T')[0])
+          setWatchDate(watchDateValue(initialData.timestamp) || localToday())
         } catch (e) {
-          setWatchDate(new Date().toISOString().split('T')[0])
+          setWatchDate(localToday())
         }
       }
     } else if (open && rewatchData) {
@@ -234,7 +235,7 @@ export function AddWatchDialog({
     setIsMovieDropdownOpen(false)
     setIsTheaterDropdownOpen(false)
     setSearchingMovies(false)
-    setWatchDate(new Date().toISOString().split('T')[0])
+    setWatchDate(localToday())
     setShowTime("")
     setFormat("2D")
     setCustomFormat("")
@@ -270,7 +271,8 @@ export function AddWatchDialog({
         theaterName: theaterName.trim() || undefined,
         theaterLocation: theaterLocation.trim() || undefined,
         theaterGmapsLink: theaterGmapsLink.trim() || undefined,
-        timestamp: new Date(watchDate).toISOString(),
+        watchDate,
+        timestamp: watchDate,
         showTime: showTime.trim() || null,
         format: format === "Others" ? (customFormat.trim() || "Others") : (format || null),
         ticketCost: ticketCost ? parseFloat(ticketCost) : 0,
@@ -532,7 +534,7 @@ export function AddWatchDialog({
               value={watchDate}
               onChange={setWatchDate}
               disabled={loading}
-              max={new Date().toISOString().split('T')[0]}
+              max={localToday()}
               placeholder="Select date"
             />
           </div>

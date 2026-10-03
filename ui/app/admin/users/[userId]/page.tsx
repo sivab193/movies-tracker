@@ -9,6 +9,7 @@ import { Loader2, Film, Shield, Ban, CheckCircle, Pencil, Trash, ArrowLeft, Arro
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { type WatchHistoryEntry, formatCurrency, formatTimeDisplay, resolveApiUrl } from "@/lib/types"
+import { entryWatchDate, formatWatchDate, watchSortValue } from "@/lib/watch-date"
 import {
     Table,
     TableBody,
@@ -17,7 +18,6 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table"
-import { format } from "date-fns"
 import {
     AlertDialog,
     AlertDialogAction,
@@ -30,14 +30,7 @@ import {
 } from "@/components/ui/alert-dialog"
 
 const formatSafeDate = (dateVal: any) => {
-    if (!dateVal) return "N/A"
-    try {
-        const d = new Date(dateVal)
-        if (isNaN(d.getTime())) return "N/A"
-        return format(d, "MMM d, yyyy")
-    } catch {
-        return "N/A"
-    }
+    return formatWatchDate(dateVal, "N/A")
 }
 
 export default function AdminUserDetailsPage() {
@@ -90,8 +83,8 @@ export default function AdminUserDetailsPage() {
     const history = useMemo(() => {
         let data = targetUser?.watchHistory || []
         return [...data].sort((a: any, b: any) => {
-            const dateA = new Date(a.timestamp || a.createdAt).getTime() || 0
-            const dateB = new Date(b.timestamp || b.createdAt).getTime() || 0
+            const dateA = watchSortValue(a)
+            const dateB = watchSortValue(b)
             return sortOrder === 'asc' ? dateA - dateB : dateB - dateA
         })
     }, [targetUser, sortOrder])
@@ -168,7 +161,7 @@ export default function AdminUserDetailsPage() {
                                 history.map((entry: WatchHistoryEntry, i: number) => (
                                     <TableRow key={entry._id || i}>
                                         <TableCell className="font-medium text-muted-foreground">
-                                            {formatSafeDate(entry.timestamp || entry.createdAt)}
+                                            {formatSafeDate(entryWatchDate(entry))}
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-3">

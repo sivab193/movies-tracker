@@ -12,6 +12,8 @@ users_bp = Blueprint('users', __name__)
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
 ALLOWED_IMAGE_MIME_TYPES = {'image/jpeg', 'image/png', 'image/webp'}
 PUBLIC_PROFILE_FIELDS = {'movieCount', 'totalRuntime', 'moviesList'}
+WATCH_DATE_RE = re.compile(r'^\d{4}-\d{2}-\d{2}$')
+SHOW_TIME_RE = re.compile(r'^(?:[01]\d|2[0-3]):[0-5]\d$')
 
 
 def decode_image_data_url(value):
@@ -37,6 +39,27 @@ def decode_image_data_url(value):
     return mime_type, Binary(image_data)
 
 
+def normalize_watch_date(value, *, allow_legacy_timestamp=False):
+    """Return a literal YYYY-MM-DD watch date without timezone conversion."""
+    if not isinstance(value, str):
+        raise ValueError('watchDate must use YYYY-MM-DD')
+    if allow_legacy_timestamp and len(value) > 10:
+        try:
+            datetime.datetime.fromisoformat(value.replace('Z', '+00:00'))
+        except ValueError:
+            raise ValueError('watchDate must use YYYY-MM-DD')
+        candidate = value[:10]
+    else:
+        candidate = value
+    if not WATCH_DATE_RE.fullmatch(candidate):
+        raise ValueError('watchDate must use YYYY-MM-DD')
+    try:
+        datetime.date.fromisoformat(candidate)
+    except ValueError:
+        raise ValueError('watchDate must be a valid calendar date')
+    return candidate
+
+
 def parse_watch_payload(data):
     if not isinstance(data, dict):
         raise ValueError('A JSON object is required')
@@ -49,19 +72,23 @@ def parse_watch_payload(data):
             continue
         if isinstance(value, bool) or not isinstance(value, (int, float)) or value < 0:
             raise ValueError(f'{field} must be a non-negative number')
-    timestamp = data.get('timestamp')
-    if timestamp is not None:
-        if not isinstance(timestamp, str):
-            raise ValueError('timestamp must be an ISO-8601 string')
-        try:
-            datetime.datetime.fromisoformat(timestamp.replace('Z', '+00:00'))
-        except ValueError:
-            raise ValueError('timestamp must be an ISO-8601 string')
+    raw_watch_date = data.get('watchDate')
+    if raw_watch_date is not None:
+        watch_date = normalize_watch_date(raw_watch_date)
+    elif data.get('timestamp') is not None:
+        watch_date = normalize_watch_date(data['timestamp'], allow_legacy_timestamp=True)
+    else:
+        raise ValueError('watchDate is required')
+
+    show_time = data.get('showTime')
+    if show_time not in (None, '') and (not isinstance(show_time, str) or not SHOW_TIME_RE.fullmatch(show_time)):
+        raise ValueError('showTime must use 24-hour HH:mm')
     for field, maximum in (('theaterName', 200), ('theaterLocation', 300),
                            ('theaterGmapsLink', 2048), ('showTime', 100), ('format', 50)):
         value = data.get(field)
         if value is not None and (not isinstance(value, str) or len(value) > maximum):
             raise ValueError(f'{field} is invalid or too long')
+    return watch_date
 
 def serialize_mongo_doc(doc):
     if isinstance(doc, dict):
@@ -154,8 +181,17 @@ def enrich_watch_history(history):
 
         if 'createdAt' in entry and isinstance(entry['createdAt'], datetime.datetime):
             entry['createdAt'] = entry['createdAt'].isoformat()
-        if 'timestamp' in entry and isinstance(entry['timestamp'], datetime.datetime):
-            entry['timestamp'] = entry['timestamp'].isoformat()
+        raw_watch_date = entry.get('watchDate') or entry.get('timestamp')
+        if isinstance(raw_watch_date, datetime.datetime):
+            watch_date = raw_watch_date.date().isoformat()
+        else:
+            try:
+                watch_date = normalize_watch_date(raw_watch_date, allow_legacy_timestamp=True)
+            except ValueError:
+                watch_date = None
+        if watch_date:
+            entry['watchDate'] = watch_date
+            entry['timestamp'] = watch_date
 
         movie_details = resolve_movie_details(entry.get('movieId'), entry.get('movieTitle'), entry.get('moviePosterUrl'))
         entry['movieTitle'] = movie_details.get('movieTitle')
@@ -319,7 +355,7 @@ def add_watch_history():
     firebase_uid = decoded_token['uid']
     data = request.get_json(silent=True)
     try:
-        parse_watch_payload(data)
+        watch_date = parse_watch_payload(data)
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
     
@@ -371,7 +407,8 @@ def add_watch_history():
         "ticketStubUrl": ticket_stub_url,
         "showTime": data.get('showTime'),
         "format": data.get('format'),
-        "timestamp": data.get('timestamp'), # Expecting ISO string
+        "watchDate": watch_date,
+        "timestamp": watch_date,  # Compatibility alias for older clients.
         "createdAt": datetime.datetime.now(datetime.timezone.utc).isoformat()
     }
     
@@ -520,13 +557,18 @@ def update_watch_history(user_id, entry_id):
             return jsonify({"error": f"{field} must be a non-negative number"}), 400
     if 'currency' in data and data['currency'] not in {'INR', 'USD'}:
         return jsonify({"error": "Currency must be INR or USD"}), 400
-    if 'timestamp' in data:
-        if not isinstance(data['timestamp'], str):
-            return jsonify({"error": "timestamp must be an ISO-8601 string"}), 400
+    watch_date = None
+    if 'watchDate' in data or 'timestamp' in data:
         try:
-            datetime.datetime.fromisoformat(data['timestamp'].replace('Z', '+00:00'))
-        except ValueError:
-            return jsonify({"error": "timestamp must be an ISO-8601 string"}), 400
+            if 'watchDate' in data:
+                watch_date = normalize_watch_date(data['watchDate'])
+            else:
+                watch_date = normalize_watch_date(data['timestamp'], allow_legacy_timestamp=True)
+        except ValueError as error:
+            return jsonify({"error": str(error)}), 400
+    if 'showTime' in data and data['showTime'] not in (None, ''):
+        if not isinstance(data['showTime'], str) or not SHOW_TIME_RE.fullmatch(data['showTime']):
+            return jsonify({"error": "showTime must use 24-hour HH:mm"}), 400
     
     updates = {}
     if 'theaterId' in data:
@@ -545,8 +587,9 @@ def update_watch_history(user_id, entry_id):
         updates['watchHistory.$.showTime'] = data['showTime']
     if 'format' in data:
         updates['watchHistory.$.format'] = data['format']
-    if 'timestamp' in data:
-        updates['watchHistory.$.timestamp'] = data['timestamp']
+    if watch_date:
+        updates['watchHistory.$.watchDate'] = watch_date
+        updates['watchHistory.$.timestamp'] = watch_date
     if 'currency' in data:
         updates['watchHistory.$.currency'] = data['currency']
     

@@ -5,13 +5,16 @@ import { useParams } from "next/navigation"
 import { Header } from "@/components/header"
 import { getUserProfile } from "@/services/user-service"
 import { Loader2, User, Film, Clock, Calendar, Lock } from "lucide-react"
+import { entryWatchDate, formatWatchDate, watchSortValue } from "@/lib/watch-date"
 
 interface WatchHistoryItem {
     movieId: string
     movieTitle: string
     moviePosterUrl?: string
     theaterName?: string
+    watchDate?: string
     timestamp?: string
+    showTime?: string
     createdAt: string
 }
 
@@ -53,21 +56,8 @@ export default function UserProfilePage() {
         return `${hours}h ${minutes}m`
     }
 
-    const formatDate = (dateStr?: string) => {
-        if (!dateStr) return "Unknown Date"
-        const d = new Date(dateStr)
-        if (isNaN(d.getTime())) return "Unknown Date"
-        return d.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        })
-    }
-
     const sortedHistory = [...(profile?.watchHistory || [])].sort((a, b) => {
-        const dateA = new Date(a.timestamp || a.createdAt || 0).getTime()
-        const dateB = new Date(b.timestamp || b.createdAt || 0).getTime()
-        return dateB - dateA
+        return watchSortValue(b) - watchSortValue(a)
     })
 
     if (loading) {
@@ -164,7 +154,7 @@ export default function UserProfilePage() {
                                             </td>
                                             <td className="px-6 py-4 text-muted-foreground">{item.theaterName || "N/A"}</td>
                                             <td className="px-6 py-4 text-primary font-mono">
-                                                {formatDate(item.timestamp || item.createdAt)}
+                                                {formatWatchDate(entryWatchDate(item))}
                                             </td>
                                         </tr>
                                     ))}

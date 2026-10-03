@@ -9,13 +9,14 @@ import { Label } from "@/components/ui/label"
 import { addWatchHistory, getMovies, getTheaters } from "@/services/api"
 import { WATCH_FORMATS } from "@/lib/types"
 import { TimePicker } from "@/components/ui/time-picker"
+import { localToday } from "@/lib/watch-date"
 
 type CatalogMovie = { id: string; imdbId?: string; title: string; year?: number; posterUrl?: string }
 type Theater = { id: string; name: string; location?: string; gmapsLink?: string }
 type BulkItem = { key: string; movie: CatalogMovie; date: string; theaterId?: string; theaterName?: string; theaterLocation?: string; theaterGmapsLink?: string; ticketCost: string; foodCost: string; currency: "INR" | "USD"; showTime: string; format: string; customFormat: string }
 type CsvRow = Record<string, string>
 
-const today = () => new Date().toISOString().slice(0, 10)
+const today = localToday
 const selectClass = "h-10 w-full rounded-md border bg-background px-3 text-sm"
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`
 const matchFormat = (value?: string) => WATCH_FORMATS.find(format => format.toLowerCase() === (value || "").trim().toLowerCase()) || ""
@@ -198,7 +199,8 @@ export function BulkWatchDialog({ onWatchAdded }: { onWatchAdded: () => void }) 
           theaterName: item.theaterName || undefined,
           theaterLocation: item.theaterLocation || undefined,
           theaterGmapsLink: item.theaterGmapsLink || undefined,
-          timestamp: new Date(item.date || today()).toISOString(),
+          watchDate: item.date || today(),
+          timestamp: item.date || today(),
           ticketCost: item.ticketCost ? Number(item.ticketCost) : 0,
           foodCost: item.foodCost ? Number(item.foodCost) : 0,
           currency: item.currency,
