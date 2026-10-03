@@ -185,7 +185,9 @@ export function AddWatchDialog({
         setCustomFormat(initialFormat)
       }
       setCurrency(initialData.currency || "INR")
-      if (initialData.timestamp) {
+      if (initialData.watchDate) {
+        setWatchDate(initialData.watchDate)
+      } else if (initialData.timestamp) {
         try {
           setWatchDate(new Date(initialData.timestamp).toISOString().split('T')[0])
         } catch (e) {

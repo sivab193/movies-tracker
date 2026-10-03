@@ -15,17 +15,26 @@ function normalizeWatchHistoryTimestamps(data: any) {
     return {
         ...data,
         watchHistory: data.watchHistory.map((entry: any) => {
-            const watchedOn = new Date(entry.timestamp || entry.createdAt)
+            const timestamp = entry.timestamp || entry.createdAt
+            const watchedOn = new Date(timestamp)
+            const dateKey = typeof timestamp === "string"
+                ? timestamp.match(/^(\d{4}-\d{2}-\d{2})/)?.[1]
+                : undefined
+            const normalizedEntry = dateKey ? { ...entry, watchDate: dateKey } : entry
             const match = (entry.showTime || "").match(/^(\d{1,2}):(\d{2})$/)
-            if (isNaN(watchedOn.getTime()) || !match) return entry
+            if (isNaN(watchedOn.getTime()) || !match) return normalizedEntry
 
             const hours = Number(match[1])
             const minutes = Number(match[2])
-            if (hours >= 24 || minutes >= 60) return entry
+            if (hours >= 24 || minutes >= 60) return normalizedEntry
 
-            const watchedAt = new Date(watchedOn)
-            watchedAt.setHours(hours, minutes, 0, 0)
-            return { ...entry, timestamp: watchedAt.toISOString() }
+            // Watch dates originate in a date input and are stored at UTC midnight.
+            // Preserve that submitted calendar date instead of converting midnight to
+            // local time first, which can move western time zones to the prior day.
+            if (!dateKey) return normalizedEntry
+
+            const watchedAt = new Date(`${dateKey}T${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:00`)
+            return { ...normalizedEntry, timestamp: watchedAt.toISOString() }
         })
     }
 }

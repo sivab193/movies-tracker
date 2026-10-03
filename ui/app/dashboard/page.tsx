@@ -54,7 +54,7 @@ import {
 } from "@/components/ui/alert-dialog"
 
 function watchSortTimestamp(entry: WatchHistoryEntry): number {
-    const watchedOn = new Date(entry.timestamp || entry.createdAt)
+    const watchedOn = watchCalendarDate(entry)
     if (isNaN(watchedOn.getTime())) return 0
 
     // Watch dates are stored independently from the optional showtime. Normalize
@@ -66,6 +66,19 @@ function watchSortTimestamp(entry: WatchHistoryEntry): number {
     const hours = Number(match[1])
     const minutes = Number(match[2])
     return hours < 24 && minutes < 60 ? dayStart + (hours * 60 + minutes) * 60 * 1000 : watchedOn.getTime()
+}
+
+function watchCalendarDate(entry: WatchHistoryEntry): Date {
+    const dateKey = entry.watchDate || (entry.timestamp || entry.createdAt).match(/^(\d{4}-\d{2}-\d{2})/)?.[1]
+    if (!dateKey) return new Date(entry.timestamp || entry.createdAt)
+    const [year, month, day] = dateKey.split("-").map(Number)
+    return new Date(year, month - 1, day)
+}
+
+function cityName(location: string | null | undefined): string {
+    const value = (location || "").trim()
+    if (!value || value.startsWith("http")) return ""
+    return value.split(",")[0].replace(/\s+(Indiana|Illinois|IN|IL)$/i, "").trim()
 }
 
 export default function DashboardPage() {
@@ -119,7 +132,7 @@ export default function DashboardPage() {
     const uniqueYears = useMemo(() => {
         const years = new Set<string>()
         profile?.watchHistory?.forEach(h => {
-            const d = new Date(h.timestamp || h.createdAt)
+            const d = watchCalendarDate(h)
             if (!isNaN(d.getTime())) {
                 years.add(d.getFullYear().toString())
             }
@@ -128,15 +141,12 @@ export default function DashboardPage() {
     }, [profile?.watchHistory])
 
     const uniqueCities = useMemo(() => {
-        const cities = new Set<string>()
+        const cities = new Map<string, string>()
         profile?.watchHistory?.forEach(h => {
-            const loc = (h.theaterLocation || "").trim()
-            if (loc && !loc.startsWith("http")) {
-                const city = loc.split(",")[0].replace(/\s+(Indiana|Illinois|IN|IL)$/i, "").trim()
-                if (city) cities.add(city)
-            }
+            const city = cityName(h.theaterLocation)
+            if (city && !cities.has(city.toLocaleLowerCase())) cities.set(city.toLocaleLowerCase(), city)
         })
-        return Array.from(cities).sort()
+        return Array.from(cities.values()).sort((a, b) => a.localeCompare(b))
     }, [profile?.watchHistory])
 
     const monthsList = [
@@ -171,7 +181,7 @@ export default function DashboardPage() {
         // Filter by Year
         if (yearFilter !== "All") {
             data = data.filter(item => {
-                const d = new Date(item.timestamp || item.createdAt)
+                const d = watchCalendarDate(item)
                 return !isNaN(d.getTime()) && d.getFullYear().toString() === yearFilter
             })
         }
@@ -179,7 +189,7 @@ export default function DashboardPage() {
         // Filter by Month
         if (monthFilter !== "All") {
             data = data.filter(item => {
-                const d = new Date(item.timestamp || item.createdAt)
+                const d = watchCalendarDate(item)
                 return !isNaN(d.getTime()) && d.getMonth().toString() === monthFilter
             })
         }
@@ -187,9 +197,7 @@ export default function DashboardPage() {
         // Filter by City
         if (cityFilter !== "All") {
             data = data.filter(item => {
-                const loc = (item.theaterLocation || "").trim()
-                if (!loc || loc.startsWith("http")) return false
-                const city = loc.split(",")[0].replace(/\s+(Indiana|Illinois|IN|IL)$/i, "").trim()
+                const city = cityName(item.theaterLocation)
                 return city.toLowerCase() === cityFilter.toLowerCase()
             })
         }
@@ -221,6 +229,7 @@ export default function DashboardPage() {
         const allFormats = new Set<string>()
         const cityset = new Set<string>()
         const movieCounts = new Map<string, number>()
+        const movieTitles = new Map<string, string>()
         const movieLatestDate = new Map<string, number>() // track most recent watch timestamp per movie
         const monthCounts = new Array(12).fill(0)
         
@@ -237,7 +246,7 @@ export default function DashboardPage() {
                 foodUSD += h.foodCost || 0
             }
 
-            const d = new Date(h.timestamp || h.createdAt)
+            const d = watchCalendarDate(h)
             if (!isNaN(d.getTime())) {
                 if (d.getFullYear() === currentYear) thisYearCount++
                 monthCounts[d.getMonth()]++
@@ -270,20 +279,21 @@ export default function DashboardPage() {
                 allFormats.add(watchFormat)
             }
 
-            const loc = (h.theaterLocation || "").trim()
-            if (loc && !loc.startsWith("http")) {
-                const city = loc.split(",")[0].replace(/\s+(Indiana|Illinois|IN|IL)$/i, "").trim()
-                if (city) cityset.add(city)
-            }
+            const city = cityName(h.theaterLocation)
+            if (city) cityset.add(city.toLocaleLowerCase())
 
             const title = (h.movieTitle || "").trim()
             if (title) {
-                movieCounts.set(title, (movieCounts.get(title) || 0) + 1)
+                // Movie IDs remain stable across title corrections and distinguish
+                // different releases that happen to share the same title.
+                const movieKey = h.movieId || title.toLocaleLowerCase()
+                movieCounts.set(movieKey, (movieCounts.get(movieKey) || 0) + 1)
+                movieTitles.set(movieKey, title)
                 // Track the latest watch date for tie-breaking
-                const watchDate = new Date(h.timestamp || h.createdAt).getTime()
+                const watchDate = watchSortTimestamp(h)
                 if (!isNaN(watchDate)) {
-                    const prev = movieLatestDate.get(title) || 0
-                    if (watchDate > prev) movieLatestDate.set(title, watchDate)
+                    const prev = movieLatestDate.get(movieKey) || 0
+                    if (watchDate > prev) movieLatestDate.set(movieKey, watchDate)
                 }
             }
         })
@@ -351,8 +361,8 @@ export default function DashboardPage() {
         profile?.watchHistory?.forEach(h => {
             const title = (h.movieTitle || "").trim()
             if (!title) return
-            const d = new Date(h.timestamp || h.createdAt)
-            const t = d.getTime()
+            const d = watchCalendarDate(h)
+            const t = watchSortTimestamp(h)
             if (!isNaN(t) && t > latestTimestamp) {
                 latestTimestamp = t
                 lastWatched = {
@@ -374,7 +384,7 @@ export default function DashboardPage() {
             theatersVisited: theaterCounts.size,
             citiesExplored: cityset.size,
             topTheater: topTheaterEntry ? { name: topTheaterEntry.key as string, count: topTheaterEntry.count } : null,
-            topMovie: topMovieEntry ? { title: topMovieEntry.key as string, count: topMovieEntry.count } : null,
+            topMovie: topMovieEntry ? { title: movieTitles.get(topMovieEntry.key as string) || topMovieEntry.key as string, count: topMovieEntry.count } : null,
             topFormat: topFormatEntry ? { name: topFormatEntry.key as string, count: topFormatEntry.count } : null,
             formatsExperienced: allFormats.size,
             busiestMonth,
