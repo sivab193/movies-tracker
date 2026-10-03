@@ -25,6 +25,7 @@ export interface WrappedStats {
     topMovie: { title: string; count: number } | null
     topTheater: { name: string; count: number } | null
     topFormat: { name: string; count: number } | null
+    formatsExperienced: number
     lastWatched: { title: string; date: string } | null
     thisYearCount: number
     totalRewatches: number
@@ -136,6 +137,7 @@ export type StatSelection = {
     mostWatched: boolean;
     favoriteTheater: boolean;
     topFormat: boolean;
+    formatsExperienced: boolean;
     lastWatched: boolean;
     languagesCount: boolean;
     maxWatchesInMonth: boolean;
@@ -308,6 +310,7 @@ async function drawWrappedImage(stats: WrappedStats, selection: StatSelection): 
     if (selection.totalSpent) activeTiles.push({ value: stats.spentLabel, label: "Total Spent" })
     if (selection.theatersVisited) activeTiles.push({ value: String(stats.theatersVisited), label: "Theaters Visited" })
     if (selection.citiesExplored) activeTiles.push({ value: String(stats.citiesExplored), label: "Cities Explored" })
+    if (selection.formatsExperienced) activeTiles.push({ value: String(stats.formatsExperienced), label: "Formats Experienced" })
     if (selection.watchedThisYear) activeTiles.push({ value: String(stats.thisYearCount), label: `Watched in ${stats.year}` })
     if (selection.rewatches) activeTiles.push({ value: String(stats.totalRewatches), label: "Rewatches" })
     if (selection.languagesCount) activeTiles.push({ value: String(stats.languagesCount), label: "Languages" })
@@ -610,6 +613,7 @@ export function ShareStats({ stats }: ShareStatsProps) {
         mostWatched: true,
         favoriteTheater: true,
         topFormat: true,
+        formatsExperienced: true,
         lastWatched: true,
         languagesCount: true,
         maxWatchesInMonth: true,
@@ -630,6 +634,7 @@ export function ShareStats({ stats }: ShareStatsProps) {
             mostWatched: checked,
             favoriteTheater: checked,
             topFormat: checked,
+            formatsExperienced: checked,
             lastWatched: checked,
             languagesCount: checked,
             maxWatchesInMonth: checked,
@@ -808,6 +813,15 @@ export function ShareStats({ stats }: ShareStatsProps) {
                                 />
                                 <Label htmlFor="s-topformat" className={!stats.topFormat ? "opacity-50" : ""}>
                                     Top Format</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <Checkbox
+                                    id="s-formatsexperienced"
+                                    checked={selection.formatsExperienced}
+                                    onCheckedChange={(c) => setSelection(s => ({...s, formatsExperienced: c as boolean}))}
+                                />
+                                <Label htmlFor="s-formatsexperienced">
+                                    Formats Experienced</Label>
                             </div>
                             <div className="flex items-center space-x-2">
                                 <Checkbox

@@ -84,6 +84,7 @@ export function AddWatchDialog({
   const [watchDate, setWatchDate] = useState(new Date().toISOString().split('T')[0])
   const [showTime, setShowTime] = useState("")
   const [format, setFormat] = useState("2D")
+  const [customFormat, setCustomFormat] = useState("")
   const [ticketCost, setTicketCost] = useState("")
   const [foodCost, setFoodCost] = useState("")
   const [currency, setCurrency] = useState<"INR" | "USD">("INR")
@@ -175,7 +176,14 @@ export function AddWatchDialog({
       setTicketCost(initialData.ticketCost?.toString() || "")
       setFoodCost(initialData.foodCost?.toString() || "")
       setShowTime(initialData.showTime || "")
-      setFormat(initialData.format || "2D")
+      const initialFormat = (initialData.format || "2D").trim()
+      if ((WATCH_FORMATS as readonly string[]).includes(initialFormat)) {
+        setFormat(initialFormat)
+        setCustomFormat("")
+      } else {
+        setFormat("Others")
+        setCustomFormat(initialFormat)
+      }
       setCurrency(initialData.currency || "INR")
       if (initialData.timestamp) {
         try {
@@ -227,6 +235,7 @@ export function AddWatchDialog({
     setWatchDate(new Date().toISOString().split('T')[0])
     setShowTime("")
     setFormat("2D")
+    setCustomFormat("")
     setTicketCost("")
     setFoodCost("")
     setCurrency("INR")
@@ -261,7 +270,7 @@ export function AddWatchDialog({
         theaterGmapsLink: theaterGmapsLink.trim() || undefined,
         timestamp: new Date(watchDate).toISOString(),
         showTime: showTime.trim() || null,
-        format: format || null,
+        format: format === "Others" ? (customFormat.trim() || "Others") : (format || null),
         ticketCost: ticketCost ? parseFloat(ticketCost) : 0,
         foodCost: foodCost ? parseFloat(foodCost) : 0,
         currency,
@@ -550,6 +559,19 @@ export function AddWatchDialog({
                 {WATCH_FORMATS.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
               </SelectContent>
             </Select>
+            {format === "Others" && (
+              <div className="mt-1">
+                <Label htmlFor="custom-format" className="text-xs text-muted-foreground">Name the format</Label>
+                <Input
+                  id="custom-format"
+                  placeholder="e.g. IMAX with Laser"
+                  value={customFormat}
+                  onChange={(event) => setCustomFormat(event.target.value)}
+                  disabled={loading}
+                  className="mt-1"
+                />
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">

@@ -31,7 +31,9 @@ import {
     Map as MapIcon,
     Trophy,
     CalendarDays,
-    Popcorn
+    Popcorn,
+    Projector,
+    Languages
 } from "lucide-react"
 import { useAuth } from "@/contexts/auth-context"
 import { AddWatchDialog } from "@/components/add-watch-dialog"
@@ -216,6 +218,7 @@ export default function DashboardPage() {
 
         const theaterCounts = new Map<string, number>()
         const formatCounts = new Map<string, number>()
+        const allFormats = new Set<string>()
         const cityset = new Set<string>()
         const movieCounts = new Map<string, number>()
         const movieLatestDate = new Map<string, number>() // track most recent watch timestamp per movie
@@ -262,6 +265,9 @@ export default function DashboardPage() {
             // never counts toward the Top Format highlight.
             if (watchFormat && watchFormat !== "N/A" && watchFormat.toLowerCase() !== "2d") {
                 formatCounts.set(watchFormat, (formatCounts.get(watchFormat) || 0) + 1)
+            }
+            if (watchFormat && watchFormat !== "N/A") {
+                allFormats.add(watchFormat)
             }
 
             const loc = (h.theaterLocation || "").trim()
@@ -370,6 +376,7 @@ export default function DashboardPage() {
             topTheater: topTheaterEntry ? { name: topTheaterEntry.key as string, count: topTheaterEntry.count } : null,
             topMovie: topMovieEntry ? { title: topMovieEntry.key as string, count: topMovieEntry.count } : null,
             topFormat: topFormatEntry ? { name: topFormatEntry.key as string, count: topFormatEntry.count } : null,
+            formatsExperienced: allFormats.size,
             busiestMonth,
             currentYear,
             totalRewatches,
@@ -401,6 +408,7 @@ export default function DashboardPage() {
         topMovie: stats.topMovie,
         topTheater: stats.topTheater,
         topFormat: stats.topFormat,
+        formatsExperienced: stats.formatsExperienced,
         lastWatched: stats.lastWatched,
         thisYearCount: stats.thisYearCount,
         totalRewatches: stats.totalRewatches,
@@ -673,6 +681,30 @@ export default function DashboardPage() {
 
                     <Card>
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Formats Experienced</CardTitle>
+                            <Film className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{stats.formatsExperienced}</div>
+                            <p className="text-xs text-muted-foreground truncate">
+                                {stats.topFormat ? `Top: ${stats.topFormat.name}` : "Unique formats"}
+                            </p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Languages</CardTitle>
+                            <Languages className="h-4 w-4 text-muted-foreground" />
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{stats.languagesCount}</div>
+                            <p className="text-xs text-muted-foreground">Across your watches</p>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                             <CardTitle className="text-sm font-medium">Rewatches</CardTitle>
                             <RotateCcw className="h-4 w-4 text-muted-foreground" />
                         </CardHeader>
@@ -697,7 +729,7 @@ export default function DashboardPage() {
                 </div>
 
                 {/* Highlights */}
-                {(stats.topMovie || stats.topTheater || stats.lastWatched) && (
+                {(stats.topMovie || stats.topTheater || stats.topFormat || stats.lastWatched) && (
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
                         {stats.topMovie && (
                             <Card className="bg-gradient-to-r from-amber-500/10 to-rose-500/10 border-amber-500/20">
@@ -723,6 +755,20 @@ export default function DashboardPage() {
                                     <div className="text-xl font-bold truncate">{stats.topTheater.name}</div>
                                     <p className="text-xs text-muted-foreground">
                                         {stats.topTheater.count} {stats.topTheater.count === 1 ? "visit" : "visits"}
+                                    </p>
+                                </CardContent>
+                            </Card>
+                        )}
+                        {stats.topFormat && (
+                            <Card className="bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border-emerald-500/20">
+                                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                                    <CardTitle className="text-sm font-medium">Top Format</CardTitle>
+                                    <Projector className="h-4 w-4 text-emerald-500" />
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="text-xl font-bold truncate">{stats.topFormat.name}</div>
+                                    <p className="text-xs text-muted-foreground">
+                                        Watched {stats.topFormat.count} {stats.topFormat.count === 1 ? "time" : "times"}
                                     </p>
                                 </CardContent>
                             </Card>
