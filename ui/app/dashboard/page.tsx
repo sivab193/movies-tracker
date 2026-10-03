@@ -215,6 +215,7 @@ export default function DashboardPage() {
         let thisYearCount = 0
 
         const theaterCounts = new Map<string, number>()
+        const formatCounts = new Map<string, number>()
         const cityset = new Set<string>()
         const movieCounts = new Map<string, number>()
         const movieLatestDate = new Map<string, number>() // track most recent watch timestamp per movie
@@ -256,6 +257,11 @@ export default function DashboardPage() {
                 theaterCounts.set(theater, (theaterCounts.get(theater) || 0) + 1)
             }
 
+            const watchFormat = (h.format || "").trim()
+            if (watchFormat && watchFormat !== "N/A") {
+                formatCounts.set(watchFormat, (formatCounts.get(watchFormat) || 0) + 1)
+            }
+
             const loc = (h.theaterLocation || "").trim()
             if (loc && !loc.startsWith("http")) {
                 const city = loc.split(",")[0].replace(/\s+(Indiana|Illinois|IN|IL)$/i, "").trim()
@@ -287,6 +293,7 @@ export default function DashboardPage() {
         }
 
         const topTheaterEntry = topEntry(theaterCounts)
+        const topFormatEntry = topEntry(formatCounts)
 
         // For movies, break ties by most recently watched
         let topMovieEntry: { key: string; count: number } | null = null
@@ -360,6 +367,7 @@ export default function DashboardPage() {
             citiesExplored: cityset.size,
             topTheater: topTheaterEntry ? { name: topTheaterEntry.key as string, count: topTheaterEntry.count } : null,
             topMovie: topMovieEntry ? { title: topMovieEntry.key as string, count: topMovieEntry.count } : null,
+            topFormat: topFormatEntry ? { name: topFormatEntry.key as string, count: topFormatEntry.count } : null,
             busiestMonth,
             currentYear,
             totalRewatches,
@@ -390,6 +398,7 @@ export default function DashboardPage() {
         citiesExplored: stats.citiesExplored,
         topMovie: stats.topMovie,
         topTheater: stats.topTheater,
+        topFormat: stats.topFormat,
         lastWatched: stats.lastWatched,
         thisYearCount: stats.thisYearCount,
         totalRewatches: stats.totalRewatches,
