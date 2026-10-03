@@ -12,7 +12,7 @@ import { TimePicker } from "@/components/ui/time-picker"
 
 type CatalogMovie = { id: string; imdbId?: string; title: string; year?: number; posterUrl?: string }
 type Theater = { id: string; name: string; location?: string; gmapsLink?: string }
-type BulkItem = { key: string; movie: CatalogMovie; date: string; theaterId?: string; theaterName?: string; theaterLocation?: string; theaterGmapsLink?: string; ticketCost: string; foodCost: string; currency: "INR" | "USD"; showTime: string; format: string }
+type BulkItem = { key: string; movie: CatalogMovie; date: string; theaterId?: string; theaterName?: string; theaterLocation?: string; theaterGmapsLink?: string; ticketCost: string; foodCost: string; currency: "INR" | "USD"; showTime: string; format: string; customFormat: string }
 type CsvRow = Record<string, string>
 
 const today = () => new Date().toISOString().slice(0, 10)
@@ -70,7 +70,7 @@ export function BulkWatchDialog({ onWatchAdded }: { onWatchAdded: () => void }) 
 
   const defaults = useMemo(() => {
     const theater = theaters.find(item => item.id === theaterId)
-    return { date: watchDate, theaterId: theater?.id, theaterName: theater?.name, theaterLocation: theater?.location, theaterGmapsLink: theater?.gmapsLink, ticketCost, foodCost, currency, showTime, format }
+    return { date: watchDate, theaterId: theater?.id, theaterName: theater?.name, theaterLocation: theater?.location, theaterGmapsLink: theater?.gmapsLink, ticketCost, foodCost, currency, showTime, format, customFormat: "" }
   }, [watchDate, theaterId, theaters, ticketCost, foodCost, currency, showTime, format])
 
   useEffect(() => {
@@ -156,6 +156,8 @@ export function BulkWatchDialog({ onWatchAdded }: { onWatchAdded: () => void }) 
         const movie = await findMovie(lookup)
         if (!movie) { skipped.push(lookup); continue }
         const rowTheater = theaters.find(theater => theater.name.toLowerCase() === (row.theater || row.theater_name || "").trim().toLowerCase())
+        const rawFormat = (row.format || "").trim()
+        const matchedFormat = matchFormat(row.format)
         next.push(buildItem(movie, {
           date: row.date || row.watched_date || watchDate,
           theaterId: rowTheater?.id,
@@ -166,7 +168,8 @@ export function BulkWatchDialog({ onWatchAdded }: { onWatchAdded: () => void }) 
           foodCost: row.food_cost || "",
           currency: row.currency?.toUpperCase() === "USD" ? "USD" : currency,
           showTime: row.show_time || "",
-          format: matchFormat(row.format) || "2D"
+          format: matchedFormat || (rawFormat ? "Others" : "2D"),
+          customFormat: matchedFormat ? "" : rawFormat,
         }))
       } catch { skipped.push(lookup) }
     }
@@ -200,7 +203,7 @@ export function BulkWatchDialog({ onWatchAdded }: { onWatchAdded: () => void }) 
           foodCost: item.foodCost ? Number(item.foodCost) : 0,
           currency: item.currency,
           showTime: item.showTime || null,
-          format: item.format || null,
+          format: item.format === "Others" ? (item.customFormat.trim() || "Others") : (item.format || null),
         })
       } catch { failures.push(item.key) }
     }
@@ -268,10 +271,11 @@ export function BulkWatchDialog({ onWatchAdded }: { onWatchAdded: () => void }) 
           const isOpen = expanded === item.key
           return <div key={item.key} className="p-2 space-y-2">
             <div className="flex gap-2 items-center">{item.movie.posterUrl ? <img src={item.movie.posterUrl} alt="" className="h-10 w-7 rounded object-cover" /> : <Film className="h-5 w-5" />}<span className="flex-1 min-w-0 text-sm font-medium truncate">{item.movie.title}{rewatch && <span className="ml-2 inline-flex items-center gap-1 text-xs font-normal text-primary"><Repeat className="h-3 w-3" />Rewatch</span>}</span><Input className="w-36" type="date" max={today()} value={item.date} onChange={event => updateItem(item.key, { date: event.target.value })} aria-label={`Watch date for ${item.movie.title}`} /><Button type="button" variant="ghost" size="sm" onClick={() => setExpanded(isOpen ? null : item.key)}>{isOpen ? "Less" : "Details"}</Button><Button type="button" variant="ghost" size="icon" onClick={() => duplicateItem(item)} aria-label={`Log ${item.movie.title} again`} title="Log again (rewatch)"><Copy className="h-4 w-4" /></Button><Button type="button" variant="ghost" size="icon" onClick={() => setItems(current => current.filter(entry => entry.key !== item.key))} aria-label={`Remove ${item.movie.title}`}><Trash2 className="h-4 w-4" /></Button></div>
-            {!isOpen && (item.theaterName || item.format || item.showTime || item.ticketCost || item.foodCost) && <p className="pl-9 text-xs text-muted-foreground">{[item.theaterName, item.format, item.showTime, item.ticketCost && `${item.currency} ${item.ticketCost}`, item.foodCost && `food ${item.foodCost}`].filter(Boolean).join(" · ")}</p>}
+            {!isOpen && (item.theaterName || item.format || item.showTime || item.ticketCost || item.foodCost) && <p className="pl-9 text-xs text-muted-foreground">{[item.theaterName, item.format === "Others" && item.customFormat.trim() ? item.customFormat.trim() : item.format, item.showTime, item.ticketCost && `${item.currency} ${item.ticketCost}`, item.foodCost && `food ${item.foodCost}`].filter(Boolean).join(" · ")}</p>}
             {isOpen && <div className="grid sm:grid-cols-4 gap-2 pl-9">
               <div><Label className="text-xs">Theater</Label><select className={selectClass} value={item.theaterId || ""} onChange={event => { const theater = theaters.find(entry => entry.id === event.target.value); updateItem(item.key, { theaterId: theater?.id, theaterName: theater?.name, theaterLocation: theater?.location, theaterGmapsLink: theater?.gmapsLink }) }}><option value="">{item.theaterId || !item.theaterName ? "No theater" : item.theaterName}</option>{theaters.map(theater => <option key={theater.id} value={theater.id}>{theater.name}</option>)}</select></div>
               <div><Label className="text-xs">Format</Label><select className={selectClass} value={item.format} onChange={event => updateItem(item.key, { format: event.target.value })}>{WATCH_FORMATS.map(f => <option key={f} value={f}>{f}</option>)}</select></div>
+              {item.format === "Others" && <div><Label className="text-xs">Custom format</Label><Input value={item.customFormat} onChange={event => updateItem(item.key, { customFormat: event.target.value })} placeholder="e.g. IMAX with Laser" /></div>}
               <div><Label className="text-xs">Show time</Label><TimePicker value={item.showTime} onChange={value => updateItem(item.key, { showTime: value })} placeholder="Select time" /></div>
               <div><Label className="text-xs">Currency</Label><select className={selectClass} value={item.currency} onChange={event => updateItem(item.key, { currency: event.target.value as "INR" | "USD" })}><option value="INR">INR (₹)</option><option value="USD">USD ($)</option></select></div>
               <div><Label className="text-xs">Ticket cost</Label><Input type="number" min="0" value={item.ticketCost} onChange={event => updateItem(item.key, { ticketCost: event.target.value })} /></div>
