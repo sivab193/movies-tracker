@@ -24,6 +24,7 @@ import {
 import { type WatchHistoryEntry, WATCH_FORMATS } from "@/lib/types"
 import { addWatchHistory, updateWatchHistory, getMovies, getTheaters } from "@/services/api"
 import { DatePicker } from "@/components/ui/date-picker"
+import { TimePicker } from "@/components/ui/time-picker"
 
 interface AddWatchDialogProps {
   uid: string
@@ -530,13 +531,11 @@ export function AddWatchDialog({
               <Clock className="h-4 w-4" />
               Show Time <span className="text-xs text-muted-foreground">(Optional)</span>
             </Label>
-            <Input
-              id="show-time"
-              type="time"
+            <TimePicker
               value={showTime}
-              onChange={(e) => setShowTime(e.target.value)}
+              onChange={setShowTime}
               disabled={loading}
-              className="[color-scheme:dark] dark:[color-scheme:dark] [color-scheme:light]"
+              placeholder="Select time"
             />
           </div>
 

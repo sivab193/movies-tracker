@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { addWatchHistory, getMovies, getTheaters } from "@/services/api"
 import { WATCH_FORMATS } from "@/lib/types"
+import { TimePicker } from "@/components/ui/time-picker"
 
 type CatalogMovie = { id: string; imdbId?: string; title: string; year?: number; posterUrl?: string }
 type Theater = { id: string; name: string; location?: string; gmapsLink?: string }
@@ -251,7 +252,7 @@ export function BulkWatchDialog({ onWatchAdded }: { onWatchAdded: () => void }) 
           <div className="flex items-center justify-between"><p className="font-medium">Shared details</p><Button type="button" variant="outline" size="sm" onClick={applyDefaults} disabled={!items.length}>Apply to all</Button></div>
           <div className="grid sm:grid-cols-4 gap-3">
             <div><Label>Date</Label><Input type="date" max={today()} value={watchDate} onChange={event => setWatchDate(event.target.value)} /></div>
-            <div><Label>Show time</Label><Input type="time" value={showTime} onChange={event => setShowTime(event.target.value)} /></div>
+            <div><Label>Show time</Label><TimePicker value={showTime} onChange={setShowTime} placeholder="Select time" /></div>
             <div><Label>Theater</Label><select className={selectClass} value={theaterId} onChange={event => setTheaterId(event.target.value)}><option value="">No theater</option>{theaters.map(theater => <option key={theater.id} value={theater.id}>{theater.name}</option>)}</select></div>
             <div><Label>Format</Label><select className={selectClass} value={format} onChange={event => setFormat(event.target.value)}><option value="">Not specified</option>{WATCH_FORMATS.map(item => <option key={item} value={item}>{item}</option>)}</select></div>
             <div><Label>Ticket cost</Label><Input type="number" min="0" value={ticketCost} onChange={event => setTicketCost(event.target.value)} placeholder="0" /></div>
@@ -271,7 +272,7 @@ export function BulkWatchDialog({ onWatchAdded }: { onWatchAdded: () => void }) 
             {isOpen && <div className="grid sm:grid-cols-4 gap-2 pl-9">
               <div><Label className="text-xs">Theater</Label><select className={selectClass} value={item.theaterId || ""} onChange={event => { const theater = theaters.find(entry => entry.id === event.target.value); updateItem(item.key, { theaterId: theater?.id, theaterName: theater?.name, theaterLocation: theater?.location, theaterGmapsLink: theater?.gmapsLink }) }}><option value="">{item.theaterId || !item.theaterName ? "No theater" : item.theaterName}</option>{theaters.map(theater => <option key={theater.id} value={theater.id}>{theater.name}</option>)}</select></div>
               <div><Label className="text-xs">Format</Label><select className={selectClass} value={item.format} onChange={event => updateItem(item.key, { format: event.target.value })}><option value="">Not specified</option>{WATCH_FORMATS.map(f => <option key={f} value={f}>{f}</option>)}</select></div>
-              <div><Label className="text-xs">Show time</Label><Input type="time" value={item.showTime} onChange={event => updateItem(item.key, { showTime: event.target.value })} /></div>
+              <div><Label className="text-xs">Show time</Label><TimePicker value={item.showTime} onChange={value => updateItem(item.key, { showTime: value })} placeholder="Select time" /></div>
               <div><Label className="text-xs">Currency</Label><select className={selectClass} value={item.currency} onChange={event => updateItem(item.key, { currency: event.target.value as "INR" | "USD" })}><option value="INR">INR (₹)</option><option value="USD">USD ($)</option></select></div>
               <div><Label className="text-xs">Ticket cost</Label><Input type="number" min="0" value={item.ticketCost} onChange={event => updateItem(item.key, { ticketCost: event.target.value })} /></div>
               <div><Label className="text-xs">Food cost</Label><Input type="number" min="0" value={item.foodCost} onChange={event => updateItem(item.key, { foodCost: event.target.value })} /></div>
