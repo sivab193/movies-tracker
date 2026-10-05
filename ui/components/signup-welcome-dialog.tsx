@@ -117,6 +117,38 @@ export function SignupWelcomeDialog({
             />
           </div>
 
+          {!isPublic && (
+            <div className="rounded-xl border p-4">
+              <p className="mb-3 text-xs font-medium text-muted-foreground">
+                Preview &mdash; how you&apos;ll appear on the leaderboard
+              </p>
+              <div className="flex items-center gap-3">
+                <span className="w-6 shrink-0 text-center text-sm font-bold text-muted-foreground">
+                  #
+                </span>
+                <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-muted">
+                  {photoURL || photo ? (
+                    <img
+                      src={photoURL || photo}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  ) : null}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold">
+                    {displayName || "MV #"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">Private profile</p>
+                </div>
+                <div className="ml-auto shrink-0 text-right">
+                  <p className="text-sm font-bold">128 movies</p>
+                  <p className="text-xs text-muted-foreground">342h runtime</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {isPublic && (
             <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-4">
               <div className="space-y-1.5">
