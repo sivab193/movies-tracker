@@ -44,6 +44,9 @@ export default function SettingsPage() {
     const [displayName, setDisplayName] = useState("")
     const [savedDisplayName, setSavedDisplayName] = useState("")
     const [editingName, setEditingName] = useState(false)
+    const [photoURL, setPhotoURL] = useState("")
+    const [savedPhotoURL, setSavedPhotoURL] = useState("")
+    const [editingPhoto, setEditingPhoto] = useState(false)
     const [customUrl, setCustomUrl] = useState("")
     const [savedCustomUrl, setSavedCustomUrl] = useState("")
     const [editingCustomUrl, setEditingCustomUrl] = useState(false)
@@ -72,6 +75,8 @@ export default function SettingsPage() {
             setAdminRequestStatus(settings.adminRequestStatus || "NONE")
             setDisplayName(settings.displayName || user?.displayName || "")
             setSavedDisplayName(settings.displayName || user?.displayName || "")
+            setPhotoURL(settings.photoURL || user?.photoURL || "")
+            setSavedPhotoURL(settings.photoURL || user?.photoURL || "")
             setCustomUrl(settings.customUrl || "")
             setSavedCustomUrl(settings.customUrl || "")
         } catch (error) {
@@ -136,6 +141,18 @@ export default function SettingsPage() {
             setDisplayName(displayName.trim())
             setSavedDisplayName(displayName.trim())
             setEditingName(false)
+        } catch {
+            // Keep the editor open so the user can correct the value.
+        }
+    }
+
+    async function handlePhotoSave(useDefault: boolean) {
+        const next = useDefault ? "/favicon-96x96.png" : photoURL.trim()
+        try {
+            await saveSettings({ photoURL: next })
+            setPhotoURL(next)
+            setSavedPhotoURL(next)
+            setEditingPhoto(false)
         } catch {
             // Keep the editor open so the user can correct the value.
         }
@@ -270,6 +287,36 @@ export default function SettingsPage() {
                                     <Input value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="w-48" placeholder="Enter display name" />
                                     <Button size="sm" onClick={handleDisplayNameSave} disabled={saving}>Save</Button>
                                     <Button variant="outline" size="sm" onClick={() => { setDisplayName(savedDisplayName); setEditingName(false) }} disabled={saving}>Cancel</Button>
+                                </div>
+                            )}
+                        </div>
+                    </section>
+
+                    <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+                        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div>
+                                <h2 className="text-xl font-semibold">Profile Picture</h2>
+                                <p className="text-sm text-muted-foreground">Shown next to your name on the leaderboard</p>
+                            </div>
+                            {!editingPhoto ? (
+                                <div className="flex items-center gap-3">
+                                    <div className="h-10 w-10 overflow-hidden rounded-full bg-muted">
+                                        {savedPhotoURL ? <img src={savedPhotoURL} alt="" className="h-full w-full object-cover" /> : <span className="flex h-full w-full items-center justify-center text-xs font-bold">{(displayName || "M")[0]?.toUpperCase()}</span>}
+                                    </div>
+                                    <Button variant="ghost" size="sm" onClick={() => { setPhotoURL(savedPhotoURL); setEditingPhoto(true) }}>
+                                        <Pencil className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            ) : (
+                                <div className="flex w-full flex-col gap-2 sm:w-auto">
+                                    <div className="flex items-center gap-2">
+                                        <Input value={photoURL} onChange={(e) => setPhotoURL(e.target.value)} className="w-64" placeholder="https://... image URL" />
+                                        <Button size="sm" onClick={() => handlePhotoSave(false)} disabled={saving}>Save</Button>
+                                        <Button variant="outline" size="sm" onClick={() => { setPhotoURL(savedPhotoURL); setEditingPhoto(false) }} disabled={saving}>Cancel</Button>
+                                    </div>
+                                    <Button variant="ghost" size="sm" className="self-start text-xs" onClick={() => handlePhotoSave(true)} disabled={saving}>
+                                        Use MediaVerse icon instead
+                                    </Button>
                                 </div>
                             )}
                         </div>

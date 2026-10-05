@@ -83,7 +83,7 @@ export default function AuthPage() {
     setLoading(true)
     setError(null)
     try {
-      const displayName = `${firstName} ${lastName}`.trim()
+      const displayName = `${firstName} ${lastName}`.trim() || undefined
       await signUpWithEmail(email, password, displayName)
       router.push("/dashboard")
     } catch (err) {
@@ -415,7 +415,7 @@ export default function AuthPage() {
                 <form onSubmit={handleEmailSignUp} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="signup-firstname">First Name</Label>
+                      <Label htmlFor="signup-firstname">First Name <span className="text-muted-foreground font-normal">(optional)</span></Label>
                       <Input
                         id="signup-firstname"
                         placeholder="John"
@@ -423,11 +423,10 @@ export default function AuthPage() {
                         onChange={(e) => setFirstName(e.target.value)}
                         className="h-10"
                         disabled={loading}
-                        required
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="signup-lastname">Last Name</Label>
+                      <Label htmlFor="signup-lastname">Last Name <span className="text-muted-foreground font-normal">(optional)</span></Label>
                       <Input
                         id="signup-lastname"
                         placeholder="Doe"
@@ -435,7 +434,6 @@ export default function AuthPage() {
                         onChange={(e) => setLastName(e.target.value)}
                         className="h-10"
                         disabled={loading}
-                        required
                       />
                     </div>
                   </div>

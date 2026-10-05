@@ -71,7 +71,8 @@ export async function updateUserSettings(settings: {
     hiddenMovies?: string[],
     joinedLeaderboard?: boolean,
     displayName?: string,
-    customUrl?: string
+    customUrl?: string,
+    photoURL?: string
 }) {
     const headers = await getAuthHeader()
     const response = await fetch(`${API_BASE_URL}/users/settings`, {
