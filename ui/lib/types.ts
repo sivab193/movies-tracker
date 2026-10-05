@@ -73,6 +73,8 @@ export interface UserProfile {
   photoURL: string | null
   createdAt: Date
   isAdmin?: boolean
+  isNewUser?: boolean
+  mvNumber?: number
   watchHistory?: WatchHistoryEntry[]
   totalRuntimeSeconds?: number
   totalMoviesWatched?: number

@@ -12,7 +12,8 @@ import {
 } from "firebase/auth"
 import { auth, googleProvider } from "@/lib/firebase"
 import type { UserProfile } from "@/lib/types"
-import { getMySession } from "@/services/user-service"
+import { getMySession, updateUserSettings } from "@/services/user-service"
+import { SignupWelcomeDialog, type WelcomePrefs } from "@/components/signup-welcome-dialog"
 
 interface AuthContextType {
   user: User | null
@@ -20,7 +21,7 @@ interface AuthContextType {
   loading: boolean
   signInWithGoogle: () => Promise<void>
   signInWithEmail: (email: string, password: string) => Promise<void>
-  signUpWithEmail: (email: string, password: string, displayName: string) => Promise<void>
+  signUpWithEmail: (email: string, password: string, displayName?: string) => Promise<void>
   resetPassword: (email: string) => Promise<void>
   signOut: () => Promise<void>
 }
@@ -31,6 +32,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showWelcome, setShowWelcome] = useState(false)
+  const [pendingDisplayName, setPendingDisplayName] = useState<string | null>(null)
 
   useEffect(() => {
     if (!auth) {
@@ -46,6 +49,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           // dashboard/settings pages, so navigation is not blocked by it.
           const profile = await getMySession(firebaseUser)
           setUserProfile(profile)
+          if (profile?.isNewUser) {
+            setShowWelcome(true)
+          }
         } catch (err) {
           console.error("Auth context error: Failed to fetch signed-in session", err)
           // Fallback minimal profile if API fails (e.g. new user not yet synced)
@@ -77,25 +83,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await signInWithEmailAndPassword(auth, email, password)
   }
 
-  const signUpWithEmail = async (email: string, password: string, displayName: string) => {
+  const signUpWithEmail = async (email: string, password: string, displayName?: string) => {
     if (!auth) throw new Error("Firebase not initialized")
     const userCredential = await createUserWithEmailAndPassword(auth, email, password)
-    // Update Firebase profile with display name
-    const { updateProfile } = await import("firebase/auth")
-    await updateProfile(userCredential.user, { displayName })
-    // Sync to backend with displayName
+    // The name is optional. When given, it is offered as the suggested display
+    // name in the welcome dialog (only used if the user goes public).
+    // The backend still assigns the default MV #N display name and the
+    // MediaVerse icon as the profile picture.
+    const name = displayName?.trim() || null
+    setPendingDisplayName(name)
+    if (name) {
+      const { updateProfile } = await import("firebase/auth")
+      await updateProfile(userCredential.user, { displayName: name })
+    }
+    // Create the backend record.
     const token = await userCredential.user.getIdToken()
     const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api"
     await fetch(`${apiBase}/users/session`, {
       method: "GET",
       headers: { "Authorization": `Bearer ${token}` }
     })
-    // Update displayName in backend
-    await fetch(`${apiBase}/users/settings`, {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ displayName })
-    })
+  }
+
+  const handleWelcomeComplete = async (prefs: WelcomePrefs) => {
+    // Throws on validation errors (e.g. custom URL taken); the dialog shows
+    // the message and stays open so the user can fix it.
+    await updateUserSettings(prefs)
+    setUserProfile((prev) =>
+      prev
+        ? {
+            ...prev,
+            isNewUser: false,
+            displayName: prefs.displayName ?? prev.displayName,
+            photoURL: prefs.photoURL ?? prev.photoURL,
+          }
+        : prev
+    )
+    setPendingDisplayName(null)
+    setShowWelcome(false)
   }
 
   const resetPassword = async (email: string) => {
@@ -122,6 +147,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }}
     >
       {children}
+      <SignupWelcomeDialog
+        open={showWelcome}
+        displayName={userProfile?.displayName}
+        photoURL={userProfile?.photoURL}
+        suggestedDisplayName={pendingDisplayName}
+        onComplete={handleWelcomeComplete}
+      />
     </AuthContext.Provider>
   )
 }

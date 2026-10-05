@@ -6,12 +6,31 @@ import os
 import re
 import base64
 from bson import ObjectId, Binary
+from pymongo import ReturnDocument
 
 users_bp = Blueprint('users', __name__)
 
 MAX_IMAGE_BYTES = 5 * 1024 * 1024
 ALLOWED_IMAGE_MIME_TYPES = {'image/jpeg', 'image/png', 'image/webp'}
 PUBLIC_PROFILE_FIELDS = {'movieCount', 'totalRuntime', 'moviesList'}
+
+# Default profile picture for every account (MediaVerse icon).
+DEFAULT_PHOTO_URL = "/favicon-96x96.png"
+
+
+def next_user_number():
+    """Atomically allocate the next sequential user number (1-based).
+
+    Used to build default display names like "MV #123", where the number
+    reflects the order in which the account signed up.
+    """
+    doc = db.counters.find_one_and_update(
+        {"_id": "userSequence"},
+        {"$inc": {"seq": 1}},
+        upsert=True,
+        return_document=ReturnDocument.AFTER,
+    )
+    return int(doc["seq"])
 WATCH_DATE_RE = re.compile(r'^\d{4}-\d{2}-\d{2}$')
 SHOW_TIME_RE = re.compile(r'^(?:[01]\d|2[0-3]):[0-5]\d$')
 
@@ -232,11 +251,13 @@ def get_my_settings():
                 return jsonify({"error": f"Email domain not allowed. Allowed: {', '.join(allowed_domains)}"}), 403
 
         # Create initial user record if it doesn't exist
+        mv_number = next_user_number()
         new_user = {
             "firebaseUid": firebase_uid,
             "email": email,
-            "displayName": decoded_token.get('name', 'Anonymous'),
-            "photoURL": decoded_token.get('picture'),
+            "displayName": f"MV #{mv_number}",
+            "mvNumber": mv_number,
+            "photoURL": DEFAULT_PHOTO_URL,
             "isPublic": False,
             "isAdmin": False,
             "adminRequestStatus": "NONE", # NONE, PENDING, APPROVED, REJECTED
@@ -286,16 +307,19 @@ def get_my_session():
         "isBannedFromLeaderboard": 1,
     }
     user = db.users.find_one({"firebaseUid": firebase_uid}, fields)
+    is_new_user = False
     if not user:
         email = decoded_token.get('email', '')
         allowed_domains = [d.strip() for d in os.environ.get('ALLOWED_EMAIL_DOMAINS', '').split(',') if d.strip()]
         if allowed_domains and email.split('@')[-1] not in allowed_domains:
             return jsonify({"error": f"Email domain not allowed. Allowed: {', '.join(allowed_domains)}"}), 403
+        mv_number = next_user_number()
         user = {
             "firebaseUid": firebase_uid,
             "email": email,
-            "displayName": decoded_token.get('name', 'Anonymous'),
-            "photoURL": decoded_token.get('picture'),
+            "displayName": f"MV #{mv_number}",
+            "mvNumber": mv_number,
+            "photoURL": DEFAULT_PHOTO_URL,
             "isPublic": False,
             "isAdmin": False,
             "adminRequestStatus": "NONE",
@@ -307,6 +331,7 @@ def get_my_session():
             "watchHistory": []
         }
         db.users.insert_one(user)
+        is_new_user = True
 
     return jsonify({
         "uid": user.get("firebaseUid", firebase_uid),
@@ -316,6 +341,7 @@ def get_my_session():
         "isAdmin": bool(user.get("isAdmin", False)),
         "adminRequestStatus": user.get("adminRequestStatus", "NONE"),
         "isBannedFromLeaderboard": bool(user.get("isBannedFromLeaderboard", False)),
+        "isNewUser": is_new_user,
     })
 
 @users_bp.route('/request-admin', methods=['POST'])
@@ -421,14 +447,20 @@ def add_watch_history():
         pass
     runtime_seconds = runtime_minutes * 60
 
+    # If this watch log creates the account, allocate its user number first.
+    mv_number = None
+    if db.users.find_one({"firebaseUid": firebase_uid}, {"_id": 1}) is None:
+        mv_number = next_user_number()
+
     result = db.users.update_one(
         {"firebaseUid": firebase_uid},
         {
             "$setOnInsert": {
                 "firebaseUid": firebase_uid,
                 "email": decoded_token.get('email', ''),
-                "displayName": decoded_token.get('name', 'Anonymous'),
-                "photoURL": decoded_token.get('picture'),
+                "displayName": f"MV #{mv_number}" if mv_number else "MV #?",
+                "mvNumber": mv_number,
+                "photoURL": DEFAULT_PHOTO_URL,
                 "isPublic": False,
                 "isAdmin": False,
                 "adminRequestStatus": "NONE",
@@ -439,11 +471,24 @@ def add_watch_history():
             },
             "$push": {"watchHistory": entry},
             "$inc": {
-                "totalMoviesWatched": 1, 
+                "totalMoviesWatched": 1,
                 "totalRuntimeSeconds": runtime_seconds
             }
         },
         upsert=True,
+    )
+
+    # Auto-join the leaderboard on watch activity (even a single movie),
+    # unless the user quit via settings (opted out) or is banned.
+    # Profile privacy is untouched: isPublic stays False unless the user
+    # chooses otherwise.
+    db.users.update_one(
+        {
+            "firebaseUid": firebase_uid,
+            "leaderboardOptOut": {"$ne": True},
+            "isBannedFromLeaderboard": {"$ne": True},
+        },
+        {"$set": {"joinedLeaderboard": True}},
     )
 
     return jsonify({"message": "Watch history added successfully", "id": str(entry_id)})
@@ -741,13 +786,22 @@ def update_settings():
             if user and user.get('isBannedFromLeaderboard', False):
                 return jsonify({"error": "Forbidden: Banned from leaderboard"}), 403
             update_data['joinedLeaderboard'] = True
+            # Re-joining clears a previous opt-out.
+            update_data['leaderboardOptOut'] = False
         else:
             update_data['joinedLeaderboard'] = False
+            # Quitting opts out of automatic re-joining on future watch logs.
+            update_data['leaderboardOptOut'] = True
     if 'displayName' in data:
         display_name = data['displayName']
         if not isinstance(display_name, str) or not display_name.strip() or len(display_name.strip()) > 80:
             return jsonify({"error": "Display name must be between 1 and 80 characters"}), 400
         update_data['displayName'] = display_name.strip()
+    if 'photoURL' in data:
+        photo_url = data['photoURL']
+        if not isinstance(photo_url, str) or not photo_url.strip() or len(photo_url.strip()) > 2048:
+            return jsonify({"error": "photoURL must be a non-empty URL under 2048 characters"}), 400
+        update_data['photoURL'] = photo_url.strip()
     if 'customUrl' in data and data['customUrl']:
         custom_url = str(data['customUrl']).strip().lower()
         if not re.match(r'^[a-zA-Z0-9_-]{5,10}$', custom_url):
