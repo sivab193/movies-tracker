@@ -2,6 +2,19 @@
 
 This folder contains backend utility scripts used for universal JSON movie imports, batch data operations, and database maintenance.
 
+## Admin maintenance console
+
+Short, idempotent database migrations that need production environment access can be
+exposed in the admin UI at `/admin/maintenance`. Add the task implementation and
+metadata to `backend/maintenance_tasks.py`; the browser can only execute tasks in
+that allowlist and the backend re-checks the Firebase user’s admin role for every
+preview and apply request. Keep the CLI script as a thin wrapper around the same
+task function so both execution paths report identical results.
+
+Every task should support a read-only preview, return structured counts, and be safe
+to run again. Apply requests require the task ID as explicit confirmation and are
+recorded in the `maintenance_runs` collection.
+
 ## Sun NXT availability seed
 
 To attach the curated Sun NXT links and their India availability to the matching

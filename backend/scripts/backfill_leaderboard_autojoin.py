@@ -17,17 +17,8 @@ ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, ROOT_DIR)
 load_dotenv(os.path.join(ROOT_DIR, ".env"))
 
+from maintenance_tasks import run_leaderboard_autojoin
 from mongo_config import db
-
-ELIGIBLE_FILTER = {
-    "$or": [
-        {"watchHistory.0": {"$exists": True}},
-        {"totalMoviesWatched": {"$gt": 0}},
-    ],
-    "joinedLeaderboard": {"$ne": True},
-    "leaderboardOptOut": {"$ne": True},
-    "isBannedFromLeaderboard": {"$ne": True},
-}
 
 
 def main() -> None:
@@ -36,7 +27,8 @@ def main() -> None:
         exit(1)
 
     apply = "--apply" in sys.argv
-    eligible = db.users.count_documents(ELIGIBLE_FILTER)
+    result = run_leaderboard_autojoin(db, apply=apply)
+    eligible = result["eligibleUsers"]
     print(f"Users eligible for leaderboard auto-join: {eligible}")
 
     if eligible == 0:
@@ -47,8 +39,7 @@ def main() -> None:
         print("Dry run only. Re-run with --apply to perform the update.")
         return
 
-    result = db.users.update_many(ELIGIBLE_FILTER, {"$set": {"joinedLeaderboard": True}})
-    print(f"Auto-joined {result.modified_count} users to the leaderboard.")
+    print(f"Auto-joined {result['modifiedUsers']} users to the leaderboard.")
 
 
 if __name__ == "__main__":

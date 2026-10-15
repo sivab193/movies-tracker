@@ -25,12 +25,8 @@ ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.insert(0, ROOT_DIR)
 load_dotenv(os.path.join(ROOT_DIR, ".env"))
 
+from maintenance_tasks import run_mv_display_names
 from mongo_config import db
-
-PRIVATE_FILTER = {
-    "isPublic": {"$ne": True},
-    "mvNumber": {"$exists": False},
-}
 
 
 def main() -> None:
@@ -40,50 +36,24 @@ def main() -> None:
 
     apply = "--apply" in sys.argv
 
-    taken = {
-        int(u["mvNumber"])
-        for u in db.users.find({"mvNumber": {"$exists": True}}, {"mvNumber": 1})
-        if isinstance(u.get("mvNumber"), int)
-    }
-    users = list(
-        db.users.find(PRIVATE_FILTER, {"_id": 1, "displayName": 1}).sort("_id", 1)
-    )
-    print(f"Private accounts without an MV number: {len(users)}")
-    anonymous = sum(1 for u in users if (u.get("displayName") or "") == "Anonymous")
-    print(f"  of which still on the 'Anonymous' default: {anonymous}")
-    print(f"  of which with a custom/Google name (will be overwritten): {len(users) - anonymous}")
-    if taken:
-        print(f"  MV numbers already taken (will be skipped): {len(taken)}")
+    result = run_mv_display_names(db, apply=apply)
+    print(f"Private accounts without an MV number: {result['eligibleUsers']}")
+    print(f"  of which still on the 'Anonymous' default: {result['anonymousDefaults']}")
+    print(f"  of which with a custom/Google name (will be overwritten): {result['namesToOverwrite']}")
+    if result["numbersAlreadyTaken"]:
+        print(f"  MV numbers already taken (will be skipped): {result['numbersAlreadyTaken']}")
 
-    if not users:
+    if not result["eligibleUsers"]:
         print("Nothing to do.")
         return
     if not apply:
         print("Dry run only. Re-run with --apply to perform the update.")
         return
 
-    number = 1
-    updated = 0
-    for user in users:
-        while number in taken:
-            number += 1
-        db.users.update_one(
-            {"_id": user["_id"]},
-            {"$set": {"mvNumber": number, "displayName": f"MV #{number}"}},
-        )
-        taken.add(number)
-        number += 1
-        updated += 1
-
-    # Advance the counter past the highest assigned number.
-    highest = max(taken)
-    counter = db.counters.find_one({"_id": "userSequence"})
-    if not counter or int(counter.get("seq", 0)) < highest:
-        db.counters.update_one(
-            {"_id": "userSequence"}, {"$set": {"seq": highest}}, upsert=True
-        )
-
-    print(f"Assigned MV numbers to {updated} private accounts (highest: MV #{highest}).")
+    print(
+        f"Assigned MV numbers to {result['modifiedUsers']} private accounts "
+        f"(highest: MV #{result['highestAssignedNumber']})."
+    )
 
 
 if __name__ == "__main__":
