@@ -19,6 +19,7 @@ import {
     Loader2,
     MapPin,
     MonitorPlay,
+    Wrench,
     ShieldAlert,
     Sparkles,
     Tv,
@@ -100,6 +101,7 @@ export default function AdminPage() {
         { title: "Muse API", description: "Generate and rotate the dedicated key used by the anniversary automation.", href: "/admin/muse", icon: KeyRound, tone: "from-cyan-500/20 to-sky-500/5 border-cyan-500/25", action: "Manage Muse access" },
         { title: "Cleanup", description: "Scan duplicate movies and theaters, then merge them safely.", href: "/admin/cleanup", icon: Database, tone: "from-amber-500/20 to-yellow-500/5 border-amber-500/30", action: "Open cleanup" },
         { title: "Data Quality", description: "Find missing runtime, cover art, and reported title-card time gaps.", href: "/admin/data-quality", icon: ShieldAlert, tone: "from-sky-500/20 to-cyan-500/5 border-sky-500/30", action: "Scan quality" },
+        { title: "Maintenance", description: "Preview and apply allowlisted production database migrations.", href: "/admin/maintenance", icon: Wrench, tone: "from-emerald-500/20 to-teal-500/5 border-emerald-500/30", action: "Open maintenance" },
     ]
 
     return (
