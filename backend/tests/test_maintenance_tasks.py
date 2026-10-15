@@ -2,6 +2,8 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
+from pymongo import ReturnDocument
+
 from maintenance_tasks import run_leaderboard_autojoin, run_mv_display_names
 
 
@@ -48,26 +50,44 @@ class MaintenanceTaskTests(unittest.TestCase):
         self.assertEqual(result["namesToOverwrite"], 1)
         users.update_one.assert_not_called()
 
-    def test_mv_apply_skips_taken_numbers_and_advances_counter(self):
+    def test_mv_apply_reserves_numbers_before_assigning_users(self):
         users = MagicMock()
         users.find.side_effect = [
             Cursor([{"mvNumber": 1}]),
             Cursor([{"_id": 10, "displayName": "Anonymous"}]),
         ]
         counters = MagicMock()
-        counters.find_one.return_value = {"_id": "userSequence", "seq": 1}
+        counters.find_one_and_update.return_value = {
+            "_id": "userSequence",
+            "seq": 2,
+        }
+        users.update_one.side_effect = lambda *_args, **_kwargs: self.assertTrue(
+            counters.find_one_and_update.called
+        )
         database = SimpleNamespace(users=users, counters=counters)
 
         result = run_mv_display_names(database, apply=True)
 
+        counters.find_one_and_update.assert_called_once_with(
+            {"_id": "userSequence"},
+            [
+                {
+                    "$set": {
+                        "seq": {
+                            "$add": [
+                                {"$max": [{"$ifNull": ["$seq", 0]}, 1]},
+                                1,
+                            ]
+                        }
+                    }
+                }
+            ],
+            upsert=True,
+            return_document=ReturnDocument.AFTER,
+        )
         users.update_one.assert_called_once_with(
             {"_id": 10},
             {"$set": {"mvNumber": 2, "displayName": "MV #2"}},
-        )
-        counters.update_one.assert_called_once_with(
-            {"_id": "userSequence"},
-            {"$set": {"seq": 2}},
-            upsert=True,
         )
         self.assertEqual(result["highestAssignedNumber"], 2)
 

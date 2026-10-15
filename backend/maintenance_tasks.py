@@ -3,6 +3,8 @@
 from dataclasses import dataclass
 from typing import Any, Callable
 
+from pymongo import ReturnDocument
+
 
 LEADERBOARD_ELIGIBLE_FILTER = {
     "$or": [
@@ -80,25 +82,32 @@ def run_mv_display_names(database: Any, apply: bool) -> dict[str, Any]:
     if not apply or not users:
         return result
 
-    number = 1
+    highest_taken = max(taken) if taken else 0
+    counter = database.counters.find_one_and_update(
+        {"_id": "userSequence"},
+        [
+            {
+                "$set": {
+                    "seq": {
+                        "$add": [
+                            {"$max": [{"$ifNull": ["$seq", 0]}, highest_taken]},
+                            len(users),
+                        ]
+                    }
+                }
+            }
+        ],
+        upsert=True,
+        return_document=ReturnDocument.AFTER,
+    )
+    highest = int(counter["seq"])
+    number = highest - len(users) + 1
     for user in users:
-        while number in taken:
-            number += 1
         database.users.update_one(
             {"_id": user["_id"]},
             {"$set": {"mvNumber": number, "displayName": f"MV #{number}"}},
         )
-        taken.add(number)
         number += 1
-
-    highest = max(taken)
-    counter = database.counters.find_one({"_id": "userSequence"})
-    if not counter or int(counter.get("seq", 0)) < highest:
-        database.counters.update_one(
-            {"_id": "userSequence"},
-            {"$set": {"seq": highest}},
-            upsert=True,
-        )
 
     result["modifiedUsers"] = len(users)
     result["highestAssignedNumber"] = highest
