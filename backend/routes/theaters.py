@@ -9,6 +9,7 @@ theaters_bp = Blueprint('theaters', __name__)
 SCREEN_FORMATS = {'IMAX', 'Dolby Cinema', '4DX', 'ScreenX', 'Laser', 'Standard'}
 SOUND_FORMATS = {'Dolby Atmos', 'Dolby 7.1', 'Dolby 5.1', 'Auro 3D', 'Standard'}
 SEATING_TYPES = {'Recliner', 'Premium', 'Standard', 'Sofa', 'Wheelchair accessible'}
+MAX_THEATER_IMPORT_SIZE = 500
 
 
 def normalize_theater_details(data):
@@ -123,6 +124,50 @@ def normalize_theater_location(t):
             pass
         t['location'] = loc
     return t
+
+
+def _require_admin_token():
+    auth_header = request.headers.get('Authorization', '')
+    if not auth_header.startswith('Bearer '):
+        return None, (jsonify({'error': 'Unauthorized'}), 401)
+    if not is_admin(auth_header.split(' ', 1)[1]):
+        return None, (jsonify({'error': 'Forbidden: Admin access required'}), 403)
+    return auth_header, None
+
+
+def _normalize_import_entry(entry):
+    if not isinstance(entry, dict):
+        raise ValueError('Each theater must be an object')
+
+    name = entry.get('name')
+    location = entry.get('location')
+    gmaps_link = entry.get('gmapsLink', '')
+    if not isinstance(name, str) or not name.strip() or len(name.strip()) > 200:
+        raise ValueError('name is required and must be 200 characters or fewer')
+    if not isinstance(location, str) or not location.strip() or len(location.strip()) > 300:
+        raise ValueError('location is required and must be 300 characters or fewer')
+    if not isinstance(gmaps_link, str) or len(gmaps_link.strip()) > 2048:
+        raise ValueError('gmapsLink is invalid')
+
+    normalized = {'name': name.strip(), 'location': location.strip()}
+    normalize_theater_location(normalized)
+    details_input = {
+        field: entry[field]
+        for field in ('openedYear', 'renovatedYear', 'notes', 'website', 'amenities', 'ticketPlatforms', 'screens')
+        if field in entry
+    }
+    theater = {
+        'name': normalized['name'],
+        'location': normalized['location'],
+        'gmapsLink': gmaps_link.strip(),
+        **normalize_theater_details(details_input),
+    }
+    external_ref = entry.get('externalRef')
+    if external_ref is not None:
+        if not isinstance(external_ref, str) or not external_ref.strip() or len(external_ref.strip()) > 128:
+            raise ValueError('externalRef is invalid')
+        theater['externalRef'] = external_ref.strip()
+    return theater
 
 @theaters_bp.route('/', methods=['GET'])
 def list_theaters():
@@ -256,6 +301,48 @@ def bulk_add_theaters():
         created.append(theater)
 
     return jsonify({"created": created, "skipped": skipped, "invalid": invalid})
+
+
+@theaters_bp.route('/import', methods=['POST'])
+def import_theaters_json():
+    """Import a structured theater JSON export after validating the whole file."""
+    _, error = _require_admin_token()
+    if error:
+        return error
+    if db is None:
+        return jsonify({'error': 'Database not connected'}), 500
+
+    entries = (request.get_json(silent=True) or {}).get('theaters')
+    if not isinstance(entries, list) or not entries:
+        return jsonify({'error': 'The upload must contain a non-empty theaters array'}), 400
+    if len(entries) > MAX_THEATER_IMPORT_SIZE:
+        return jsonify({'error': f'A JSON import can contain at most {MAX_THEATER_IMPORT_SIZE} theaters'}), 400
+
+    normalized_entries, invalid = [], []
+    for index, entry in enumerate(entries, 1):
+        try:
+            normalized_entries.append(_normalize_import_entry(entry))
+        except ValueError as exc:
+            invalid.append({'index': index, 'reason': str(exc)})
+    if invalid:
+        return jsonify({
+            'error': 'Fix the invalid rows and upload the file again. Nothing was imported.',
+            'invalid': invalid,
+        }), 400
+
+    created, skipped = [], []
+    for theater in normalized_entries:
+        existing = db.theaters.find_one({
+            'name': {'$regex': f"^{re.escape(theater['name'])}$", '$options': 'i'},
+            'location': {'$regex': f"^{re.escape(theater['location'])}$", '$options': 'i'},
+        })
+        if existing:
+            skipped.append({'name': theater['name'], 'reason': 'Already exists'})
+            continue
+        result = db.theaters.insert_one(theater)
+        created.append({'id': str(result.inserted_id), 'name': theater['name'], 'location': theater['location']})
+
+    return jsonify({'created': created, 'skipped': skipped})
 
 @theaters_bp.route('/<theater_id>', methods=['PUT'])
 def update_theater(theater_id):

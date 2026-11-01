@@ -288,6 +288,44 @@ export async function bulkAddTheaters(location: string, theaters: Array<{ name: 
     return data as { created: any[]; skipped: Array<{ name: string; reason: string }>; invalid: Array<{ index: number; reason: string }> };
 }
 
+export type TheaterImportEntry = {
+    externalRef?: string
+    name: string
+    location: string
+    gmapsLink?: string
+    website?: string
+    ticketPlatforms?: Array<{ name: string; url?: string }>
+    notes?: string
+    amenities?: string[]
+    openedYear?: number
+    renovatedYear?: number
+    screens?: Array<Record<string, unknown>>
+}
+
+export type TheaterJsonImportResult = {
+    created: Array<{ id: string; name: string; location: string }>
+    skipped: Array<{ name: string; reason: string }>
+}
+
+export async function importTheatersJson(theaters: TheaterImportEntry[]): Promise<TheaterJsonImportResult> {
+    const token = await auth?.currentUser?.getIdToken()
+    if (!token) throw new Error("User not authenticated")
+
+    const response = await fetch(`${API_BASE_URL}/theaters/import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
+        body: JSON.stringify({ theaters }),
+    })
+    const data = await response.json().catch(() => ({}))
+    if (!response.ok) {
+        const invalid = Array.isArray(data.invalid)
+            ? data.invalid.slice(0, 5).map((item: { index: number; reason: string }) => `Row ${item.index}: ${item.reason}`).join("; ")
+            : ""
+        throw new Error([data.error, invalid].filter(Boolean).join(" ") || "Failed to import theater JSON")
+    }
+    return data
+}
+
 export async function updateTheater(
     id: string,
     name: string,
