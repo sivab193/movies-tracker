@@ -5,6 +5,7 @@ All notable changes to Movies Tracker will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **AMC showtimes** - server-side AMC catalog integration with cached public APIs, deterministic IMDb matching, a filterable `/showtimes` page, and movie-page screenings with distance, format, language, price, availability, freshness, attribution, and AMC purchase links
 - **Top Format in Cinema Wrapped** - the shareable year-in-review image now includes a Top Format
   highlight card (e.g. IMAX x12), computed from the `format` on each watch-history entry, with a
   toggle in the customize dialog

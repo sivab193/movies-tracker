@@ -1,0 +1,25 @@
+{
+  "_embedded": {
+    "showtimes": [
+      {
+        "id": 148631113,
+        "movieId": 9001,
+        "movieName": "Example Tamil Film",
+        "theatreId": 6483,
+        "showDateTimeUtc": "2026-11-13T17:30:00Z",
+        "showDateTimeLocal": "2026-11-13T12:30:00-05:00",
+        "lastUpdatedDateUtc": "2026-11-13T15:00:00Z",
+        "premiumFormat": "IMAX",
+        "attributes": [{"code": "CLOSEDCAPTION", "name": "Closed Caption"}],
+        "languages": {"spoken": "Tamil", "subtitle": "English"},
+        "ticketPrices": [{"type": "ADULT", "price": 12.49, "tax": 0.75}],
+        "estimatedFees": [{"type": "CONVENIENCE", "price": 1.50}],
+        "isAlmostSoldOut": true,
+        "isDiscountMatineePriced": true,
+        "discountMatineeMessage": "20% OFF",
+        "purchaseUrl": "https://www.amctheatres.com/showtimes/example"
+      }
+    ]
+  },
+  "page": {"number": 1, "totalPages": 1}
+}

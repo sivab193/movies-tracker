@@ -38,6 +38,11 @@ When a request arrives, the backend intercepts the token via the `@verify_token`
 | **POST** | `/api/movies` | Fetch movie from OMDb and save to catalog | Yes | Yes |
 | **DELETE**| `/api/movies/{movieId}` | Delete a movie from the catalog | Yes | Yes |
 | **GET** | `/api/movies/{movieId}/poster` | Serve binary poster image stored in MongoDB | No | No |
+| **GET** | `/api/movies/{movieId}/showtimes` | AMC showtimes near a coordinate for one matched movie | No | No |
+| **GET** | `/api/amc/showtimes/near` | AMC showtimes near a coordinate | No | No |
+| **GET** | `/api/amc/showtimes/theatre/{amcTheatreId}` | AMC showtimes for one theatre | No | No |
+| **GET** | `/api/amc/movies/{view}` | AMC now-playing, coming-soon, or special-events catalog | No | No |
+| **GET** | `/api/amc/theatres` | Browse AMC theatres by city, state, market, or brand | No | No |
 | **GET** | `/api/theaters` | List all approved movie theaters | No | No |
 | **POST** | `/api/theaters` | Add a new theater to approved list | Yes | Yes |
 | **DELETE**| `/api/theaters/{theaterId}` | Remove an approved theater | Yes | Yes |
@@ -185,6 +190,41 @@ Serves the binary image file stored inside MongoDB's `movie_posters` collection 
 - **Response `200 OK`**: Binary image stream.
 
 ---
+
+## 🍿 AMC Catalog and Showtimes (`/api/amc/*`)
+
+AMC credentials are never accepted from or returned to clients. The backend
+uses `AMC_VENDOR_KEY`, caches showtimes for 30 minutes, and may return a stale
+cached response with `"stale": true` if AMC cannot be refreshed. Every
+showtime response includes `fetchedAtUtc` and AMC attribution.
+
+### `GET /api/amc/showtimes/near`
+
+Required query parameters: `lat`, `lon`. Optional: `date` (`YYYY-MM-DD`, today
+through seven days ahead) and `limit` (1–200). Results are grouped by theatre
+and sorted by calculated straight-line distance.
+
+### `GET /api/movies/{movieId}/showtimes`
+
+Required query parameters: `lat`, `lon`. Optional: `date`. MediaVerse resolves
+the catalog movie to AMC by stored `amcMovieId` or an exact IMDb ID match. An
+unmatched title returns an empty list with `"matched": false`; it is not
+fuzzily joined during the request.
+
+### Other read routes
+
+- `GET /api/amc/showtimes/theatre/{amcTheatreId}?date=YYYY-MM-DD`
+- `GET /api/amc/movies/now-playing`
+- `GET /api/amc/movies/coming-soon`
+- `GET /api/amc/movies/special-events`
+- `GET /api/amc/theatres?city=&state=&market=&brand=`
+- `GET /api/amc/theatres/{amcTheatreId}`
+
+`POST /api/amc/sync?scope=movies|theatres` is an operator endpoint. It requires
+`X-AMC-Sync-Secret` matching `AMC_SYNC_SECRET`. Movie sync updates exact or
+high-confidence catalog matches and sends unmatched titles to
+`amc_match_queue`; theatre sync upserts AMC locations without modifying the
+existing India theatre records.
 
 ## 🏢 Approved Theaters (`/api/theaters/*`)
 

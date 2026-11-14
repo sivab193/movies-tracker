@@ -16,6 +16,7 @@ import { useAuth } from "@/contexts/auth-context"
 import { PersonLink } from "@/components/person-link"
 import { creditNames } from "@/lib/people"
 import { WatchOnlineSection } from "@/components/watch-online-section"
+import { AMCShowtimes } from "@/components/amc-showtimes"
 
 export default function MovieDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
@@ -235,6 +236,10 @@ export function MovieDetailContent({ id }: { id: string }) {
               </Card>
             </div>
           </section>
+        </div>
+
+        <div className="mt-5 rounded-2xl border border-white/10 bg-background/70 p-4 shadow-lg backdrop-blur-md sm:p-5">
+          <AMCShowtimes movieId={id} compact />
         </div>
       </main>
 
