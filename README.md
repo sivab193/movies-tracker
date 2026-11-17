@@ -154,6 +154,8 @@ In your Vercel Dashboard → Project Settings → Environment Variables, configu
 | :--- | :--- |
 | `MONGO_URI` | MongoDB Atlas Production Cluster Connection String |
 | `OMDB_API_KEY` | Your OMDb API Key |
+| `AMC_VENDOR_KEY` | AMC catalog vendor key (**server-side only**) |
+| `AMC_SYNC_SECRET` | Random secret required by the optional AMC catalog sync endpoint |
 | `FIREBASE_SERVICE_ACCOUNT_KEY` | **Paste the entire raw JSON string** of `serviceAccountKey.json` |
 | `NEXT_PUBLIC_FIREBASE_API_KEY` | Firebase Client API Key |
 | `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Firebase Auth Domain (`project.firebaseapp.com`) |

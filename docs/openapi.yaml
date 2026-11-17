@@ -488,3 +488,40 @@ paths:
                       type: integer
                     isPublic:
                       type: boolean
+  /amc/showtimes/near:
+    get:
+      summary: Get cached AMC showtimes near a coordinate
+      parameters:
+        - {name: lat, in: query, required: true, schema: {type: number, minimum: -90, maximum: 90}}
+        - {name: lon, in: query, required: true, schema: {type: number, minimum: -180, maximum: 180}}
+        - {name: date, in: query, required: false, schema: {type: string, format: date}}
+      responses:
+        '200': {description: Showtimes grouped by theatre and sorted by distance}
+        '400': {description: Invalid coordinate or date}
+        '502': {description: AMC unavailable and no cached response exists}
+  /movies/{movieId}/showtimes:
+    get:
+      summary: Get nearby AMC showtimes for a MediaVerse movie
+      parameters:
+        - {name: movieId, in: path, required: true, schema: {type: string}}
+        - {name: lat, in: query, required: true, schema: {type: number}}
+        - {name: lon, in: query, required: true, schema: {type: number}}
+        - {name: date, in: query, required: false, schema: {type: string, format: date}}
+      responses:
+        '200': {description: Matching showtimes or an explicit unmatched result}
+        '404': {description: MediaVerse movie not found}
+  /amc/movies/{view}:
+    get:
+      summary: Get an AMC catalog view
+      parameters:
+        - name: view
+          in: path
+          required: true
+          schema: {type: string, enum: [now-playing, coming-soon, special-events]}
+      responses:
+        '200': {description: Cached AMC movie records}
+  /amc/theatres:
+    get:
+      summary: Browse AMC theatres
+      responses:
+        '200': {description: Cached AMC theatre records}

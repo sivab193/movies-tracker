@@ -11,6 +11,7 @@ import {
   Settings,
   Mail,
   Map,
+  MapPin,
   Compass,
   Users,
   Tv2,
@@ -86,6 +87,13 @@ export const DISCOVER_GROUP: NavGroup = {
       description: "Compare cinema screens, formats, and amenities",
       icon: Map,
       keywords: ["cinema", "imax", "dolby", "screens"],
+    },
+    {
+      href: "/showtimes",
+      label: "Showtimes",
+      description: "Find AMC screenings by distance, format, and language",
+      icon: MapPin,
+      keywords: ["amc", "cinema", "tickets", "near me", "tamil", "imax", "dolby"],
     },
     {
       href: "/screens",
