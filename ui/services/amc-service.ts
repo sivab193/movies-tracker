@@ -1,3 +1,5 @@
+import { auth } from "@/lib/firebase"
+
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api"
 
 export type AMCTicketPrice = {
@@ -52,11 +54,15 @@ export type AMCShowtimesResponse = {
 export type ShowtimeQuery = { lat: number; lon: number; date: string; movieId?: string }
 
 export async function getAMCShowtimes(query: ShowtimeQuery): Promise<AMCShowtimesResponse> {
+  const token = await auth?.currentUser?.getIdToken()
+  if (!token) throw new Error("Sign in to see AMC showtimes")
   const params = new URLSearchParams({ lat: String(query.lat), lon: String(query.lon), date: query.date })
   const path = query.movieId
     ? `/movies/${encodeURIComponent(query.movieId)}/showtimes`
     : "/amc/showtimes/near"
-  const response = await fetch(`${API_BASE_URL}${path}?${params}`)
+  const response = await fetch(`${API_BASE_URL}${path}?${params}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  })
   const data = await response.json()
   if (!response.ok) throw new Error(data.error || "AMC showtimes are unavailable")
   return data

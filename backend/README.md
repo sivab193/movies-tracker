@@ -31,8 +31,6 @@ MONGO_URI=mongodb://localhost:27017/movies_tracker
 
 OMDB_API_KEY=your_omdb_api_key_here
 AMC_VENDOR_KEY=your_server_side_amc_vendor_key
-# Required only for invoking POST /api/amc/sync from a scheduler
-AMC_SYNC_SECRET=a-long-random-secret
 FIREBASE_SERVICE_ACCOUNT_KEY=backend/serviceAccountKey.json
 PORT=8000
 # Optional initial Muse API key. For no-deploy rotation, use the hashed
@@ -43,7 +41,10 @@ MEDIA_VERSE_AGENT_KEY=store-this-only-in-your-secret-manager
 `AMC_VENDOR_KEY` is read only by the Flask backend. Never prefix it with
 `NEXT_PUBLIC_`, place it in the Android client, or expose it in logs. AMC read
 routes cache showtimes for 30 minutes and serve the last cached response when a
-refresh fails.
+refresh fails. AMC read routes require a signed-in user. Catalog sync is an
+operator action, not a public endpoint: run it from the admin maintenance page
+(AMC movie sync / AMC theatre sync) or from a scheduler with
+`python scripts/sync_amc.py --apply`.
 
 > ⚠️ **Service Account**: Place your downloaded Firebase `serviceAccountKey.json` inside the `backend/` folder (it is automatically ignored by git via `.gitignore`).
 

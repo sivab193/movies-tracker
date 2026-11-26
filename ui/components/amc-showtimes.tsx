@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { useAuth } from "@/contexts/auth-context"
 import { getAMCShowtimes, type AMCShowtime, type AMCShowtimesResponse } from "@/services/amc-service"
 
 const WEST_LAFAYETTE = { lat: 40.4259, lon: -86.9081, label: "West Lafayette, IN" }
@@ -36,6 +37,7 @@ function badges(showtime: AMCShowtime) {
 }
 
 export function AMCShowtimes({ movieId, compact = false }: { movieId?: string; compact?: boolean }) {
+  const { user, loading: authLoading } = useAuth()
   const [coordinates, setCoordinates] = useState(WEST_LAFAYETTE)
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"))
   const [formatFilter, setFormatFilter] = useState("all")
@@ -59,7 +61,7 @@ export function AMCShowtimes({ movieId, compact = false }: { movieId?: string; c
     }
   }, [coordinates.lat, coordinates.lon, date, movieId])
 
-  useEffect(() => { void load() }, [load])
+  useEffect(() => { if (user) void load() }, [load, user])
 
   function useMyLocation() {
     if (!navigator.geolocation) {
@@ -88,6 +90,34 @@ export function AMCShowtimes({ movieId, compact = false }: { movieId?: string; c
         && (timeFilter === "all" || (timeFilter === "matinee" ? hour < 17 : hour >= 17))
     }),
   })).filter((group) => group.showtimes.length > 0), [data, formatFilter, languageFilter, timeFilter])
+
+  if (authLoading) {
+    return (
+      <section aria-labelledby={movieId ? "movie-showtimes-heading" : "showtimes-heading"}>
+        <h2 id={movieId ? "movie-showtimes-heading" : "showtimes-heading"} className={compact ? "text-lg font-bold" : "text-2xl font-bold"}>
+          {movieId ? "Now showing" : "Showtimes near me"}
+        </h2>
+        <div className="flex min-h-32 items-center justify-center text-sm text-muted-foreground"><Loader2 className="mr-2 h-5 w-5 animate-spin" />Loading AMC showtimes…</div>
+      </section>
+    )
+  }
+
+  if (!user) {
+    return (
+      <section aria-labelledby={movieId ? "movie-showtimes-heading" : "showtimes-heading"}>
+        <h2 id={movieId ? "movie-showtimes-heading" : "showtimes-heading"} className={compact ? "text-lg font-bold" : "text-2xl font-bold"}>
+          {movieId ? "Now showing" : "Showtimes near me"}
+        </h2>
+        <Card className="mt-4">
+          <CardContent className="flex flex-col items-start gap-3 py-5">
+            <p className="flex items-center gap-2 font-medium"><Ticket className="h-5 w-5 text-muted-foreground" />Sign in to see AMC showtimes</p>
+            <p className="text-sm text-muted-foreground">AMC showtimes are available to signed-in MediaVerse users.</p>
+            <Button asChild size="sm"><Link href="/auth">Sign in</Link></Button>
+          </CardContent>
+        </Card>
+      </section>
+    )
+  }
 
   return (
     <section aria-labelledby={movieId ? "movie-showtimes-heading" : "showtimes-heading"}>
