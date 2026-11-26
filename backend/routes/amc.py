@@ -4,21 +4,40 @@ import datetime as dt
 import hashlib
 import json
 import math
-import os
-import secrets
 
 from flask import Blueprint, jsonify, request
 
+from firebase_config import auth as firebase_auth
 from mongo_config import db
 from services.amc_cache import AMCCache
 from services.amc_client import AMCClient, AMCError
 from services.amc_matching import match_amc_movie
-from services.amc_sync import sync_movie_catalog, sync_theatres
 
 
 amc_bp = Blueprint("amc", __name__)
 movie_showtimes_bp = Blueprint("movie_showtimes", __name__)
 _cache = AMCCache(db)
+
+
+def _authenticated_uid():
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return None
+    try:
+        decoded = firebase_auth.verify_id_token(auth_header.split(" ")[1])
+        return decoded.get("uid")
+    except Exception:
+        return None
+
+
+def _require_login():
+    if _authenticated_uid() is None:
+        return jsonify({"error": "Sign in required to use AMC showtimes"}), 401
+    return None
+
+
+amc_bp.before_request(_require_login)
+movie_showtimes_bp.before_request(_require_login)
 
 if db is not None:
     try:
@@ -216,19 +235,3 @@ def movie_showtimes(movie_id):
         "groups": _group_showtimes(items, lat, lon), "matched": True, "amcMovieId": amc_movie_id,
         "fetchedAtUtc": cached["fetchedAtUtc"], "stale": cached["stale"], "attribution": "Showtimes by AMC",
     })
-
-
-@amc_bp.route("/sync", methods=["POST"])
-def sync():
-    expected = os.environ.get("AMC_SYNC_SECRET")
-    supplied = request.headers.get("X-AMC-Sync-Secret", "")
-    if not expected or not secrets.compare_digest(supplied, expected):
-        return jsonify({"error": "Unauthorized"}), 401
-    if db is None:
-        return jsonify({"error": "Database not connected"}), 500
-    scope = request.args.get("scope", "movies")
-    if scope == "movies":
-        return jsonify(sync_movie_catalog(db, _client()))
-    if scope == "theatres":
-        return jsonify(sync_theatres(db, _client()))
-    return jsonify({"error": "scope must be movies or theatres"}), 400

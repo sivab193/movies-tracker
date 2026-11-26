@@ -80,6 +80,8 @@ All notable changes to Movies Tracker will be documented in this file.
 - Updated frontend README with device page documentation
 
 ### Security
+- AMC showtimes now require a signed-in user; the AMC API routes reject anonymous requests and the showtimes UI prompts for sign-in
+- Removed the public `POST /api/amc/sync` endpoint and its shared-secret header; AMC catalog sync now runs from the admin maintenance page or the backend `scripts/sync_amc.py` job, and `AMC_SYNC_SECRET` is no longer used
 - Refresh tokens stored with restricted permissions (0600)
 - Device codes expire after 15 minutes
 - Access tokens auto-refresh before expiry

@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock
 
-from services.amc_sync import sync_movie_catalog
+from services.amc_sync import sync_movie_catalog, sync_theatres
 
 
 class AMCSyncTests(unittest.TestCase):
@@ -33,6 +33,43 @@ class AMCSyncTests(unittest.TestCase):
         update = database.movies.update_one.call_args.args[1]["$set"]
         self.assertEqual(update["amcMovieId"], 11)
         self.assertEqual(update["amcMatchConfidence"], "exact-imdb")
+
+    def test_movie_preview_counts_without_writing(self):
+        database = MagicMock()
+        database.movies.find.return_value = [{"_id": "local-1", "imdbId": "tt123", "title": "Film"}]
+        client = MagicMock()
+        client.get_now_playing.return_value = {"items": [{"id": 11, "name": "Film", "imdbId": "tt123", "hasScheduledShowtimes": True}]}
+        client.get_coming_soon.return_value = {"items": []}
+
+        result = sync_movie_catalog(database, client, apply=False)
+
+        self.assertEqual(result, {"seen": 1, "matched": 1, "queued": 0})
+        database.movies.update_one.assert_not_called()
+        database.amc_match_queue.update_one.assert_not_called()
+
+    def test_theatre_sync_upserts_named_theatres(self):
+        database = MagicMock()
+        client = MagicMock()
+        client.get_theatres.return_value = {"items": [
+            {"id": 1, "name": "AMC One"}, {"id": 2, "name": "AMC Two"}, {"id": 3},
+        ], "page": {}}
+
+        result = sync_theatres(database, client)
+
+        self.assertEqual(result, {"synced": 2})
+        self.assertEqual(database.theaters.update_one.call_count, 2)
+
+    def test_theatre_preview_counts_without_writing(self):
+        database = MagicMock()
+        client = MagicMock()
+        client.get_theatres.return_value = {"items": [
+            {"id": 1, "name": "AMC One"}, {"id": 2, "name": "AMC Two"},
+        ], "page": {}}
+
+        result = sync_theatres(database, client, apply=False)
+
+        self.assertEqual(result, {"synced": 2})
+        database.theaters.update_one.assert_not_called()
 
 
 if __name__ == "__main__":

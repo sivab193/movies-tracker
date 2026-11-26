@@ -5,6 +5,9 @@ from typing import Any, Callable
 
 from pymongo import ReturnDocument
 
+from services.amc_client import AMCClient, AMCError
+from services.amc_sync import sync_movie_catalog, sync_theatres
+
 
 LEADERBOARD_ELIGIBLE_FILTER = {
     "$or": [
@@ -114,9 +117,51 @@ def run_mv_display_names(database: Any, apply: bool) -> dict[str, Any]:
     return result
 
 
+def run_amc_sync_movies(database: Any, apply: bool) -> dict[str, Any]:
+    try:
+        client = AMCClient()
+    except AMCError as exc:
+        return {"error": str(exc)}
+    return sync_movie_catalog(database, client, apply=apply)
+
+
+def run_amc_sync_theatres(database: Any, apply: bool) -> dict[str, Any]:
+    try:
+        client = AMCClient()
+    except AMCError as exc:
+        return {"error": str(exc)}
+    return sync_theatres(database, client, apply=apply)
+
+
 TASKS = {
     task.id: task
     for task in (
+        MaintenanceTask(
+            id="amc-sync-movies",
+            title="AMC movie sync",
+            description=(
+                "Match AMC now-playing and coming-soon titles to MediaVerse "
+                "movies by IMDb ID and queue unmatched titles for review."
+            ),
+            impact=(
+                "Writes amcMovieId, amcSlug, amcScore and theatrical status on "
+                "matched movies, and refreshes the AMC match queue."
+            ),
+            run=run_amc_sync_movies,
+        ),
+        MaintenanceTask(
+            id="amc-sync-theatres",
+            title="AMC theatre sync",
+            description=(
+                "Import or refresh the full AMC theatre directory into the "
+                "theatres collection."
+            ),
+            impact=(
+                "Upserts AMC theatres keyed by chain and amcTheatreId. "
+                "Non-AMC theatres are untouched."
+            ),
+            run=run_amc_sync_theatres,
+        ),
         MaintenanceTask(
             id="leaderboard-autojoin",
             title="Leaderboard auto-join",
