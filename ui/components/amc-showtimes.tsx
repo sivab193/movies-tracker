@@ -43,6 +43,10 @@ export function AMCShowtimes({ movieId, compact = false }: { movieId?: string; c
   const [formatFilter, setFormatFilter] = useState("all")
   const [languageFilter, setLanguageFilter] = useState("all")
   const [timeFilter, setTimeFilter] = useState("all")
+  const [movieFilter, setMovieFilter] = useState("all")
+  const [stateFilter, setStateFilter] = useState("all")
+  const [cityFilter, setCityFilter] = useState("all")
+  const [theatreQuery, setTheatreQuery] = useState("")
   const [data, setData] = useState<AMCShowtimesResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -79,17 +83,57 @@ export function AMCShowtimes({ movieId, compact = false }: { movieId?: string; c
     )
   }
 
-  const groups = useMemo(() => (data?.groups || []).map((group) => ({
-    ...group,
-    showtimes: group.showtimes.filter((showtime) => {
-      const showtimeBadges = badges(showtime).join(" ").toLowerCase()
-      const showtimeLanguages = languageLine(showtime).toLowerCase()
-      const hour = showtime.showDateTimeLocal ? new Date(showtime.showDateTimeLocal).getHours() : 0
-      return (formatFilter === "all" || showtimeBadges.includes(formatFilter))
-        && (languageFilter === "all" || showtimeLanguages.includes(languageFilter))
-        && (timeFilter === "all" || (timeFilter === "matinee" ? hour < 17 : hour >= 17))
-    }),
-  })).filter((group) => group.showtimes.length > 0), [data, formatFilter, languageFilter, timeFilter])
+  // Discovery options come from the theatres and showtimes actually
+  // returned, so the filters never offer a city, state, or movie with
+  // nothing playing.
+  const movieOptions = useMemo(() => {
+    const byId = new Map<string, string>()
+    for (const group of data?.groups || []) {
+      for (const showtime of group.showtimes) {
+        if (showtime.movieId != null && showtime.movieName && !byId.has(String(showtime.movieId))) {
+          byId.set(String(showtime.movieId), showtime.movieName)
+        }
+      }
+    }
+    return [...byId.entries()]
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }, [data])
+
+  const stateOptions = useMemo(() => [...new Set(
+    (data?.groups || []).map((group) => group.theatre.location?.state).filter(Boolean) as string[],
+  )].sort(), [data])
+
+  const cityOptions = useMemo(() => [...new Set(
+    (data?.groups || [])
+      .filter((group) => stateFilter === "all" || group.theatre.location?.state === stateFilter)
+      .map((group) => group.theatre.location?.city)
+      .filter(Boolean) as string[],
+  )].sort(), [data, stateFilter])
+
+  // A selected city or movie can disappear when the underlying results
+  // change (new date, new location, narrower state); fall back to "all"
+  // instead of filtering everything out.
+  const effectiveCityFilter = cityFilter !== "all" && cityOptions.includes(cityFilter) ? cityFilter : "all"
+  const effectiveMovieFilter = movieFilter !== "all" && movieOptions.some((movie) => movie.id === movieFilter) ? movieFilter : "all"
+
+  const groups = useMemo(() => (data?.groups || [])
+    .filter((group) => (stateFilter === "all" || group.theatre.location?.state === stateFilter)
+      && (effectiveCityFilter === "all" || group.theatre.location?.city === effectiveCityFilter)
+      && (theatreQuery.trim() === "" || (group.theatre.name || "").toLowerCase().includes(theatreQuery.trim().toLowerCase())))
+    .map((group) => ({
+      ...group,
+      showtimes: group.showtimes.filter((showtime) => {
+        const showtimeBadges = badges(showtime).join(" ").toLowerCase()
+        const showtimeLanguages = languageLine(showtime).toLowerCase()
+        const hour = showtime.showDateTimeLocal ? new Date(showtime.showDateTimeLocal).getHours() : 0
+        return (effectiveMovieFilter === "all" || String(showtime.movieId) === effectiveMovieFilter)
+          && (formatFilter === "all" || showtimeBadges.includes(formatFilter))
+          && (languageFilter === "all" || showtimeLanguages.includes(languageFilter))
+          && (timeFilter === "all" || (timeFilter === "matinee" ? hour < 17 : hour >= 17))
+      }),
+    })).filter((group) => group.showtimes.length > 0),
+  [data, effectiveMovieFilter, stateFilter, effectiveCityFilter, theatreQuery, formatFilter, languageFilter, timeFilter])
 
   if (authLoading) {
     return (
@@ -136,7 +180,7 @@ export function AMCShowtimes({ movieId, compact = false }: { movieId?: string; c
               type="date"
               value={date}
               min={format(new Date(), "yyyy-MM-dd")}
-              max={format(addDays(new Date(), 7), "yyyy-MM-dd")}
+              max={format(addDays(new Date(), 30), "yyyy-MM-dd")}
               onChange={(event) => setDate(event.target.value)}
               className="h-9 w-40"
             />
@@ -145,6 +189,25 @@ export function AMCShowtimes({ movieId, compact = false }: { movieId?: string; c
           <Button variant="ghost" size="icon" onClick={() => void load()} aria-label="Refresh showtimes"><RefreshCw className="h-4 w-4" /></Button>
         </div>
       </div>
+
+      {!compact && !movieId && (
+        <div className="mb-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <Filter label="Movie" value={effectiveMovieFilter} onChange={setMovieFilter} options={[["all", "All movies"], ...movieOptions.map((movie) => [movie.id, movie.name])]} />
+          <Filter label="State" value={stateFilter} onChange={setStateFilter} options={[["all", "All states"], ...stateOptions.map((state) => [state, state])]} />
+          <Filter label="City" value={effectiveCityFilter} onChange={setCityFilter} options={[["all", "All cities"], ...cityOptions.map((city) => [city, city])]} />
+          <div className="space-y-1">
+            <Label htmlFor="showtime-theatre-search" className="text-xs">Theatre</Label>
+            <Input
+              id="showtime-theatre-search"
+              type="search"
+              value={theatreQuery}
+              onChange={(event) => setTheatreQuery(event.target.value)}
+              placeholder="Search theatres"
+              className="h-9"
+            />
+          </div>
+        </div>
+      )}
 
       {!compact && (
         <div className="mb-5 grid gap-3 sm:grid-cols-3">

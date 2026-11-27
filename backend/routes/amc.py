@@ -58,8 +58,8 @@ def _date_arg():
     except ValueError as exc:
         raise ValueError("date must use YYYY-MM-DD") from exc
     today = dt.date.today()
-    if parsed < today or parsed > today + dt.timedelta(days=7):
-        raise ValueError("date must be between today and seven days from today")
+    if parsed < today or parsed > today + dt.timedelta(days=30):
+        raise ValueError("date must be between today and thirty days from today")
     return value
 
 
@@ -79,9 +79,9 @@ def _cache_key(name, **values):
     return f"{name}:{hashlib.sha256(encoded.encode()).hexdigest()}"
 
 
-def _cached(name, ttl, fetch, **values):
+def _cached(cache_name, ttl, fetch, **values):
     try:
-        return _cache.get_or_fetch(_cache_key(name, **values), ttl, fetch)
+        return _cache.get_or_fetch(_cache_key(cache_name, **values), ttl, fetch)
     except AMCError as exc:
         if exc.is_empty_result:
             now = dt.datetime.now(dt.timezone.utc).isoformat()
@@ -207,7 +207,7 @@ def theatre(theatre_id):
 def _resolve_amc_movie(movie):
     if movie.get("amcMovieId"):
         return movie.get("amcMovieId")
-    cached = _cached("movie-name", 21600, lambda: _client().get_movie_by_name(movie.get("title") or ""), name=movie.get("title") or "")
+    cached = _cached("movie-name", 21600, lambda: _client().get_movie_by_name(movie.get("title") or ""), title=movie.get("title") or "")
     match, confidence = match_amc_movie({
         "name": movie.get("title"), "imdbId": movie.get("imdbId"), "year": movie.get("year"), "runtime": movie.get("runtime")
     }, cached["data"].get("items", []))
