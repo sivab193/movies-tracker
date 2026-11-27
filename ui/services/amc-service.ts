@@ -60,10 +60,23 @@ export async function getAMCShowtimes(query: ShowtimeQuery): Promise<AMCShowtime
   const path = query.movieId
     ? `/movies/${encodeURIComponent(query.movieId)}/showtimes`
     : "/amc/showtimes/near"
-  const response = await fetch(`${API_BASE_URL}${path}?${params}`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  const data = await response.json()
-  if (!response.ok) throw new Error(data.error || "AMC showtimes are unavailable")
+  let response: Response
+  try {
+    response = await fetch(`${API_BASE_URL}${path}?${params}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+  } catch {
+    throw new Error("AMC showtimes are unavailable")
+  }
+  // The API should always answer JSON, but never surface a raw parse error
+  // (e.g. an HTML error page) to the user if it does not.
+  let data: AMCShowtimesResponse & { error?: string } | null = null
+  try {
+    data = (await response.json()) as AMCShowtimesResponse & { error?: string }
+  } catch {
+    data = null
+  }
+  if (!response.ok) throw new Error(data?.error || "AMC showtimes are unavailable")
+  if (!data) throw new Error("AMC showtimes are unavailable")
   return data
 }

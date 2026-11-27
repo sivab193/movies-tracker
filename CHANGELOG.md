@@ -5,6 +5,8 @@ All notable changes to Movies Tracker will be documented in this file.
 ## [Unreleased]
 
 ### Added
+- **Global search** - the command palette (Cmd/Ctrl+K) now searches the catalog through `GET /api/search`, with grouped results for movies, series, theatres, people (from catalog credits), and public member profiles above the existing pages and actions
+- **Showtimes discovery filters** - the `/showtimes` page adds a movie picker, state and city selects, and a theatre-name search above the format, language, and time filters, all derived from the theatres and showtimes actually returned; the showtimes date window now extends thirty days out
 - **AMC showtimes** - server-side AMC catalog integration with cached public APIs, deterministic IMDb matching, a filterable `/showtimes` page, and movie-page screenings with distance, format, language, price, availability, freshness, attribution, and AMC purchase links
 - **Top Format in Cinema Wrapped** - the shareable year-in-review image now includes a Top Format
   highlight card (e.g. IMAX x12), computed from the `format` on each watch-history entry, with a
@@ -42,6 +44,7 @@ All notable changes to Movies Tracker will be documented in this file.
   - Per-series season chips with watch counts, inline count editing and rewatch/remove actions
 
 ### Fixed
+- Movie-page showtimes failed with an HTML error page ("Unexpected token '<' ... is not valid JSON") for every movie without a preset AMC match; the name-lookup cache call passed a colliding keyword argument. API routes now always answer JSON, including unknown routes and unhandled errors, and the showtimes UI reports a clean message if a response is not JSON
 - Per-page metadata never applied: 11 `metadata.ts` files sat next to client `page.tsx`
   files, which Next.js does not read, so every link fell back to the generic
   MediaVerse card. Replaced with server `layout.tsx` files.

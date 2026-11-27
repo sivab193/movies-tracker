@@ -1,5 +1,6 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from flask_cors import CORS
+from werkzeug.exceptions import HTTPException
 from dotenv import load_dotenv
 import os
 import sys
@@ -24,6 +25,20 @@ CORS(app, resources={r"/api/*": {"origins": allowed_origins}})
 def health_check():
     return jsonify({"status": "healthy", "service": "backend"})
 
+@app.errorhandler(HTTPException)
+def json_http_errors(error):
+    # API clients must never receive Flask's default HTML error pages.
+    if request.path.startswith('/api/'):
+        return jsonify({"error": error.name}), error.code
+    return error
+
+@app.errorhandler(Exception)
+def json_unhandled_errors(error):
+    if request.path.startswith('/api/'):
+        app.logger.exception("Unhandled API error")
+        return jsonify({"error": "Internal server error"}), 500
+    raise error
+
 from routes.movies import movies_bp
 from routes.leaderboard import leaderboard_bp
 from routes.users import users_bp
@@ -41,6 +56,7 @@ from routes.ott_providers import ott_providers_bp
 from routes.agent_movies import agent_admin_bp, agent_movies_bp
 from routes.admin_maintenance import admin_maintenance_bp
 from routes.amc import amc_bp, movie_showtimes_bp
+from routes.search import search_bp
 
 app.register_blueprint(movies_bp, url_prefix='/api/movies')
 app.register_blueprint(leaderboard_bp, url_prefix='/api/leaderboard')
@@ -61,6 +77,7 @@ app.register_blueprint(agent_admin_bp, url_prefix='/api/agent')
 app.register_blueprint(admin_maintenance_bp, url_prefix='/api/admin/maintenance')
 app.register_blueprint(amc_bp, url_prefix='/api/amc')
 app.register_blueprint(movie_showtimes_bp, url_prefix='/api/movies')
+app.register_blueprint(search_bp, url_prefix='/api/search')
 
 
 if __name__ == '__main__':
