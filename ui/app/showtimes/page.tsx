@@ -8,5 +8,5 @@ export const metadata: Metadata = {
 }
 
 export default function ShowtimesPage() {
-  return <div className="min-h-screen bg-background"><Header /><main className="mx-auto max-w-6xl px-4 py-8"><div className="mb-7 max-w-2xl"><h1 className="text-3xl font-bold tracking-tight">Find a screening worth the drive</h1><p className="mt-2 text-muted-foreground">Live AMC programming with honest distance, format, language, and ticket details. Booking always happens on AMC.</p></div><AMCShowtimes /></main></div>
+  return <div className="min-h-screen bg-background"><Header /><main className="mx-auto max-w-6xl px-4 py-8"><div className="mb-7 max-w-2xl"><h1 className="text-3xl font-bold tracking-tight">Find a screening worth the drive</h1><p className="mt-2 text-muted-foreground">Live AMC programming with honest distance, format, language, and ticket details. Search any city you are in, or one you are headed to. Booking always happens on AMC.</p></div><AMCShowtimes /></main></div>
 }

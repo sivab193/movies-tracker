@@ -2,43 +2,32 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
-import { AlertCircle, ExternalLink, Loader2, LocateFixed, MapPin, RefreshCw, Ticket } from "lucide-react"
+import { AlertCircle, Loader2, LocateFixed, MapPin, RefreshCw, Ticket } from "lucide-react"
 import { addDays, format, formatDistanceToNow } from "date-fns"
 
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import {
+  ShowtimeCells,
+  ShowtimesBrowser,
+  applyShowtimeFilters,
+  badges,
+  languageLine,
+  type ShowtimeFilters,
+  type ShowtimesPlace,
+} from "@/components/showtimes-browser"
 import { useAuth } from "@/contexts/auth-context"
-import { getAMCShowtimes, type AMCShowtime, type AMCShowtimesResponse } from "@/services/amc-service"
+import { getAMCShowtimes, type AMCShowtimesResponse } from "@/services/amc-service"
 
-const WEST_LAFAYETTE = { lat: 40.4259, lon: -86.9081, label: "West Lafayette, IN" }
-
-function languageLine(showtime: AMCShowtime) {
-  const values = []
-  if (showtime.languages.spoken) values.push(`${showtime.languages.spoken} audio`)
-  if (showtime.languages.dubbedOver) values.push(`dubbed in ${showtime.languages.dubbedOver}`)
-  if (showtime.languages.subtitle) values.push(`${showtime.languages.subtitle} subtitles`)
-  return values.join(" · ")
-}
-
-function priceLine(showtime: AMCShowtime) {
-  const adult = showtime.ticketPrices.find((price) => price.type?.toUpperCase() === "ADULT") || showtime.ticketPrices[0]
-  if (!adult) return null
-  const fees = showtime.estimatedFees.reduce((sum, fee) => sum + fee.priceCents, 0)
-  return `from $${((adult.priceCents + fees) / 100).toFixed(2)}`
-}
-
-function badges(showtime: AMCShowtime) {
-  const values = [showtime.premiumFormat, ...showtime.attributes.map((attribute) => attribute.name || attribute.code)]
-  return [...new Set(values.filter(Boolean))] as string[]
-}
+const WEST_LAFAYETTE: ShowtimesPlace = { lat: 40.4259, lon: -86.9081, label: "West Lafayette, IN" }
+const PLACE_STORAGE_KEY = "mv-showtimes-place"
 
 export function AMCShowtimes({ movieId, compact = false }: { movieId?: string; compact?: boolean }) {
   const { user, loading: authLoading } = useAuth()
-  const [coordinates, setCoordinates] = useState(WEST_LAFAYETTE)
+  const [coordinates, setCoordinates] = useState<ShowtimesPlace>(WEST_LAFAYETTE)
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd"))
   const [formatFilter, setFormatFilter] = useState("all")
   const [languageFilter, setLanguageFilter] = useState("all")
@@ -47,6 +36,13 @@ export function AMCShowtimes({ movieId, compact = false }: { movieId?: string; c
   const [stateFilter, setStateFilter] = useState("all")
   const [cityFilter, setCityFilter] = useState("all")
   const [theatreQuery, setTheatreQuery] = useState("")
+  const [pageFilters, setPageFilters] = useState<ShowtimeFilters>({
+    format: "all",
+    language: "all",
+    time: "all",
+    captions: false,
+    audioDesc: false,
+  })
   const [data, setData] = useState<AMCShowtimesResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
@@ -66,6 +62,31 @@ export function AMCShowtimes({ movieId, compact = false }: { movieId?: string; c
   }, [coordinates.lat, coordinates.lon, date, movieId])
 
   useEffect(() => { if (user) void load() }, [load, user])
+
+  // Restore the last place picked on the showtimes page, if any.
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(PLACE_STORAGE_KEY)
+      if (!raw) return
+      const parsed = JSON.parse(raw) as Partial<ShowtimesPlace>
+      if (typeof parsed.lat === "number" && typeof parsed.lon === "number" && typeof parsed.label === "string" && parsed.label) {
+        setCoordinates({ lat: parsed.lat, lon: parsed.lon, label: parsed.label })
+        setLocationMessage(`Showing distances from ${parsed.label}`)
+      }
+    } catch {
+      // A malformed stored place just falls back to the default.
+    }
+  }, [])
+
+  function selectPlace(place: ShowtimesPlace) {
+    setCoordinates(place)
+    setLocationMessage(`Showing distances from ${place.label}`)
+    try {
+      window.localStorage.setItem(PLACE_STORAGE_KEY, JSON.stringify(place))
+    } catch {
+      // Persistence is a convenience; ignore storage failures.
+    }
+  }
 
   function useMyLocation() {
     if (!navigator.geolocation) {
@@ -135,6 +156,11 @@ export function AMCShowtimes({ movieId, compact = false }: { movieId?: string; c
     })).filter((group) => group.showtimes.length > 0),
   [data, effectiveMovieFilter, stateFilter, effectiveCityFilter, theatreQuery, formatFilter, languageFilter, timeFilter])
 
+  const pageGroups = useMemo(
+    () => applyShowtimeFilters(data?.groups || [], pageFilters),
+    [data, pageFilters],
+  )
+
   if (authLoading) {
     return (
       <section aria-labelledby={movieId ? "movie-showtimes-heading" : "showtimes-heading"}>
@@ -159,6 +185,31 @@ export function AMCShowtimes({ movieId, compact = false }: { movieId?: string; c
             <Button asChild size="sm"><Link href="/auth">Sign in</Link></Button>
           </CardContent>
         </Card>
+      </section>
+    )
+  }
+
+  if (!movieId && !compact) {
+    return (
+      <section aria-labelledby="showtimes-heading">
+        <ShowtimesBrowser
+          groups={pageGroups}
+          loading={loading}
+          error={error}
+          hasData={data != null}
+          place={coordinates}
+          locationMessage={locationMessage}
+          onSelectPlace={selectPlace}
+          onUseMyLocation={useMyLocation}
+          date={date}
+          onDateChange={setDate}
+          filters={pageFilters}
+          onFiltersChange={setPageFilters}
+          onRefresh={() => void load()}
+          attribution={data?.attribution}
+          fetchedAtUtc={data?.fetchedAtUtc}
+          stale={data?.stale}
+        />
       </section>
     )
   }
@@ -234,29 +285,8 @@ export function AMCShowtimes({ movieId, compact = false }: { movieId?: string; c
               </CardTitle>
               <p className="text-xs text-muted-foreground">{[group.theatre.location?.address, group.theatre.location?.city, group.theatre.location?.state].filter(Boolean).join(", ")}</p>
             </CardHeader>
-            <CardContent className="space-y-2">
-              {group.showtimes.map((showtime) => {
-                const disabled = showtime.isSoldOut || showtime.isCanceled || !showtime.purchaseUrl
-                return (
-                  <div key={showtime.id} className="flex flex-col gap-2 rounded-xl border bg-muted/20 p-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-w-0">
-                      {!movieId && <p className="mb-1 truncate text-sm font-semibold">{showtime.movieName}</p>}
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <span className="text-base font-bold">{showtime.showDateTimeLocal ? format(new Date(showtime.showDateTimeLocal), "h:mm a") : "Time unavailable"}</span>
-                        {badges(showtime).slice(0, 4).map((badge) => <Badge key={badge} variant="secondary" className="text-[10px]">{badge}</Badge>)}
-                        {showtime.isDiscountMatineePriced && <Badge className="text-[10px]">{showtime.discountMatineeMessage || "Matinee"}</Badge>}
-                        {showtime.isAlmostSoldOut && <Badge variant="destructive" className="text-[10px]">Almost sold out</Badge>}
-                        {showtime.isSoldOut && <Badge variant="destructive" className="text-[10px]">Sold out</Badge>}
-                        {showtime.isCanceled && <Badge variant="destructive" className="text-[10px]">Canceled</Badge>}
-                      </div>
-                      <p className="mt-1 text-xs text-muted-foreground">{[languageLine(showtime), priceLine(showtime)].filter(Boolean).join(" · ")}</p>
-                    </div>
-                    <Button asChild={!disabled} disabled={disabled} size="sm" className="shrink-0 gap-1.5">
-                      {disabled ? <span>Unavailable</span> : <a href={showtime.purchaseUrl} target="_blank" rel="noreferrer">Buy on AMC<ExternalLink className="h-3.5 w-3.5" /></a>}
-                    </Button>
-                  </div>
-                )
-              })}
+            <CardContent>
+              <ShowtimeCells showtimes={group.showtimes} showMovieName={!movieId} />
             </CardContent>
           </Card>
         ))}
