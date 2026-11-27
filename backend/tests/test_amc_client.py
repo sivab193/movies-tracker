@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 
 import requests
 
-from services.amc_client import AMCClient, AMCError
+from services.amc_client import AMCClient, AMCError, normalize_showtime
 
 
 FIXTURE = pathlib.Path(__file__).parent / "fixtures" / "amc_showtimes.json"
@@ -48,6 +48,57 @@ class AMCClientTests(unittest.TestCase):
             AMCClient("secret-key", session).get_showtimes_by_theatre(42, "2026-11-13")
         self.assertTrue(raised.exception.is_empty_result)
         self.assertEqual(raised.exception.status, 404)
+
+
+class NormalizeShowtimePosterTests(unittest.TestCase):
+    def item(self, **overrides):
+        base = {"id": 1, "movieId": 10, "movieName": "Example"}
+        base.update(overrides)
+        return base
+
+    def test_imax_showtime_prefers_imax_poster(self):
+        result = normalize_showtime(self.item(
+            premiumFormat="IMAX with Laser",
+            media={
+                "posterIMAXDynamic": "https://img.example/imax.jpg",
+                "posterDynamic": "https://img.example/standard.jpg",
+            },
+        ))
+        self.assertEqual(result["moviePosterUrl"], "https://img.example/imax.jpg")
+
+    def test_poster_falls_back_when_format_specific_is_empty(self):
+        result = normalize_showtime(self.item(
+            premiumFormat={"name": "Dolby Cinema"},
+            media={
+                "posterIMAXDynamic": "",
+                "poster3DDynamic": "",
+                "posterDynamic": "https://img.example/standard.jpg",
+            },
+        ))
+        self.assertEqual(result["moviePosterUrl"], "https://img.example/standard.jpg")
+
+        result = normalize_showtime(self.item(
+            premiumFormat="RealD 3D",
+            media={
+                "poster3DDynamic": "",
+                "posterDynamic": "https://img.example/standard.jpg",
+            },
+        ))
+        self.assertEqual(result["moviePosterUrl"], "https://img.example/standard.jpg")
+
+    def test_poster_is_none_when_media_missing_or_empty(self):
+        self.assertIsNone(normalize_showtime(self.item())["moviePosterUrl"])
+        self.assertIsNone(normalize_showtime(self.item(media={}))["moviePosterUrl"])
+        self.assertIsNone(normalize_showtime(self.item(media={
+            "posterDynamic": "",
+            "posterStandard": "   ",
+        }))["moviePosterUrl"])
+
+    def test_movie_metadata_passes_through(self):
+        result = normalize_showtime(self.item(runTime=166, mpaaRating="PG-13", genre="Sci-Fi"))
+        self.assertEqual(result["runTime"], 166)
+        self.assertEqual(result["mpaaRating"], "PG-13")
+        self.assertEqual(result["genre"], "Sci-Fi")
 
 
 if __name__ == "__main__":

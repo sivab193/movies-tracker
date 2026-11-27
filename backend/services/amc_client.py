@@ -103,6 +103,28 @@ def _normalize_prices(prices: Iterable[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return result
 
 
+def _poster_url(media: Any, premium_format: Optional[str]) -> Optional[str]:
+    """Best poster URL from an AMC media object.
+
+    Format-specific posters win when the screening is in that format;
+    every field may be an empty string, so only non-empty values count.
+    """
+    if not isinstance(media, dict):
+        return None
+    format_text = (premium_format or "").lower()
+    keys = []
+    if "imax" in format_text:
+        keys.append("posterIMAXDynamic")
+    if "3d" in format_text:
+        keys.append("poster3DDynamic")
+    keys.extend(["posterDynamic", "posterStandard", "posterLarge", "posterAlternateDynamic"])
+    for key in keys:
+        value = media.get(key)
+        if isinstance(value, str) and value.strip():
+            return value
+    return None
+
+
 def normalize_showtime(item: Dict[str, Any]) -> Dict[str, Any]:
     languages = item.get("languages") or {}
     if isinstance(languages, list):
@@ -114,6 +136,10 @@ def normalize_showtime(item: Dict[str, Any]) -> Dict[str, Any]:
         "id": str(item.get("id") or ""),
         "movieId": item.get("movieId"),
         "movieName": item.get("movieName"),
+        "moviePosterUrl": _poster_url(item.get("media"), premium_format),
+        "runTime": item.get("runTime"),
+        "mpaaRating": item.get("mpaaRating"),
+        "genre": item.get("genre"),
         "theatreId": item.get("theatreId"),
         "showDateTimeUtc": _iso(item.get("showDateTimeUtc")),
         "showDateTimeLocal": _iso(item.get("showDateTimeLocal")),

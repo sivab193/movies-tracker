@@ -13,6 +13,10 @@ export type AMCShowtime = {
   id: string
   movieId?: number | string
   movieName?: string
+  moviePosterUrl?: string | null
+  runTime?: number | null
+  mpaaRating?: string | null
+  genre?: string | null
   showDateTimeLocal?: string
   showDateTimeUtc?: string
   lastUpdatedDateUtc?: string
@@ -79,4 +83,36 @@ export async function getAMCShowtimes(query: ShowtimeQuery): Promise<AMCShowtime
   if (!response.ok) throw new Error(data?.error || "AMC showtimes are unavailable")
   if (!data) throw new Error("AMC showtimes are unavailable")
   return data
+}
+
+export type AMCTheatresResponse = {
+  items: AMCTheatre[]
+  fetchedAtUtc?: string
+  stale?: boolean
+  attribution: string
+}
+
+export async function getAMCTheatres(params: { city?: string; state?: string }): Promise<AMCTheatre[]> {
+  const token = await auth?.currentUser?.getIdToken()
+  if (!token) throw new Error("Sign in to see AMC showtimes")
+  const search = new URLSearchParams()
+  if (params.city) search.set("city", params.city)
+  if (params.state) search.set("state", params.state)
+  let response: Response
+  try {
+    response = await fetch(`${API_BASE_URL}/amc/theatres?${search.toString()}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+  } catch {
+    throw new Error("AMC theatres are unavailable")
+  }
+  let data: AMCTheatresResponse & { error?: string } | null = null
+  try {
+    data = (await response.json()) as AMCTheatresResponse & { error?: string }
+  } catch {
+    data = null
+  }
+  if (!response.ok) throw new Error(data?.error || "AMC theatres are unavailable")
+  if (!data) throw new Error("AMC theatres are unavailable")
+  return data.items || []
 }
