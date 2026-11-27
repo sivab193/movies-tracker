@@ -118,8 +118,12 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
               </div>
             )}
 
+            {/* forceMount on the remote-result groups is load-bearing: their
+                items are forceMount too, so they never register with cmdk's
+                filter store, and a non-forceMount group would stay hidden
+                whenever the query is non-empty. */}
             {visibleResults && visibleResults.movies.length > 0 && (
-              <Command.Group heading="Movies">
+              <Command.Group forceMount heading="Movies">
                 {visibleResults.movies.map((movie) => (
                   <SearchResultItem
                     key={movie.id}
@@ -135,7 +139,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             )}
 
             {visibleResults && visibleResults.series.length > 0 && (
-              <Command.Group heading="Series">
+              <Command.Group forceMount heading="Series">
                 {visibleResults.series.map((item) => (
                   <SearchResultItem
                     key={item.id}
@@ -151,7 +155,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             )}
 
             {visibleResults && visibleResults.theatres.length > 0 && (
-              <Command.Group heading="Theatres">
+              <Command.Group forceMount heading="Theatres">
                 {visibleResults.theatres.map((theatre) => (
                   <SearchResultItem
                     key={theatre.id}
@@ -166,7 +170,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             )}
 
             {visibleResults && visibleResults.people.length > 0 && (
-              <Command.Group heading="People">
+              <Command.Group forceMount heading="People">
                 {visibleResults.people.map((person) => (
                   <SearchResultItem
                     key={person.slug}
@@ -180,7 +184,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             )}
 
             {visibleResults && visibleResults.users.length > 0 && (
-              <Command.Group heading="Members">
+              <Command.Group forceMount heading="Members">
                 {visibleResults.users.map((member) => (
                   <SearchResultItem
                     key={member.username}
